@@ -1,0 +1,271 @@
+# MASTER PROMPT — Stream Conferences Corporate Hub Site (domain.com)
+
+Paste this whole prompt into Replit, Lovable, v0, Bolt, etc. This is the **corporate hub site**. It must use the **exact same design system, colors, typography, components, and animations** as the companion conference microsite (`subject.domain.com`) — this is not a variant theme, it is the same theme applied to a different page set. Anywhere the two sites share a component (navbar, cards, buttons, countdown, scrolling banner, forms), build it byte-for-byte identical.
+
+---
+
+## 1. PROJECT SUMMARY
+
+Stream Conferences is a global organizer of scientific, technical, medical, engineering, and academic conferences and webinars. `domain.com` is the **parent brand hub**: it introduces the organization, hosts webinars, showcases the photo gallery, and will house a Journal and a Proceedings section (coming soon). Every individual conference gets its own microsite at `subject.domain.com`, built from the same design system.
+
+Tone: scientific, credible, editorial, structured, information-dense but scannable, with confident orange CTAs so visitors always know the next action.
+
+Build as a responsive, accessible, production-quality site with a fully working light/dark theme toggle (instant switch, no flash-of-wrong-theme, defaults to system preference).
+
+---
+
+## 2. DESIGN SYSTEM — IDENTICAL ACROSS BOTH SITES
+
+### 2.1 Color tokens
+
+**Light mode**
+- Page background: `#F9F6F2` (warm off-white)
+- Primary navy: `#1B3255` — headings, hero, navigation
+- Body text: `#18273F`
+- Teal: `#1596A8` — science/technology accents, links, icons
+- Orange CTA: `#F68F31` — Register / Submit / primary action buttons
+- Card background: `#FCFAF7`
+- Borders: `#D1D6DF`
+- Muted text: slate gray (`#6B7280`)
+
+**Dark mode**
+- Page background: `#0D1426`
+- Card background: `#151F32`
+- Primary text: `#F3F0E8`
+- Teal: bright cyan-teal (`#2FE0D6`)
+- Orange CTA: `#F9933D`
+- Borders: `#2D374F`
+- Muted text: cool gray-blue (`#9AA5C0`)
+
+**Brand feeling:** scientific + credible + innovative.
+- Navy = trust and authority
+- Teal = research, healthcare, technology
+- Orange = energy, action, conversion
+- Warm off-white = editorial, premium, readable
+
+Theme toggle in the header (sun/moon icon), instant cross-fade on all tokens, persisted for the session.
+
+### 2.2 Typography (same as subject.domain.com)
+- Headings: "Sora" or "Poppins", semi-bold/bold, tight tracking — set in **Primary navy** (light mode) / **Primary text** (dark mode), with key words highlighted in **Orange** for emphasis (e.g., in hero headlines).
+- Body: "Inter", regular/medium.
+- Scale: H1 48/56 (mobile 32/40), H2 36/44, H3 26/32, Body 16/26, Small 14/20.
+- Container max-width 1200px, 24px gutter mobile / 64px desktop.
+
+### 2.3 Spacing & shape (same as subject.domain.com)
+- 8px base grid; section vertical padding 96px desktop / 56px mobile.
+- Card radius 16px, button radius 10px, input radius 8px.
+- Light mode elevation: soft shadow `0 4px 20px rgba(27,50,85,0.08)`. Dark mode: 1px border instead of shadow.
+
+### 2.4 Shared components — build/reuse identically on both sites
+1. **Sticky header** — logo left, nav center, theme toggle, orange "Register Now" button on the right, hamburger + slide-in drawer on mobile, **persistent orange Register button pinned to the bottom of the screen on mobile**.
+2. **Buttons** — primary orange filled (CTA), secondary navy outline, teal text/ghost link, all with hover-darken and focus-ring states.
+3. **Cards** — consistent radius/shadow/hover-lift (`translateY(-4px)` + shadow increase) for conference cards, webinar cards, blog/journal cards, gallery cards.
+4. **Tabs / segmented toggle** — for Upcoming/Past listings.
+5. **Carousel/marquee** — auto-scrolling logo strips and image galleries, pausing on hover/touch, respecting `prefers-reduced-motion`.
+6. **Countdown timer** — 4 large elevated number tiles (Days/Hours/Minutes/Seconds), same visual style as the microsite's countdown, used here for the next flagship webinar/conference.
+7. **Scrolling theme banner** — slim ticker strip, orange/teal divider styling, looping the tagline "Connecting Minds, Advancing Science."
+8. **Accordion** — for FAQ-style or "coming soon" detail blocks.
+9. **Forms** — text/email/phone/select/textarea, consistent floating/top labels and validation states.
+10. **Modal/Lightbox** — gallery image zoom.
+11. **"Coming Soon" panel** — a reusable empty-state component: icon, heading, one-line message, optional email-notify input ("Get notified when this launches"). Used for Journal and Proceedings.
+
+---
+
+## 3. NAVIGATION
+
+Primary header nav (per your latest spec):
+`Home | About | Conference | Webinar | Journal | Proceedings | Contact Us`
+
+Header CTA button: **"Register Now"** (orange, links to the current flagship conference/webinar registration).
+
+Note: Gallery is kept as a page in the site (linked from the homepage and footer) even though it's not in the top nav bar — this keeps the header from getting crowded while still making the gallery reachable. Say the word if you'd rather it replace one of the seven nav items instead.
+
+---
+
+## 4. PAGE-BY-PAGE BUILD SPEC
+
+### 4.1 HOME PAGE
+
+Build in this order:
+
+1. **Sticky header** as specified above.
+
+2. **Large navy hero**
+   - Big headline in navy/primary-text with **orange-highlighted key words**, e.g.: "Connecting Minds, **Advancing Science**."
+   - Subheadline: "Uniting Academia, Industry, and Clinical Excellence on One Global Stage."
+   - Short intro paragraph (condensed from About Us copy — see 4.2): Stream Conferences is a global architect of elite scientific, technical, research, engineering, academic, and medical events that turn theoretical discovery into real-world impact.
+   - CTAs: **"Explore Webinars"** (orange primary) and **"About Us"** (navy outline secondary).
+   - Right side: scientific geometric artwork / abstract "field-note" panel illustration (line-art circuit/molecule motif in teal, per brand feeling).
+
+3. **Info strip — next flagship event**
+   - Compact bar beneath the hero: name of the next flagship webinar/conference, date, venue or "Online," with calendar and location icons.
+
+4. **Countdown area**
+   - "Next Webinar Starts In" heading + the 4-tile Days/Hours/Minutes/Seconds countdown component (identical styling to the microsite).
+
+5. **Welcome note**
+   - Organizing/leadership photo placeholder + editorial-style 2–3 paragraph welcome message (tie to the About Us "About Stream Conferences" narrative — see 4.2), supporting visual panel on the right.
+
+6. **Conference & Webinar tracks**
+   - Heading "What We Cover." Five track cards (icon, title, short description):
+     - Medical & Clinical Sciences
+     - Pharmaceutical & Life Sciences
+     - Engineering & Technology
+     - Academic & Research
+     - Science & Medical Technologies
+
+7. **Upcoming Conferences / Past Conferences — segmented toggle**
+   - Heading "Our Conferences." Segmented tabs: **[Upcoming] [Past]**.
+   - Responsive grid (3 columns desktop / 1 mobile) of conference cards: banner image, title, date, city/country, track badge, "View Details" button (links out to that conference's own microsite, e.g. `https://{conference-slug}.domain.com`). Past cards slightly desaturated with a "Past" badge.
+   - Centered **"View All Conferences"** button leading to the full Conference page.
+
+7b. **Upcoming Webinars / Past Webinars — segmented toggle**
+   - Heading "Webinars." Same segmented-tab pattern: **[Upcoming] [Past]**.
+   - Responsive grid of webinar cards (banner image, title, date/time, speaker name, track badge, "Join" or "Watch Recording" button depending on tab). Centered **"View All Webinars"** button leading to the full Webinar page.
+   - Visually distinguish this block from the Conferences block above (e.g., alternate the section background between `--bg-primary` and `--bg-secondary`) so the two event types stay visually separate.
+
+8. **Important dates**
+   - Timeline/date-card row for near-term milestones across the org's events (e.g., next abstract deadline, next registration deadline, next webinar date) — reuses the same date-card visual pattern as the microsite's Important Dates block.
+
+9. **Media partners**
+   - Heading "Media Partners." Auto-scrolling logo placeholder strip (marquee component), pausing on hover.
+
+10. **Scrolling theme banner**
+    - Full-width ticker: "★ Connecting Minds, Advancing Science ★ Uniting Academia, Industry & Clinical Excellence ★ …" — orange/teal divider styling, placed between sections as a visual break.
+
+11. **Related insights**
+    - Heading "From the Journal & Blog" — grid of 3 article/insight preview cards (image, tag, title, 1-line excerpt, "Read More"). Since the Journal is not live yet, these can be general research/publishing-themed articles that link to a simple articles page, with a small "Full Journal launching soon" note.
+
+12. **Social section**
+    - Row of social icons (LinkedIn, X, Instagram, YouTube) with "Follow the conversation #StreamConferences."
+
+13. **Contact band**
+    - Full-width navy (light mode) / elevated dark panel band: "Have Questions?" heading, email + phone snippet, orange "Contact Us" button.
+
+14. **Footer**
+    - Columns: Company (About, Gallery, Journal, Proceedings), Events (Webinars, Upcoming, Past), Resources (FAQ-style links, Contact), Legal. Social icons, contact snippet, "© Stream Conferences" bar. Same structural pattern as the microsite footer, tagged as the parent brand (the microsite footer links back here).
+
+---
+
+### 4.2 ABOUT PAGE
+
+Same content and structure as previously scoped — render with the new theme (navy headings, teal accent icons, orange CTA at the end):
+
+**Hero:** "About Stream Conferences" / "Connecting Minds, Advancing Science."
+
+**Intro:** Stream Conferences is an established global architect of elite scientific, technical, research, engineering, academic, and medical summits. Operating at the dynamic intersection of rigorous scholarship and industrial execution, we engineer high-precision platforms designed to accelerate knowledge transfer, forge high-value cross-disciplinary synergies, and catalyse theoretical discoveries into transformative global solutions.
+
+**Core Values (4 icon cards, teal icons):**
+1. **Scientific Integrity & Rigor** — We hold empirical truth to the highest standard. Every abstract, paper, and presentation hosted across our stages undergoes uncompromising peer review, ensuring that all shared intelligence is grounded in methodological excellence and absolute transparency.
+2. **Action-Driven Innovation** — Knowledge achieves its true value only when translated into real-world impact. We aggressively bridge academic theory and industrial application, expediting the passage of lab-scale breakthroughs into advanced clinical treatments and scalable technological infrastructure.
+3. **Multidisciplinary Synergy** — Humanity's most formidable challenges transcend singular disciplines. We systematically dismantle sectoral barriers, aligning clinical authorities, technical pioneers, and corporate strategists to generate unexpected insights and borderless innovation.
+4. **Global Inclusivity & Intellectual Accessibility** — Scientific advancement is a global imperative. We sustain a borderless platform that elevates pioneering work from across all continents, guaranteeing early-career scholars, doctoral candidates, and seasoned authorities equal access to high-impact publishing, peer recognition, and strategic networks.
+
+**Narrative section (text left / visual panel right):**
+Stream Conferences was established to solve a systemic inefficiency that stalls modern research: expanding the void between theoretical discovery and real-world execution. In today's hyper-accelerated innovation landscape, traditional conference models — plagued by passive presentations and institutional siloing — are no longer equipped to drive meaningful scientific velocity.
+
+We redefine the international summit experience through hyper-focused, result-driven frameworks that convert intellectual capital into immediate market momentum. Bridging the divide between university laboratories, clinical settings, and industrial manufacturing pipelines, we deliberately cultivate environments where data scientists, clinical physicians, biotech innovators, and systems engineers converge to solve high-stakes global challenges.
+
+**Vision & Mission (two-column cards):**
+- **Vision:** To serve as the definitive global benchmark for scientific-industrial convergence — building a borderless research ecosystem where breakthrough science seamlessly transitions into commercial technology and clinical practice.
+- **Mission** (4-item checklist with teal checkmarks):
+  - Accelerate Technology Transfer — streamline the transition of university-led research directly into commercial pipelines and clinical application.
+  - Foster Multidisciplinary Synergy — convene world-leading authorities across Medicine, Pharma, Health Science, Life Science, Engineering, and Technology to solve complex global problems.
+  - Elevate Emerging Scholars — offer doctoral candidates and early-career researchers unhindered visibility and direct mentorship alongside recognized industry leaders.
+  - Uphold Academic Excellence — enforce uncompromising quality standards across every keynote lecture, technical panel, symposium, and peer-reviewed publication.
+
+**Who We Gather (4 audience cards):**
+- Clinical & Academic Leaders — Medical Physicians, Department Chairs, Clinical Specialists, Healthcare Executives.
+- Industry Innovators — Corporate R&D Directors, Chief Technologists, Lead Engineers, Pharmaceutical Executives.
+- Research & Advisory Authorities — Scientific Editors, Policy Strategists, Senior Analysts, Laboratory Directors.
+- Next-Gen Researchers — Doctoral Candidates, Postdoctoral Fellows, Outstanding Young Scientists.
+
+**The Conference Experience (4-step icon grid or horizontal timeline):**
+- Keynote Addresses — visionary discourses delivered by world-renowned experts charting futuristic trends and disruptive concepts.
+- Interactive Technical Sessions — peer-reviewed presentations, critical paper analyses, and rigorous panel debates resolving contemporary scientific issues.
+- Specialized Symposiums & Workshops — immersive, hands-on masterclasses executed alongside prestigious universities and professional societies.
+- Strategic Networking & Partnerships — target-driven forums built to spark institutional joint ventures, grant collaborations, and corporate tie-ups.
+
+**Research Dissemination & Healthcare Publishing (highlighted callout, navy background, orange accent divider):**
+A fundamental pillar of Stream Conferences is ensuring that presented research secures permanent global reach. We move beyond ephemeral conversations, systematically documenting and indexing scientific discoveries through high-level publishing alliances across healthcare, medical, and technology sectors.
+
+High-impact submissions receive direct channels for peer-reviewed evaluation in reputed international journals. Furthermore, all accepted abstracts and manuscripts are published in official digital proceedings assigned dedicated DOIs — ensuring universal indexability, citation permanence, and international prestige for researchers at every stage of their trajectory. *(Link this paragraph conceptually to the future Journal and Proceedings pages.)*
+
+End with orange CTA band: "Ready to be part of the next breakthrough?" → "Explore Webinars" button.
+
+---
+
+### 4.3 CONFERENCE PAGE
+
+- Same segmented **[Upcoming] [Past]** toggle + card grid pattern as the homepage section, now as a full page with a filter row: filter-by-track dropdown (Medical & Clinical Sciences, Pharmaceutical & Life Sciences, Engineering & Technology, Academic & Research, Science & Medical Technologies) and a search box.
+- Pagination or "Load More" at the bottom.
+- Each card's "View Details" links out to that conference's own microsite (built from the `subject.domain.com` master prompt), e.g. `https://{conference-slug}.domain.com` — this is the primary hand-off point from the hub site to an individual event site.
+
+### 4.4 WEBINAR PAGE
+
+- Segmented toggle **[Upcoming Webinars] [Past Webinars]** — same component as the homepage section, now as a full page.
+- Filter row: by track (the 5 tracks) and a search box.
+- Grid of webinar cards: banner image, title, date/time, speaker name, track badge, CTA button ("Register" for upcoming, "Watch Recording" for past).
+- Individual webinar detail template: hero banner, description, speaker bio card, agenda/time block, registration form (Name, Email, Organization, Country), and a "back to all webinars" link.
+
+### 4.5 GALLERY PAGE
+
+- Full-page masonry/grid gallery, filter pills by event/year ("All / 2024 / 2025 / 2026").
+- Click opens Modal/Lightbox with next/prev navigation.
+
+### 4.6 JOURNAL PAGE *(Coming Soon)*
+
+- Hero: "Stream Conferences Journal."
+- Use the **"Coming Soon" panel** component: icon (open-book/journal icon in teal), heading "Our Journal Is Launching Soon," message: "We're building a dedicated home for peer-reviewed proceedings and research articles from Stream Conferences events. Check back soon." Include an email-notify input with orange "Notify Me" button.
+- Optional: a short section below explaining what the Journal will offer (peer-reviewed publishing, DOI assignment, citation permanence) pulled conceptually from the Research Dissemination copy in 4.2, styled as a preview/teaser.
+
+### 4.7 PROCEEDINGS PAGE *(Coming Soon)*
+
+- Hero: "Conference Proceedings."
+- Same **"Coming Soon" panel** pattern: icon (archive/document-stack icon), heading "Proceedings Archive Coming Soon," message: "Digital proceedings with DOIs for all presented and accepted abstracts will be published here. Check back soon." Email-notify input.
+- Optional teaser section: "What to expect" bullet list (DOI-assigned digital proceedings, searchable by conference/year/track, citation export).
+
+### 4.8 CONTACT US PAGE
+
+Use this exact content:
+
+**Heading:** Get in Touch with Stream Conferences
+**Intro:** Whether you are looking to present groundbreaking research, inquire about conference registration, explore healthcare publishing opportunities, or discuss corporate sponsorship, our dedicated team is here to assist you. Reach out to the appropriate department below, and a representative will respond within 24 to 48 business hours.
+
+**Departmental contact cards (4):**
+1. General & Delegate Inquiries — info@streamconferences.com
+2. Abstract Submissions & Speaker Desk — abstracts@streamconferences.com
+3. Publishing & Research Indexing — publishing@streamconferences.com
+4. Sponsorships & Strategic Partnerships — partners@streamconferences.com
+
+**Global Headquarters:**
+Stream Conferences
+[Insert Business Address / Building Name]
+[Insert City, State/Province, Country, Postal Code]
+Phone: +1 [Insert Phone Number]
+Business Hours: Monday – Friday: 9:00 AM – 6:00 PM (EST)
+
+Include a map placeholder beside this block.
+
+**"Send Us a Message" form:**
+Full Name, Email Address, Phone Number, Inquiry Type (dropdown: General / Abstract Submission / Publishing / Sponsorship), Conference/Webinar Name (if applicable), Message (textarea). Orange "Send Message" submit button, success confirmation state on submit.
+
+---
+
+## 5. RESPONSIVE & INTERACTION NOTES
+- Mobile-first; header collapses under 1024px into a slide-in drawer; the orange Register CTA stays pinned to the bottom of the viewport on mobile (matches the microsite behavior).
+- Marquee/logo strips and the scrolling theme banner pause on hover/touch and respect `prefers-reduced-motion`.
+- All interactive elements have visible focus states, semantic HTML, and proper alt text.
+- Theme toggle applies instantly with no flash-of-wrong-theme.
+- Countdown timer updates live and shows a graceful "Webinar is Live" state when the date passes.
+- Coming Soon panels must feel intentional and on-brand, not like broken/empty pages.
+
+## 6. TECH NOTES FOR THE BUILDER TOOL
+- Prefer React + Tailwind (or the platform default). Put all color tokens, spacing, radius, and font settings into a single shared theme/config file — **this exact file must be reused unmodified when building `subject.domain.com`**, so both properties are guaranteed to render identically.
+- Mock webinars, journal articles, and gallery images as structured JSON so the layout works without a backend; keep the shape swappable for a real API/CMS later.
+- Every webinar card and the header CTA should link with a placeholder pattern to the conference/webinar's own microsite where relevant: `https://{event-slug}.domain.com`.
+- Keep the Journal and Proceedings pages as fully styled, on-brand "coming soon" experiences rather than blank stubs.
+
+---
+
+**Build the complete site now, page by page, in the order in Section 4, applying the design system in Section 2 exactly — this must look and animate identically to the `subject.domain.com` build, just with this site's own navigation and page content.**

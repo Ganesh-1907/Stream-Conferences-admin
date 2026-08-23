@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Stream Conferences Hub"
+description = "A responsive corporate hub for Stream Conferences, connecting researchers, clinicians, engineers, and academic communities to conferences, webinars, publishing, and global scientific collaboration."
+version = "1.0.0"
+id = "artifacts/stream-conferences-hub"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19865
+
+[services.development]
+run = "pnpm --filter @workspace/stream-conferences-hub run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/stream-conferences-hub", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/stream-conferences-hub/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19865"
+BASE_PATH = "/"
