@@ -1,9 +1,32 @@
+import { useState } from 'react';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import { FileUploadCard } from '@/components/file-upload-card';
 import { useAppStore } from '@/store/app-store';
 
 export function ProfileTab() {
-  const { profileForm, setProfileForm, saveProfile, handleProfileAvatarUpload } = useAppStore();
+  const { profileForm, setProfileForm, saveProfile, handleProfileAvatarUpload, changePassword } = useAppStore();
+  const [newPassword, setNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (!newPassword) {
+      alert('Please enter a new password');
+      return;
+    }
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(newPassword);
+      setNewPassword('');
+    } catch (err) {
+      // handled
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -118,6 +141,31 @@ export function ProfileTab() {
               <button type="button" onClick={() => setProfileForm({ ...profileForm, certifications: profileForm.certifications.filter((_, j) => j !== i) })} className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg justify-self-start"><Trash2 size={15} /></button>
             </div>
           ))}
+        </div>
+
+        <div className="p-6 bg-card border border-foreground/10 rounded-xl space-y-4">
+          <h2 className="text-lg font-bold text-foreground">Security / Change Password</h2>
+          <p className="text-xs text-muted-foreground">Change your account password. Must be at least 6 characters.</p>
+          <div className="max-w-xs space-y-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">New Password</label>
+              <input 
+                type="password" 
+                value={newPassword} 
+                onChange={(e) => setNewPassword(e.target.value)} 
+                placeholder="••••••••" 
+                className="w-full px-4 py-3 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" 
+              />
+            </div>
+            <button 
+              type="button" 
+              onClick={handleChangePassword} 
+              disabled={changingPassword}
+              className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold rounded-lg text-sm transition"
+            >
+              {changingPassword ? 'Updating...' : 'Update Password'}
+            </button>
+          </div>
         </div>
 
         <div className="pt-4 border-t border-foreground/10 flex justify-end">

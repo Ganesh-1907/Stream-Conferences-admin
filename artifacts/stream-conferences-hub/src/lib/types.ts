@@ -4,6 +4,7 @@ export interface User {
   id: string;
   username: string;
   role: Role;
+  isTempPassword?: boolean;
 }
 
 export type Tab =
@@ -19,7 +20,8 @@ export type Tab =
   | 'collaborators'
   | 'exhibitors'
   | 'venues'
-  | 'profile';
+  | 'profile'
+  | 'mentors';
 
 export type EventType = 'conference' | 'webinar';
 export type EventPageTab =
@@ -109,6 +111,9 @@ export interface Registration {
   eventId?: string;
   eventType?: string;
   eventTitle?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  reviewedAt?: string;
+  rejectionReason?: string;
   createdAt: string;
 }
 
@@ -127,6 +132,9 @@ export interface Abstract {
   eventId?: string;
   eventType?: string;
   eventTitle?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  reviewedAt?: string;
+  rejectionReason?: string;
   createdAt: string;
 }
 

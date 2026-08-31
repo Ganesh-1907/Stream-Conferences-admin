@@ -91,6 +91,7 @@ interface AppStoreValue {
   exhibitors: Exhibitor[];
   venues: Venue[];
   profile: MentorProfile | null;
+  mentors: MentorProfile[];
   refreshData: () => Promise<void>;
 
   // Generic add/edit modal
@@ -262,6 +263,7 @@ interface AppStoreValue {
   setProfileForm: Dispatch<SetStateAction<MentorProfile & { avatarPreview?: string }>>;
   saveProfile: () => Promise<void>;
   handleProfileAvatarUpload: (file: File | null) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
 
   // Per-event data
   eventDetail: EventDetail | null;
@@ -271,6 +273,8 @@ interface AppStoreValue {
   eventEnquiries: Contact[];
   eventAbstractsLoading: boolean;
   eventEnquiriesLoading: boolean;
+  abstractActionLoading: string | null;
+  handleAbstractAction: (id: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   viewingParticipant: Registration | null;
   setViewingParticipant: (p: Registration | null) => void;
 }
@@ -352,6 +356,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [exhibitors, setExhibitors] = useState<Exhibitor[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [profile, setProfile] = useState<MentorProfile | null>(null);
+  const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
   // Modal / form state
@@ -429,6 +434,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [eventEnquiries, setEventEnquiries] = useState<Contact[]>([]);
   const [eventAbstractsLoading, setEventAbstractsLoading] = useState(false);
   const [eventEnquiriesLoading, setEventEnquiriesLoading] = useState(false);
+  const [abstractActionLoading, setAbstractActionLoading] = useState<string | null>(null);
 
   // URL-driven event page resolution
   const eventPageTab: EventPageTab =
@@ -548,6 +554,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
         const ordRes = await fetch(`${API_BASE}/orders`, { headers });
         if (ordRes.ok) setOrders(await ordRes.json());
+
+        const mentorRes = await fetch(`${API_BASE}/mentors`, { headers });
+        if (mentorRes.ok) setMentors(await mentorRes.json());
       }
     } catch (e) {
       console.error('Failed to load data from backend API server', e);
@@ -595,6 +604,34 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setEventAbstractsLoading(false);
       setEventEnquiriesLoading(false);
+    }
+  };
+
+  const handleAbstractAction = async (id: string, action: 'approve' | 'reject', reason?: string) => {
+    if (!user) return;
+    setAbstractActionLoading(id);
+    try {
+      const res = await fetch(`${API_BASE}/abstracts/${id}/${action}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify({ reason }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to ${action} abstract`);
+      }
+      const updated = await res.json();
+      setAbstracts((prev) => prev.map((a) => (a._id === id ? updated : a)));
+      setEventAbstracts((prev) => prev.map((a) => (a._id === id ? updated : a)));
+    } catch (err: any) {
+      console.error(`Abstract ${action} error:`, err);
+      alert(err.message || `Failed to ${action} abstract`);
+    } finally {
+      setAbstractActionLoading(null);
     }
   };
 
@@ -1223,6 +1260,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const changePassword = async (newPassword: string) => {
+    if (!user) return;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'x-user-role': user.role, 'x-user-name': user.username };
+    try {
+      const res = await fetch(`${API_BASE}/auth/change-password`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ newPassword }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to change password');
+      alert('Password changed successfully');
+      
+      const updated = { ...user, isTempPassword: false };
+      setUser(updated);
+      localStorage.setItem('stream-admin-user', JSON.stringify(updated));
+    } catch (err: any) {
+      alert(err.message || 'Failed to change password');
+      throw err;
+    }
+  };
+
   const closeForm = () => setShowForm(false);
 
   const value: AppStoreValue = {
@@ -1257,6 +1315,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     exhibitors,
     venues,
     profile,
+    mentors,
     refreshData,
     showForm,
     editingItemType,
@@ -1412,6 +1471,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setProfileForm,
     saveProfile,
     handleProfileAvatarUpload,
+    changePassword,
     eventDetail,
     eventDetailLoading,
     eventDetailError,
@@ -1419,6 +1479,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     eventEnquiries,
     eventAbstractsLoading,
     eventEnquiriesLoading,
+    abstractActionLoading,
+    handleAbstractAction,
     viewingParticipant,
     setViewingParticipant,
   };

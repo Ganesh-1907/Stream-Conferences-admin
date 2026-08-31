@@ -11,6 +11,7 @@ import {
   Share2,
   Store,
   UserCircle,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
@@ -43,6 +44,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { tab: 'abstracts', label: 'Abstracts', icon: <Layers size={18} />, adminOnly: true },
   { tab: 'contacts', label: 'Contact Inquiries', icon: <Send size={18} />, adminOnly: true },
   { tab: 'orders', label: 'Orders & Payments', icon: <Eye size={18} />, adminOnly: true },
+  { tab: 'mentors', label: 'Manage Mentors', icon: <UserPlus size={18} />, adminOnly: true },
 ];
 
 function NavButton({ item }: { item: NavItem }) {

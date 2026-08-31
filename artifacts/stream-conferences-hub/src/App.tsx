@@ -1,6 +1,9 @@
 import { AppStoreProvider, useAppStore } from '@/store/app-store';
 import { LoginPanel } from '@/components/login-panel';
+import { ResetPasswordPanel } from '@/components/reset-password-panel';
+import { ForceChangePasswordPanel } from '@/components/force-change-password-panel';
 import { Header } from '@/components/header';
+import { useLocation } from 'wouter';
 import { Sidebar } from '@/components/sidebar';
 import { Wizard } from '@/components/wizard';
 import { EventPage } from '@/components/event-page';
@@ -19,6 +22,7 @@ import { CollaboratorsTab } from '@/components/tabs/collaborators-tab';
 import { ExhibitorsTab } from '@/components/tabs/exhibitors-tab';
 import { VenuesTab } from '@/components/tabs/venues-tab';
 import { ProfileTab } from '@/components/tabs/profile-tab';
+import { MentorsTab } from '@/components/tabs/mentors-tab';
 
 export default function App() {
   return (
@@ -30,9 +34,16 @@ export default function App() {
 
 function Root() {
   const store = useAppStore();
+  const [location] = useLocation();
+  const isResetRoute = location.startsWith('/reset-password');
 
   if (!store.user) {
+    if (isResetRoute) return <ResetPasswordPanel />;
     return <LoginPanel />;
+  }
+
+  if (store.user.isTempPassword) {
+    return <ForceChangePasswordPanel />;
   }
 
   return (
@@ -92,6 +103,8 @@ function TabPanel() {
       return store.user?.role === 'admin' ? <ContactsTab /> : null;
     case 'orders':
       return store.user?.role === 'admin' ? <OrdersTab /> : null;
+    case 'mentors':
+      return store.user?.role === 'admin' ? <MentorsTab /> : null;
     default:
       return null;
   }

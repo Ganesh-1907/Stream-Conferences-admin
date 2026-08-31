@@ -2,7 +2,7 @@ import { useAppStore } from '@/store/app-store';
 import { mediaUrl } from '@/lib/utils';
 
 export function AbstractsTab() {
-  const { abstracts } = useAppStore();
+  const { abstracts, abstractActionLoading, handleAbstractAction } = useAppStore();
 
   return (
     <div className="space-y-6">
@@ -19,7 +19,9 @@ export function AbstractsTab() {
               <th className="p-4">Institution / Country</th>
               <th className="p-4">Contact</th>
               <th className="p-4">Abstract</th>
+              <th className="p-4">Status</th>
               <th className="p-4">Date</th>
+              <th className="p-4 text-right">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -46,12 +48,44 @@ export function AbstractsTab() {
                     </a>
                   )}
                 </td>
+                <td className="p-4">
+                  <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    abs.status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                    abs.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
+                    'bg-foreground/10 text-muted-foreground'
+                  }`}>
+                    {abs.status || 'pending'}
+                  </span>
+                  {abs.rejectionReason && <div className="mt-1 text-xs text-muted-foreground">{abs.rejectionReason}</div>}
+                </td>
                 <td className="p-4 text-xs text-muted-foreground">{new Date(abs.createdAt).toLocaleDateString()}</td>
+                <td className="p-4 text-right whitespace-nowrap">
+                  {abs.status !== 'approved' && (
+                    <button
+                      type="button"
+                      onClick={() => handleAbstractAction(abs._id, 'approve')}
+                      disabled={abstractActionLoading === abs._id}
+                      className="px-3 py-1.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 border border-green-500/30 rounded-lg text-xs font-semibold mr-2 transition disabled:opacity-50"
+                    >
+                      {abstractActionLoading === abs._id ? '...' : 'Approve'}
+                    </button>
+                  )}
+                  {abs.status !== 'rejected' && (
+                    <button
+                      type="button"
+                      onClick={() => handleAbstractAction(abs._id, 'reject')}
+                      disabled={abstractActionLoading === abs._id}
+                      className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                    >
+                      {abstractActionLoading === abs._id ? '...' : 'Reject'}
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
             {abstracts.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground">No abstract submissions in database.</td>
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">No abstract submissions in database.</td>
               </tr>
             )}
           </tbody>
