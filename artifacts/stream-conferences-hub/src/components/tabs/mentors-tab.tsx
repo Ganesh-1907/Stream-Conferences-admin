@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { UserPlus, Mail, User, ShieldAlert } from 'lucide-react';
+import { API_BASE, SERVER_ORIGIN } from '@/lib/constants';
 
 export function MentorsTab() {
   const { mentors, refreshData, user } = useAppStore();
@@ -10,8 +11,6 @@ export function MentorsTab() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:7867/api';
 
   const handleRegisterMentor = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,7 +153,7 @@ export function MentorsTab() {
                       <div className="flex items-center gap-3">
                         {m.avatar ? (
                           <img
-                            src={m.avatar.startsWith('http') ? m.avatar : `${API_BASE.replace('/api', '')}${m.avatar}`}
+                            src={m.avatar.startsWith('http') ? m.avatar : `${SERVER_ORIGIN}${m.avatar}`}
                             alt={m.fullName}
                             className="w-8 h-8 rounded-full object-cover border border-foreground/10"
                           />
