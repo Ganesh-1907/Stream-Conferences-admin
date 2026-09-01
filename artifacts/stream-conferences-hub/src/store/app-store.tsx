@@ -4,12 +4,14 @@ import {
   SetStateAction,
   useContext,
   useEffect,
+  useRef,
   useState,
   ReactNode,
   FormEvent,
 } from 'react';
 import { useLocation } from 'wouter';
-import { API_BASE } from '@/lib/constants';
+import { io, type Socket } from 'socket.io-client';
+import { API_BASE, SERVER_ORIGIN } from '@/lib/constants';
 import {
   computeDayAndMonth,
   mediaUrl,
@@ -18,6 +20,8 @@ import {
 import {
   Abstract,
   Blog,
+  ChatMessage,
+  ChatSession,
   Collaborator,
   Conference,
   Contact,
@@ -277,6 +281,16 @@ interface AppStoreValue {
   handleAbstractAction: (id: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   viewingParticipant: Registration | null;
   setViewingParticipant: (p: Registration | null) => void;
+
+  // Live chat
+  chatSessions: ChatSession[];
+  activeChatId: string | null;
+  activeChatMessages: ChatMessage[];
+  chatLoading: boolean;
+  setActiveChatId: (id: string | null) => void;
+  sendChatReply: (text: string) => Promise<void>;
+  markChatRead: (sessionId: string) => Promise<void>;
+  setChatStatus: (sessionId: string, status: 'open' | 'closed') => Promise<void>;
 }
 
 const AppStoreContext = createContext<AppStoreValue | null>(null);
@@ -430,6 +444,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   // Per-event extras
   const [viewingParticipant, setViewingParticipant] = useState<Registration | null>(null);
+
+  // Live chat state
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeChatMessages, setActiveChatMessages] = useState<ChatMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatSocketRef = useRef<Socket | null>(null);
+  const activeChatIdRef = useRef<string | null>(null);
   const [eventAbstracts, setEventAbstracts] = useState<Abstract[]>([]);
   const [eventEnquiries, setEventEnquiries] = useState<Contact[]>([]);
   const [eventAbstractsLoading, setEventAbstractsLoading] = useState(false);
@@ -634,6 +656,173 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setAbstractActionLoading(null);
     }
   };
+
+  const loadChatSessions = async () => {
+    if (!user) return;
+    const headers: Record<string, string> = {
+      'x-user-role': user.role,
+      'x-user-name': user.username,
+    };
+    try {
+      const res = await fetch(`${API_BASE}/chat/sessions`, { headers });
+      if (res.ok) setChatSessions(await res.json());
+    } catch (err) {
+      console.error('Load chat sessions error:', err);
+    }
+  };
+
+  const loadChatMessages = async (sessionId: string) => {
+    if (!user) return;
+    const headers: Record<string, string> = {
+      'x-user-role': user.role,
+      'x-user-name': user.username,
+    };
+    setChatLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/chat/sessions/${sessionId}/messages`, { headers });
+      if (res.ok) setActiveChatMessages(await res.json());
+    } catch (err) {
+      console.error('Load chat messages error:', err);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const selectChat = (sessionId: string | null) => {
+    setActiveChatId(sessionId);
+    activeChatIdRef.current = sessionId;
+    if (sessionId) {
+      loadChatMessages(sessionId);
+      markChatRead(sessionId);
+      chatSocketRef.current?.emit('admin:join', sessionId);
+    } else {
+      setActiveChatMessages([]);
+    }
+  };
+
+  const sendChatReply = async (text: string) => {
+    if (!user || !activeChatId) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const session = chatSessions.find((s) => s._id === activeChatId);
+    const socket = chatSocketRef.current;
+    if (socket) {
+      socket.emit('admin:message', {
+        sessionId: activeChatId,
+        visitorId: session?.visitorId,
+        senderName: user.username,
+        text: trimmed
+      });
+      return;
+    }
+
+    // Fallback: REST append if socket is not connected
+    try {
+      const res = await fetch(`${API_BASE}/chat/sessions/${activeChatId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify({ text: trimmed, senderName: user.username })
+      });
+      if (!res.ok) throw new Error('Failed to send reply');
+      const message = await res.json();
+      setActiveChatMessages((prev) => [...prev, message]);
+    } catch (err) {
+      console.error('Send chat reply error:', err);
+    }
+  };
+
+  const markChatRead = async (sessionId: string) => {
+    if (!user) return;
+    const headers: Record<string, string> = {
+      'x-user-role': user.role,
+      'x-user-name': user.username,
+    };
+    try {
+      await fetch(`${API_BASE}/chat/sessions/${sessionId}/read`, { method: 'POST', headers });
+      setChatSessions((prev) => prev.map((s) => (s._id === sessionId ? { ...s, unreadByAdmin: 0 } : s)));
+    } catch (err) {
+      console.error('Mark chat read error:', err);
+    }
+  };
+
+  const setChatStatus = async (sessionId: string, status: 'open' | 'closed') => {
+    if (!user) return;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-user-role': user.role,
+      'x-user-name': user.username,
+    };
+    try {
+      const res = await fetch(`${API_BASE}/chat/sessions/${sessionId}/status`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setChatSessions((prev) => prev.map((s) => (s._id === sessionId ? updated : s)));
+      }
+    } catch (err) {
+      console.error('Set chat status error:', err);
+    }
+  };
+
+  // Realtime socket for the team member
+  useEffect(() => {
+    if (!user) return;
+    loadChatSessions();
+
+    const socket = io(SERVER_ORIGIN, {
+      query: { role: user.role, username: user.username }
+    });
+    chatSocketRef.current = socket;
+
+    socket.on('admin:message', (payload: { session: ChatSession; message: ChatMessage }) => {
+      setChatSessions((prev) => {
+        const exists = prev.some((s) => s._id === payload.session._id);
+        if (exists) {
+          return prev
+            .map((s) => (s._id === payload.session._id ? payload.session : s))
+            .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+        }
+        return [payload.session, ...prev];
+      });
+      setActiveChatMessages((prev) => {
+        if (activeChatIdRef.current === payload.session._id) {
+          if (prev.some((m) => m._id === payload.message._id)) return prev;
+          return [...prev, payload.message];
+        }
+        return prev;
+      });
+    });
+
+    socket.on('admin:typing', (payload: { visitorId: string; typing: boolean }) => {
+      // Optional: could surface "visitor is typing" in the active session
+    });
+
+    // The team member's own replies echo back through the session room
+    socket.on('chat:message', (message: ChatMessage) => {
+      if (message.sender !== 'admin') return;
+      setActiveChatMessages((prev) => {
+        if (activeChatIdRef.current === message.sessionId) {
+          if (prev.some((m) => m._id === message._id)) return prev;
+          return [...prev, message];
+        }
+        return prev;
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+      chatSocketRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     if (user) refreshData();
@@ -1483,6 +1672,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     handleAbstractAction,
     viewingParticipant,
     setViewingParticipant,
+    chatSessions,
+    activeChatId,
+    activeChatMessages,
+    chatLoading,
+    setActiveChatId: selectChat,
+    sendChatReply,
+    markChatRead,
+    setChatStatus,
   };
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

@@ -21,7 +21,8 @@ export type Tab =
   | 'exhibitors'
   | 'venues'
   | 'profile'
-  | 'mentors';
+  | 'mentors'
+  | 'liveChat';
 
 export type EventType = 'conference' | 'webinar';
 export type EventPageTab =
@@ -258,4 +259,25 @@ export interface VenueFormState {
   name: string;
   address: string;
   locationUrl: string;
+}
+
+export interface ChatSession {
+  _id: string;
+  visitorId: string;
+  visitorName: string;
+  visitorEmail: string;
+  status: 'open' | 'closed';
+  assignedTo: string | null;
+  lastMessageAt: string;
+  unreadByAdmin: number;
+  createdAt: string;
+}
+
+export interface ChatMessage {
+  _id: string;
+  sessionId: string;
+  sender: 'visitor' | 'admin';
+  senderName: string;
+  text: string;
+  createdAt: string;
 }

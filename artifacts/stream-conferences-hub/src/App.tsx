@@ -17,6 +17,7 @@ import { RegistrationsTab } from '@/components/tabs/registrations-tab';
 import { AbstractsTab } from '@/components/tabs/abstracts-tab';
 import { ContactsTab } from '@/components/tabs/contacts-tab';
 import { OrdersTab } from '@/components/tabs/orders-tab';
+import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { MediaPartnersTab } from '@/components/tabs/media-partners-tab';
 import { CollaboratorsTab } from '@/components/tabs/collaborators-tab';
 import { ExhibitorsTab } from '@/components/tabs/exhibitors-tab';
@@ -105,6 +106,8 @@ function TabPanel() {
       return store.user?.role === 'admin' ? <OrdersTab /> : null;
     case 'mentors':
       return store.user?.role === 'admin' ? <MentorsTab /> : null;
+    case 'liveChat':
+      return store.user?.role === 'admin' || store.user?.role === 'mentor' ? <LiveChatTab /> : null;
     default:
       return null;
   }

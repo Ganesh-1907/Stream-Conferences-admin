@@ -6,6 +6,7 @@ import {
   Handshake,
   Layers,
   LayoutDashboard,
+  MessageSquare,
   Play,
   Send,
   Share2,
@@ -29,6 +30,7 @@ const PRIMARY_ITEMS: NavItem[] = [
   { tab: 'conferences', label: 'Conferences', icon: <CalendarDays size={18} /> },
   { tab: 'webinars', label: 'Webinars', icon: <Play size={18} /> },
   { tab: 'blogs', label: 'Blog Editor', icon: <FileText size={18} /> },
+  { tab: 'liveChat', label: 'Live Chat', icon: <MessageSquare size={18} /> },
 ];
 
 const CONTENT_ITEMS: NavItem[] = [
