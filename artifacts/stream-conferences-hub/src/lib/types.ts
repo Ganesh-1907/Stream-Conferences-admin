@@ -31,7 +31,16 @@ export type EventPageTab =
   | 'participants'
   | 'payments'
   | 'abstracts'
-  | 'enquiries';
+  | 'enquiries'
+  | 'speakers'
+  | 'program'
+  | 'itinerary'
+  | 'faqs'
+  | 'sponsors'
+  | 'exhibitors'
+  | 'guidelines'
+  | 'terms'
+  | 'venue-details';
 
 export interface Track {
   title: string;
@@ -39,6 +48,79 @@ export interface Track {
   image: string;
   imagePreview?: string;
   referenceLinks: { label: string; url: string }[];
+}
+
+export interface ItineraryItem {
+  time: string;
+  title: string;
+  description?: string;
+  speaker?: string;
+  track?: string;
+  type?: 'session' | 'break' | 'keynote' | 'panel' | 'workshop' | 'networking';
+}
+
+export interface Speaker {
+  name: string;
+  designation?: string;
+  organization?: string;
+  bio?: string;
+  avatar?: string;
+  linkedin?: string;
+  twitter?: string;
+  website?: string;
+  topic?: string;
+  isKeynote?: boolean;
+}
+
+export interface ProgramDay {
+  dayNumber: number;
+  date?: string;
+  title?: string;
+  description?: string;
+  sessions: ItineraryItem[];
+}
+
+export interface FAQ {
+  question: string;
+  answer: string;
+  category?: string;
+  order?: number;
+}
+
+export interface EventSponsor {
+  name: string;
+  logo?: string;
+  logoPreview?: string;
+  website?: string;
+  description?: string;
+  tier?: 'platinum' | 'gold' | 'silver' | 'bronze' | 'supporter';
+  order?: number;
+}
+
+export interface EventExhibitor {
+  name: string;
+  logo?: string;
+  logoPreview?: string;
+  website?: string;
+  description?: string;
+  boothNumber?: string;
+  contactEmail?: string;
+  order?: number;
+}
+
+export interface VenueDetails {
+  name?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  description?: string;
+  images?: string[];
+  mapUrl?: string;
+  directions?: string;
+  parking?: string;
+  accommodation?: string;
 }
 
 export interface Conference {
@@ -57,11 +139,29 @@ export interface Conference {
   tracks?: Track[];
   startTime?: string;
   endTime?: string;
+  startDate?: string;
+  endDate?: string;
+  subdomain?: string;
+  assignedMentor?: string | null;
+  venue?: string;
+  venueAddress?: string;
+  venueMapUrl?: string;
   brochureUrl?: string;
   bannerUrl?: string;
   logoUrl?: string;
   fees?: { label: string; amount: number }[];
-  organizerContact?: { name: string; email: string; phone: string };
+  organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
+  
+  // New fields for conference website tabs
+  itinerary?: ItineraryItem[];
+  speakers?: Speaker[];
+  program?: ProgramDay[];
+  faqs?: FAQ[];
+  sponsors?: EventSponsor[];
+  exhibitors?: EventExhibitor[];
+  guidelines?: string;
+  termsAndConditions?: string;
+  venueDetails?: VenueDetails;
 }
 
 export interface Webinar {
@@ -81,11 +181,29 @@ export interface Webinar {
   tracks?: Track[];
   startTime?: string;
   endTime?: string;
+  startDate?: string;
+  endDate?: string;
+  subdomain?: string;
+  assignedMentor?: string | null;
+  venue?: string;
+  venueAddress?: string;
+  venueMapUrl?: string;
   brochureUrl?: string;
   bannerUrl?: string;
   logoUrl?: string;
   fees?: { label: string; amount: number }[];
-  organizerContact?: { name: string; email: string; phone: string };
+  organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
+  
+  // New fields for conference website tabs
+  itinerary?: ItineraryItem[];
+  speakers?: Speaker[];
+  program?: ProgramDay[];
+  faqs?: FAQ[];
+  sponsors?: EventSponsor[];
+  exhibitors?: EventExhibitor[];
+  guidelines?: string;
+  termsAndConditions?: string;
+  venueDetails?: VenueDetails;
 }
 
 export interface Blog {
@@ -217,6 +335,7 @@ export interface MentorProfile {
   education: { degree: string; institution: string; year: string }[];
   experiences: { title: string; organization: string; duration: string; description: string }[];
   certifications: { name: string; issuer: string; year: string }[];
+  isActive?: boolean;
 }
 
 export interface EventDetail {

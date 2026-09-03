@@ -42,10 +42,6 @@ const CONTENT_ITEMS: NavItem[] = [
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
-  { tab: 'registrations', label: 'Registrations', icon: <Users size={18} />, adminOnly: true },
-  { tab: 'abstracts', label: 'Abstracts', icon: <Layers size={18} />, adminOnly: true },
-  { tab: 'contacts', label: 'Contact Inquiries', icon: <Send size={18} />, adminOnly: true },
-  { tab: 'orders', label: 'Orders & Payments', icon: <Eye size={18} />, adminOnly: true },
   { tab: 'mentors', label: 'Manage Mentors', icon: <UserPlus size={18} />, adminOnly: true },
 ];
 

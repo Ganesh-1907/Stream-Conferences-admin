@@ -1,10 +1,12 @@
-import { ArrowRight, CalendarDays, Check, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Plus, Search, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { FileUploadCard } from '@/components/file-upload-card';
 import { useAppStore } from '@/store/app-store';
-import { formatDisplayDate, stringToDate, dateToString } from '@/lib/utils';
+import { formatDisplayDate, stringToDate, dateToString, mediaUrl } from '@/lib/utils';
+import { ROOT_DOMAIN } from '@/lib/constants';
+import { useState, useMemo } from 'react';
 
 export function Wizard() {
   const store = useAppStore();
@@ -34,29 +36,39 @@ export function Wizard() {
 
       {/* Stepper */}
       <div className="flex flex-wrap gap-2">
-        {['Event Info', 'Schedule & Venue', 'Fees', 'Tracks', 'Contact'].map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => i + 1 < store.wizardStep && store.setWizardStep(i + 1)}
-            className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition duration-150 cursor-pointer ${
-              store.wizardStep === i + 1
-                ? 'bg-primary text-primary-foreground'
-                : i + 1 < store.wizardStep
-                  ? 'bg-green-500/10 text-green-500 border border-green-500/20'
-                  : 'bg-muted/40 text-muted-foreground border border-foreground/10'
-            }`}
-          >
-            {i + 1}. {label}
-          </button>
-        ))}
+        {[
+          'Event Info', 'Schedule & Venue', 'Fees', 'Tracks',
+          'FAQs', 'Sponsors', 'Exhibitors', 'Guidelines', 'Terms & Conditions', 'Contact',
+        ].map((label, i) => {
+          const stepNum = i + 1;
+          const canNavigate = stepNum <= store.wizardStep || store.canGoToStep(stepNum);
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => canNavigate && store.setWizardStep(stepNum)}
+              disabled={!canNavigate}
+              className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition duration-150 cursor-pointer ${
+                store.wizardStep === stepNum
+                  ? 'bg-primary text-primary-foreground'
+                  : stepNum < store.wizardStep
+                    ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                    : canNavigate
+                      ? 'bg-muted/40 hover:bg-muted/70 text-muted-foreground border border-foreground/10'
+                      : 'bg-muted/20 text-muted-foreground/40 border border-foreground/5 cursor-not-allowed'
+              }`}
+            >
+              {stepNum}. {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* STEP 1: EVENT INFO + MEDIA */}
       {store.wizardStep === 1 && (
         <div className="space-y-6">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Title</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Title <span className="text-red-500">*</span></label>
             <input
               required
               type="text"
@@ -67,9 +79,29 @@ export function Wizard() {
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Subdomain <span className="text-red-500">*</span></label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={store.wizardSubdomain()}
+                onChange={(e) => store.setWizardSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-'))}
+                placeholder={store.wizardTitle().trim() ? store.wizardTitle().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63) : 'event-slug'}
+                className="flex-1 px-6 py-4 bg-muted/20 border border-foreground/10 rounded-2xl text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition duration-200"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5 font-mono">
+              {(() => {
+                const suggested = store.wizardTitle().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+                const value = store.wizardSubdomain() || suggested || 'event';
+                return `https://${value}.${ROOT_DOMAIN}`;
+              })()}
+            </p>
+          </div>
+
           {store.wizardType === 'webinar' && (
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Speaker</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Speaker <span className="text-red-500">*</span></label>
               <input
                 required
                 type="text"
@@ -108,7 +140,7 @@ export function Wizard() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Location Type</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Location Type <span className="text-red-500">*</span></label>
               <Select
                 value={store.wizardIsOnline() ? 'online' : 'offline'}
                 onValueChange={(val) => store.setWizardIsOnline(val === 'online')}
@@ -125,7 +157,7 @@ export function Wizard() {
 
             {store.wizardIsOnline() ? (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Online Link</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Online Link <span className="text-red-500">*</span></label>
                 <input
                   required
                   type="text"
@@ -137,7 +169,7 @@ export function Wizard() {
               </div>
             ) : (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Venue Location</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Venue Location <span className="text-red-500">*</span></label>
                 <select
                   required
                   value={store.wizardVenue()}
@@ -162,7 +194,7 @@ export function Wizard() {
           {/* Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Start Date</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Start Date <span className="text-red-500">*</span></label>
               <Popover>
                 <PopoverTrigger asChild>
                   <button
@@ -395,17 +427,218 @@ export function Wizard() {
         </div>
       )}
 
-      {/* STEP 5: ORGANIZER CONTACT */}
+      {/* STEP 5: FAQs */}
       {store.wizardStep === 5 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">FAQs</h3>
+              <p className="text-sm text-muted-foreground">Add frequently asked questions to display on the event website.</p>
+            </div>
+            <button type="button" onClick={store.addFaq} className="cta-button">
+              <Plus size={14} /> Add FAQ
+            </button>
+          </div>
+          {store.wizardFaqs().map((faq, index) => (
+            <div key={index} className="border border-foreground/10 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-accent">FAQ {index + 1}</span>
+                <button type="button" onClick={() => store.removeFaq(index)} className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Question</label>
+                <input type="text" value={faq.question} onChange={(e) => store.updateFaq(index, 'question', e.target.value)} placeholder="e.g. What is the refund policy?" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Answer</label>
+                <textarea value={faq.answer} onChange={(e) => store.updateFaq(index, 'answer', e.target.value)} placeholder="Detailed answer..." rows={3} className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Category (optional)</label>
+                <input type="text" value={faq.category || ''} onChange={(e) => store.updateFaq(index, 'category', e.target.value)} placeholder="e.g. Registration, Venue" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+              </div>
+            </div>
+          ))}
+          {store.wizardFaqs().length === 0 && (
+            <div className="border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">No FAQs added yet. Click "Add FAQ" to create one.</div>
+          )}
+        </div>
+      )}
+
+      {/* STEP 6: SPONSORS */}
+      {store.wizardStep === 6 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Sponsors</h3>
+              <p className="text-sm text-muted-foreground">Add sponsors to showcase on the event website.</p>
+            </div>
+            <button type="button" onClick={store.addSponsor} className="cta-button">
+              <Plus size={14} /> Add Sponsor
+            </button>
+          </div>
+          {store.wizardSponsors().map((sponsor, index) => (
+            <div key={index} className="border border-foreground/10 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-accent">Sponsor {index + 1}</span>
+                <button type="button" onClick={() => store.removeSponsor(index)} className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Name</label>
+                  <input type="text" value={sponsor.name} onChange={(e) => store.updateSponsor(index, 'name', e.target.value)} placeholder="e.g. Acme Biotech" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Website (optional)</label>
+                  <input type="text" value={sponsor.website || ''} onChange={(e) => store.updateSponsor(index, 'website', e.target.value)} placeholder="https://..." className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Logo</label>
+                <FileUploadCard
+                  title="Logo"
+                  accept="image/*"
+                  preview={sponsor.logoPreview || mediaUrl(sponsor.logo || '')}
+                  onSelect={(f) => store.handleSponsorLogoUpload(index, f)}
+                  onClear={() => {
+                    const next = [...store.wizardSponsors()];
+                    next[index].logo = '';
+                    next[index].logoPreview = '';
+                    store.setWizardSponsors(next);
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description (optional)</label>
+                <textarea value={sponsor.description || ''} onChange={(e) => store.updateSponsor(index, 'description', e.target.value)} placeholder="Short description..." rows={2} className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition resize-none" />
+              </div>
+            </div>
+          ))}
+          {store.wizardSponsors().length === 0 && (
+            <div className="border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">No sponsors added yet. Click "Add Sponsor" to create one.</div>
+          )}
+        </div>
+      )}
+
+      {/* STEP 7: EXHIBITORS */}
+      {store.wizardStep === 7 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Exhibitors</h3>
+              <p className="text-sm text-muted-foreground">Add exhibitors to showcase on the event website.</p>
+            </div>
+            <button type="button" onClick={store.addExhibitor} className="cta-button">
+              <Plus size={14} /> Add Exhibitor
+            </button>
+          </div>
+          {store.wizardExhibitors().map((ex, index) => (
+            <div key={index} className="border border-foreground/10 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-accent">Exhibitor {index + 1}</span>
+                <button type="button" onClick={() => store.removeExhibitor(index)} className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Name</label>
+                  <input type="text" value={ex.name} onChange={(e) => store.updateExhibitor(index, 'name', e.target.value)} placeholder="e.g. MedTech Corp" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Website (optional)</label>
+                  <input type="text" value={ex.website || ''} onChange={(e) => store.updateExhibitor(index, 'website', e.target.value)} placeholder="https://..." className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Email (optional)</label>
+                  <input type="text" value={ex.contactEmail || ''} onChange={(e) => store.updateExhibitor(index, 'contactEmail', e.target.value)} placeholder="contact@..." className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Logo</label>
+                <FileUploadCard
+                  title="Logo"
+                  accept="image/*"
+                  preview={ex.logoPreview || mediaUrl(ex.logo || '')}
+                  onSelect={(f) => store.handleExhibitorLogoUpload(index, f)}
+                  onClear={() => {
+                    const next = [...store.wizardExhibitors()];
+                    next[index].logo = '';
+                    next[index].logoPreview = '';
+                    store.setWizardExhibitors(next);
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description (optional)</label>
+                <textarea value={ex.description || ''} onChange={(e) => store.updateExhibitor(index, 'description', e.target.value)} placeholder="Short description..." rows={2} className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition resize-none" />
+              </div>
+            </div>
+          ))}
+          {store.wizardExhibitors().length === 0 && (
+            <div className="border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">No exhibitors added yet. Click "Add Exhibitor" to create one.</div>
+          )}
+        </div>
+      )}
+
+      {/* STEP 8: GUIDELINES */}
+      {store.wizardStep === 8 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-bold tracking-tight">Guidelines</h3>
+            <p className="text-sm text-muted-foreground">Add submission or participation guidelines (HTML supported) for the event website.</p>
+          </div>
+          <textarea
+            value={store.wizardGuidelines()}
+            onChange={(e) => store.setWizardGuidelines(e.target.value)}
+            placeholder="<p>Submission guidelines...</p>"
+            rows={10}
+            className="w-full px-4 py-3 bg-muted/20 border border-foreground/10 rounded-lg text-sm font-mono focus:outline-none focus:border-secondary transition resize-none"
+          />
+        </div>
+      )}
+
+      {/* STEP 9: TERMS & CONDITIONS */}
+      {store.wizardStep === 9 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-bold tracking-tight">Terms & Conditions</h3>
+            <p className="text-sm text-muted-foreground">Add terms and conditions (HTML supported) for the event website.</p>
+          </div>
+          <textarea
+            value={store.wizardTerms()}
+            onChange={(e) => store.setWizardTerms(e.target.value)}
+            placeholder="<p>Terms and conditions...</p>"
+            rows={10}
+            className="w-full px-4 py-3 bg-muted/20 border border-foreground/10 rounded-lg text-sm font-mono focus:outline-none focus:border-secondary transition resize-none"
+          />
+        </div>
+      )}
+
+      {/* STEP 10: ORGANIZER CONTACT */}
+      {store.wizardStep === 10 && (
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-bold tracking-tight">Organizer Contact</h3>
             <p className="text-sm text-muted-foreground">Who should attendees reach out to for this {store.wizardType}?</p>
           </div>
 
+          {/* Mentor Selector */}
+          {store.mentors.length > 0 && (
+            <MentorSelector
+              mentors={store.mentors}
+              selectedName={store.wizardOrg().name}
+              onSelect={(mentor) => store.setWizardOrg({ name: mentor.fullName, email: mentor.email, phone: mentor.phone })}
+            />
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Name</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Name <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 value={store.wizardOrg().name}
@@ -415,7 +648,7 @@ export function Wizard() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Email</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Email <span className="text-red-500">*</span></label>
               <input
                 type="email"
                 value={store.wizardOrg().email}
@@ -425,7 +658,7 @@ export function Wizard() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Phone</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Phone <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 value={store.wizardOrg().phone}
@@ -434,20 +667,6 @@ export function Wizard() {
                 className="w-full px-6 py-4 bg-muted/20 border border-foreground/10 rounded-2xl text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition duration-200"
               />
             </div>
-          </div>
-
-          {/* Summary */}
-          <div className="bg-muted/20 border border-foreground/10 rounded-xl p-6">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Review & Publish</h4>
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-              <div><dt className="text-xs text-muted-foreground uppercase tracking-wider">Title</dt><dd className="font-semibold">{store.wizardTitle() || '—'}</dd></div>
-              <div><dt className="text-xs text-muted-foreground uppercase tracking-wider">Schedule</dt><dd className="font-semibold">{store.wizardStartDate() ? `${formatDisplayDate(store.wizardStartDate())}${store.wizardEndDate() && store.wizardEndDate() !== store.wizardStartDate() ? ` – ${formatDisplayDate(store.wizardEndDate())}` : ''}` : '—'}{store.wizardStartTime() || store.wizardEndTime() ? ` · ${store.wizardStartTime() || '—'} to ${store.wizardEndTime() || '—'}` : ''}</dd></div>
-              <div><dt className="text-xs text-muted-foreground uppercase tracking-wider">Location</dt><dd className="font-semibold">{store.wizardIsOnline() ? `Online · ${store.wizardOnlineLink() || 'TBD'}` : (store.wizardVenue() || '—')}</dd></div>
-              <div><dt className="text-xs text-muted-foreground uppercase tracking-wider">Fees</dt><dd className="font-semibold">{store.wizardFees().filter((f) => f.label.trim() && f.amount > 0).map((f) => `${f.label} ₹${f.amount}`).join(', ') || 'None'}</dd></div>
-              <div><dt className="text-xs text-muted-foreground uppercase tracking-wider">Tracks</dt><dd className="font-semibold">{store.wizardTracks().filter((t) => t.title.trim()).length || 'None'}</dd></div>
-              <div><dt className="text-xs text-muted-foreground uppercase tracking-wider">Organizer</dt><dd className="font-semibold">{store.wizardOrg().name || '—'}{store.wizardOrg().email ? ` (${store.wizardOrg().email})` : ''}</dd></div>
-              <div><dt className="text-xs text-muted-foreground uppercase tracking-wider">Assets</dt><dd className="font-semibold">{[store.wizardMedia().brochureUrl && 'Brochure', store.wizardMedia().bannerUrl && 'Banner', store.wizardMedia().logoUrl && 'Logo'].filter(Boolean).join(', ') || 'None'}</dd></div>
-            </dl>
           </div>
 
           {store.wizardError && (
@@ -467,7 +686,7 @@ export function Wizard() {
         >
           {store.wizardStep > 1 ? '← Back' : 'Cancel'}
         </button>
-        {store.wizardStep < 5 ? (
+        {store.wizardStep < 10 ? (
           <button
             type="button"
             disabled={!store.canGoNext()}
@@ -483,10 +702,79 @@ export function Wizard() {
             onClick={store.submitWizard}
             className="cta-button disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {store.wizardSaving ? 'Saving...' : store.wizardEditId ? 'Save Changes' : 'Publish'} <Check size={14} />
+            {store.wizardSaving ? 'Saving...' : store.wizardEditId ? 'Save Changes' : 'Create'} <Check size={14} />
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function MentorSelector({ mentors, selectedName, onSelect }: {
+  mentors: { fullName: string; email: string; phone: string; username: string }[];
+  selectedName: string;
+  onSelect: (mentor: { fullName: string; email: string; phone: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return mentors;
+    const q = search.toLowerCase();
+    return mentors.filter(
+      (m) =>
+        m.fullName.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q) ||
+        m.username.toLowerCase().includes(q),
+    );
+  }, [mentors, search]);
+
+  return (
+    <div className="border border-foreground/10 rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Quick Select Mentor</h4>
+        {selectedName && (
+          <span className="text-xs text-muted-foreground">Selected: <span className="font-semibold text-foreground">{selectedName}</span></span>
+        )}
+      </div>
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={search || (selectedName ? selectedName : '')}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search by name, email, or username..."
+          className="w-full pl-9 pr-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="max-h-48 overflow-y-auto border border-foreground/10 rounded-lg divide-y divide-foreground/5">
+          {filtered.map((m) => (
+            <button
+              key={m.username}
+              type="button"
+              onClick={() => {
+                onSelect(m);
+                setSearch('');
+                setOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-foreground/5 transition cursor-pointer flex items-center justify-between ${
+                selectedName === m.fullName ? 'bg-primary/5 text-primary font-semibold' : ''
+              }`}
+            >
+              <div>
+                <div className="font-semibold">{m.fullName}</div>
+                <div className="text-xs text-muted-foreground">{m.email}{m.phone ? ` · ${m.phone}` : ''}</div>
+              </div>
+              {selectedName === m.fullName && <Check size={14} className="text-primary shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+      {open && search.trim() && filtered.length === 0 && (
+        <p className="text-xs text-muted-foreground py-2">No mentors found matching "{search}"</p>
+      )}
     </div>
   );
 }

@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/app-store';
-import { UserPlus, Mail, User, ShieldAlert } from 'lucide-react';
+import { UserPlus, Mail, User, ShieldAlert, Plus, Power, PowerOff } from 'lucide-react';
 import { API_BASE, SERVER_ORIGIN } from '@/lib/constants';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 export function MentorsTab() {
   const { mentors, refreshData, user } = useAppStore();
@@ -11,6 +18,8 @@ export function MentorsTab() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
 
   const handleRegisterMentor = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +48,6 @@ export function MentorsTab() {
       setFirstName('');
       setLastName('');
       setEmail('');
-      // Refresh the mentor list
       await refreshData();
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred during registration.');
@@ -48,27 +56,147 @@ export function MentorsTab() {
     }
   };
 
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setMessage('');
+    setErrorMsg('');
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+  };
+
+  const handleToggleStatus = async (username: string) => {
+    if (!user) return;
+    setTogglingStatus(username);
+    try {
+      const res = await fetch(`${API_BASE}/auth/mentors/${encodeURIComponent(username)}/toggle-status`, {
+        method: 'PUT',
+        headers: {
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update status');
+      }
+
+      await refreshData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update mentor status');
+    } finally {
+      setTogglingStatus(null);
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Mentors</h1>
-        <p className="text-sm text-muted-foreground">
-          Register new mentors to the platform and monitor existing mentor accounts.
-        </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Mentors</h1>
+          <p className="text-sm text-muted-foreground">
+            Register new mentors to the platform and monitor existing mentor accounts.
+          </p>
+        </div>
+        <button
+          onClick={() => setIsDialogOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold rounded-lg text-sm transition"
+        >
+          <Plus size={16} />
+          Add Mentor
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Registration Form Card */}
-        <div className="lg:col-span-1 p-6 bg-card border border-foreground/10 rounded-xl space-y-4 shadow-sm">
-          <div className="flex items-center gap-2 border-b border-foreground/5 pb-3">
-            <UserPlus className="text-secondary" size={20} />
-            <h2 className="text-lg font-bold text-foreground">Register New Mentor</h2>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Enter the mentor's name and email address. An account will be created, and their login credentials will be dispatched to their email automatically.
-          </p>
+      {/* Mentors List Table - Full Width */}
+      <div className="border border-foreground/10 rounded-xl overflow-hidden shadow-sm">
+        <table className="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
+              <th className="p-4">Name</th>
+              <th className="p-4">Email</th>
+              <th className="p-4">Designation</th>
+              <th className="p-4">Status</th>
+              <th className="p-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mentors.map((m) => (
+              <tr key={m._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
+                <td className="p-4">
+                  <div className="flex items-center gap-3">
+                    {m.avatar ? (
+                      <img
+                        src={m.avatar.startsWith('http') ? m.avatar : `${SERVER_ORIGIN}${m.avatar}`}
+                        alt={m.fullName}
+                        className="w-8 h-8 rounded-full object-cover border border-foreground/10"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary/15 text-secondary flex items-center justify-center font-bold text-xs">
+                        {m.fullName.charAt(0)}
+                      </div>
+                    )}
+                    <span className="font-semibold text-foreground">{m.fullName}</span>
+                  </div>
+                </td>
+                <td className="p-4 text-xs text-muted-foreground">{m.username}</td>
+                <td className="p-4 text-xs text-foreground font-medium">{m.title || 'Not set'}</td>
+                <td className="p-4">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    m.isActive !== false 
+                      ? 'bg-green-500/10 text-green-500' 
+                      : 'bg-red-500/10 text-red-500'
+                  }`}>
+                    {m.isActive !== false ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="p-4 text-right">
+                  <button
+                    onClick={() => handleToggleStatus(m.username)}
+                    disabled={togglingStatus === m.username}
+                    className={`p-2 rounded-lg transition duration-150 cursor-pointer ${
+                      m.isActive !== false
+                        ? 'hover:bg-red-500/10 text-red-500 hover:text-red-600'
+                        : 'hover:bg-green-500/10 text-green-500 hover:text-green-600'
+                    } disabled:opacity-50`}
+                    title={m.isActive !== false ? 'Deactivate login' : 'Activate login'}
+                  >
+                    {togglingStatus === m.username ? (
+                      <span className="text-xs">...</span>
+                    ) : m.isActive !== false ? (
+                      <PowerOff size={16} />
+                    ) : (
+                      <Power size={16} />
+                    )}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {mentors.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                  No mentors registered yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-          <form onSubmit={handleRegisterMentor} className="space-y-4">
+      {/* Add Mentor Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="text-secondary" size={20} />
+              Register New Mentor
+            </DialogTitle>
+            <DialogDescription>
+              Enter the mentor's name and email address. An account will be created, and their login credentials will be dispatched to their email automatically.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleRegisterMentor} className="space-y-4 mt-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
                 <User size={12} /> First Name
@@ -124,79 +252,25 @@ export function MentorsTab() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold rounded-lg text-sm transition flex items-center justify-center gap-2"
-            >
-              {loading ? 'Registering...' : 'Register Mentor'}
-            </button>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleCloseDialog}
+                className="flex-1 py-2.5 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-lg text-sm transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 py-2.5 bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold rounded-lg text-sm transition flex items-center justify-center gap-2"
+              >
+                {loading ? 'Registering...' : 'Register Mentor'}
+              </button>
+            </div>
           </form>
-        </div>
-
-        {/* Mentors List Table */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="border border-foreground/10 rounded-xl overflow-hidden shadow-sm">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
-                  <th className="p-4">Name</th>
-                  <th className="p-4">Email</th>
-                  <th className="p-4">Designation</th>
-                  <th className="p-4">Certifications</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mentors.map((m) => (
-                  <tr key={m._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        {m.avatar ? (
-                          <img
-                            src={m.avatar.startsWith('http') ? m.avatar : `${SERVER_ORIGIN}${m.avatar}`}
-                            alt={m.fullName}
-                            className="w-8 h-8 rounded-full object-cover border border-foreground/10"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-secondary/15 text-secondary flex items-center justify-center font-bold text-xs">
-                            {m.fullName.charAt(0)}
-                          </div>
-                        )}
-                        <span className="font-semibold text-foreground">{m.fullName}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-xs text-muted-foreground">{m.username}</td>
-                    <td className="p-4 text-xs text-foreground font-medium">{m.title || 'Not set'}</td>
-                    <td className="p-4 text-xs text-muted-foreground">
-                      {m.certifications && m.certifications.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {m.certifications.map((c, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-0.5 bg-muted rounded-md text-[10px] font-medium border border-foreground/5"
-                            >
-                              {c.name}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        'None'
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {mentors.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                      No mentors registered yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

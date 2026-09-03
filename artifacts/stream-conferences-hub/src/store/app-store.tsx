@@ -28,7 +28,10 @@ import {
   EventDetail,
   EventPageTab,
   EventType,
+  EventSponsor,
+  EventExhibitor,
   Exhibitor,
+  FAQ,
   LogoKind,
   MediaAssetState,
   MediaPartner,
@@ -80,6 +83,7 @@ interface AppStoreValue {
   eventPage: Conference | Webinar | null;
   openEventPage: (item: Conference | Webinar, type: EventType, tab?: EventPageTab) => void;
   closeEventPage: () => void;
+  updateEventField: (field: string, value: any) => void;
 
   // Data lists
   loadingData: boolean;
@@ -97,6 +101,7 @@ interface AppStoreValue {
   profile: MentorProfile | null;
   mentors: MentorProfile[];
   refreshData: () => Promise<void>;
+  loadTabData: (tab: Tab) => Promise<void>;
 
   // Generic add/edit modal
   showForm: boolean;
@@ -120,6 +125,7 @@ interface AppStoreValue {
   setWizardStep: (step: number) => void;
   closeWizard: () => void;
   canGoNext: () => boolean;
+  canGoToStep: (step: number) => boolean;
   submitWizard: () => Promise<void>;
 
   // Wizard fields (conference)
@@ -137,6 +143,8 @@ interface AppStoreValue {
   setConfIsOnline: (v: boolean) => void;
   confVenue: string;
   setConfVenue: (v: string) => void;
+  confSubdomain: string;
+  setConfSubdomain: (v: string) => void;
   confOnlineLink: string;
   setConfOnlineLink: (v: string) => void;
   confStartTime: string;
@@ -169,6 +177,8 @@ interface AppStoreValue {
   setWebIsOnline: (v: boolean) => void;
   webVenue: string;
   setWebVenue: (v: string) => void;
+  webSubdomain: string;
+  setWebSubdomain: (v: string) => void;
   webOnlineLink: string;
   setWebOnlineLink: (v: string) => void;
   webStartTime: string;
@@ -197,6 +207,8 @@ interface AppStoreValue {
   setWizardIsOnline: (v: boolean) => void;
   wizardVenue: () => string;
   setWizardVenue: (v: string) => void;
+  wizardSubdomain: () => string;
+  setWizardSubdomain: (v: string) => void;
   wizardOnlineLink: () => string;
   setWizardOnlineLink: (v: string) => void;
   wizardStartTime: () => string;
@@ -211,16 +223,37 @@ interface AppStoreValue {
   setWizardMedia: (m: SetStateAction<MediaAssetState>) => void;
   wizardTracks: () => Track[];
   setWizardTracks: (tracks: SetStateAction<Track[]>) => void;
+  wizardFaqs: () => FAQ[];
+  setWizardFaqs: (v: SetStateAction<FAQ[]>) => void;
+  wizardSponsors: () => EventSponsor[];
+  setWizardSponsors: (v: SetStateAction<EventSponsor[]>) => void;
+  wizardExhibitors: () => EventExhibitor[];
+  setWizardExhibitors: (v: SetStateAction<EventExhibitor[]>) => void;
+  wizardGuidelines: () => string;
+  setWizardGuidelines: (v: string) => void;
+  wizardTerms: () => string;
+  setWizardTerms: (v: string) => void;
   addFeeRow: () => void;
   updateFeeRow: (index: number, field: 'label' | 'amount', value: string) => void;
   removeFeeRow: (index: number) => void;
   addTrack: () => void;
   updateTrack: (index: number, field: 'title' | 'description', value: string) => void;
   removeTrack: (index: number) => void;
+  addFaq: () => void;
+  updateFaq: (index: number, field: keyof FAQ, value: string | number) => void;
+  removeFaq: (index: number) => void;
+  addSponsor: () => void;
+  updateSponsor: (index: number, field: keyof EventSponsor, value: string) => void;
+  removeSponsor: (index: number) => void;
+  addExhibitor: () => void;
+  updateExhibitor: (index: number, field: keyof EventExhibitor, value: string) => void;
+  removeExhibitor: (index: number) => void;
   addReferenceLink: (trackIndex: number) => void;
   updateReferenceLink: (trackIndex: number, linkIndex: number, field: 'label' | 'url', value: string) => void;
   removeReferenceLink: (trackIndex: number, linkIndex: number) => void;
   handleTrackImageUpload: (trackIndex: number, file: File | null) => Promise<void>;
+  handleSponsorLogoUpload: (index: number, file: File | null) => Promise<void>;
+  handleExhibitorLogoUpload: (index: number, file: File | null) => Promise<void>;
   handleMediaUpload: (kind: 'brochure' | 'banner' | 'logo', file: File | null) => Promise<void>;
   clearMedia: (kind: 'brochure' | 'banner' | 'logo') => void;
 
@@ -281,6 +314,15 @@ interface AppStoreValue {
   handleAbstractAction: (id: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   viewingParticipant: Registration | null;
   setViewingParticipant: (p: Registration | null) => void;
+
+  // Mentor assignment
+  assignOpen: boolean;
+  assignTarget: Conference | Webinar | null;
+  assignUsername: string;
+  openAssignMentor: (item: Conference | Webinar) => void;
+  closeAssignMentor: () => void;
+  setAssignUsername: (v: string) => void;
+  submitAssignMentor: () => Promise<void>;
 
   // Live chat
   chatSessions: ChatSession[];
@@ -400,6 +442,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [confEndDate, setConfEndDate] = useState('');
   const [confIsOnline, setConfIsOnline] = useState(false);
   const [confVenue, setConfVenue] = useState('');
+  const [confSubdomain, setConfSubdomain] = useState('');
   const [confOnlineLink, setConfOnlineLink] = useState('');
   const [confStartTime, setConfStartTime] = useState('');
   const [confEndTime, setConfEndTime] = useState('');
@@ -407,6 +450,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [confOrg, setConfOrg] = useState<OrganizerContact>(EMPTY_ORG);
   const [confMedia, setConfMedia] = useState<MediaAssetState>(EMPTY_MEDIA);
   const [confTracks, setConfTracks] = useState<Track[]>([]);
+  const [confFaqs, setConfFaqs] = useState<FAQ[]>([]);
+  const [confSponsors, setConfSponsors] = useState<EventSponsor[]>([]);
+  const [confExhibitors, setConfExhibitors] = useState<EventExhibitor[]>([]);
+  const [confGuidelines, setConfGuidelines] = useState('');
+  const [confTerms, setConfTerms] = useState('');
 
   // Webinar fields
   const [webTitle, setWebTitle] = useState('');
@@ -417,6 +465,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [webEndDate, setWebEndDate] = useState('');
   const [webIsOnline, setWebIsOnline] = useState(false);
   const [webVenue, setWebVenue] = useState('');
+  const [webSubdomain, setWebSubdomain] = useState('');
   const [webOnlineLink, setWebOnlineLink] = useState('');
   const [webStartTime, setWebStartTime] = useState('');
   const [webEndTime, setWebEndTime] = useState('');
@@ -424,6 +473,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [webOrg, setWebOrg] = useState<OrganizerContact>(EMPTY_ORG);
   const [webMedia, setWebMedia] = useState<MediaAssetState>(EMPTY_MEDIA);
   const [webTracks, setWebTracks] = useState<Track[]>([]);
+  const [webFaqs, setWebFaqs] = useState<FAQ[]>([]);
+  const [webSponsors, setWebSponsors] = useState<EventSponsor[]>([]);
+  const [webExhibitors, setWebExhibitors] = useState<EventExhibitor[]>([]);
+  const [webGuidelines, setWebGuidelines] = useState('');
+  const [webTerms, setWebTerms] = useState('');
 
   // Blog fields
   const [blogTitle, setBlogTitle] = useState('');
@@ -444,6 +498,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   // Per-event extras
   const [viewingParticipant, setViewingParticipant] = useState<Registration | null>(null);
+
+  // Mentor assignment
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<Conference | Webinar | null>(null);
+  const [assignUsername, setAssignUsername] = useState('');
 
   // Live chat state
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -489,6 +548,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     navigate('/');
   };
 
+  const updateEventField = async (field: string, value: any) => {
+    if (!eventPage || !eventPageType) return;
+    
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-user-role': user?.role || '',
+      'x-user-name': user?.username || '',
+    };
+    
+    try {
+      const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ [field]: value }),
+      });
+      
+      if (res.ok) {
+        const updated = await res.json();
+        if (eventPageType === 'conference') {
+          setConferences((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
+        } else {
+          setWebinars((prev) => prev.map((w) => (w._id === updated._id ? updated : w)));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update event field:', error);
+    }
+  };
+
   const closeWizard = () => {
     setWizardOpen(false);
     setWizardType(null);
@@ -513,47 +602,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const resetWizardFields = () => {
     setConfTitle(''); setConfDesc(''); setConfLocation(''); setConfStartDate(''); setConfEndDate('');
-    setConfIsOnline(false); setConfVenue(''); setConfOnlineLink('');
+    setConfIsOnline(false); setConfVenue(''); setConfSubdomain(''); setConfOnlineLink('');
     setConfStartTime(''); setConfEndTime(''); setConfFees([]); setConfOrg(EMPTY_ORG);
     setConfMedia(EMPTY_MEDIA); setConfTracks([]);
+    setConfFaqs([]); setConfSponsors([]); setConfExhibitors([]); setConfGuidelines(''); setConfTerms('');
     setWebTitle(''); setWebDesc(''); setWebLocation(''); setWebSpeaker('');
-    setWebStartDate(''); setWebEndDate(''); setWebIsOnline(false); setWebVenue(''); setWebOnlineLink('');
+    setWebStartDate(''); setWebEndDate(''); setWebIsOnline(false); setWebVenue(''); setWebSubdomain(''); setWebOnlineLink('');
     setWebStartTime(''); setWebEndTime(''); setWebFees([]); setWebOrg(EMPTY_ORG);
     setWebMedia(EMPTY_MEDIA); setWebTracks([]);
+    setWebFaqs([]); setWebSponsors([]); setWebExhibitors([]); setWebGuidelines(''); setWebTerms('');
     setBlogTitle(''); setBlogLabel(''); setBlogCopy(''); setBlogContent('');
     setBlogBannerUrl(''); setBlogBannerPreview('');
   };
 
-  const refreshData = async () => {
+  const loadProfile = async () => {
     if (!user) return;
-    setLoadingData(true);
     const headers: Record<string, string> = {
       'x-user-role': user.role,
       'x-user-name': user.username,
     };
-
     try {
-      const confRes = await fetch(`${API_BASE}/conferences`, { headers });
-      if (confRes.ok) setConferences(await confRes.json());
-
-      const webRes = await fetch(`${API_BASE}/webinars`, { headers });
-      if (webRes.ok) setWebinars(await webRes.json());
-
-      const blogRes = await fetch(`${API_BASE}/blogs`, { headers });
-      if (blogRes.ok) setBlogs(await blogRes.json());
-
-      const mpRes = await fetch(`${API_BASE}/media-partners`, { headers });
-      if (mpRes.ok) setMediaPartners(await mpRes.json());
-
-      const collabRes = await fetch(`${API_BASE}/collaborators`, { headers });
-      if (collabRes.ok) setCollaborators(await collabRes.json());
-
-      const exhRes = await fetch(`${API_BASE}/exhibitors`, { headers });
-      if (exhRes.ok) setExhibitors(await exhRes.json());
-
-      const venueRes = await fetch(`${API_BASE}/venues`, { headers });
-      if (venueRes.ok) setVenues(await venueRes.json());
-
       const profileRes = await fetch(`${API_BASE}/mentors/me`, { headers });
       if (profileRes.ok) {
         const prof = await profileRes.json();
@@ -563,22 +631,86 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setProfileForm((cur) => ({ ...cur, username: user.username }));
       }
+    } catch (e) {
+      console.error('Failed to load profile', e);
+    }
+  };
 
-      if (user.role === 'admin') {
-        const regRes = await fetch(`${API_BASE}/registrations`, { headers });
-        if (regRes.ok) setRegistrations(await regRes.json());
+  const loadTabData = async (tab: Tab) => {
+    if (!user) return;
+    setLoadingData(true);
+    const headers: Record<string, string> = {
+      'x-user-role': user.role,
+      'x-user-name': user.username,
+    };
+    const isAdmin = user.role === 'admin';
 
-        const absRes = await fetch(`${API_BASE}/abstracts`, { headers });
-        if (absRes.ok) setAbstracts(await absRes.json());
+    const fetchInto = async (url: string, setter: (d: any) => void) => {
+      const res = await fetch(url, { headers });
+      if (res.ok) setter(await res.json());
+    };
 
-        const conRes = await fetch(`${API_BASE}/contacts`, { headers });
-        if (conRes.ok) setContacts(await conRes.json());
-
-        const ordRes = await fetch(`${API_BASE}/orders`, { headers });
-        if (ordRes.ok) setOrders(await ordRes.json());
-
-        const mentorRes = await fetch(`${API_BASE}/mentors`, { headers });
-        if (mentorRes.ok) setMentors(await mentorRes.json());
+    try {
+      switch (tab) {
+        case 'overview':
+          await fetchInto(`${API_BASE}/conferences`, setConferences);
+          await fetchInto(`${API_BASE}/webinars`, setWebinars);
+          await fetchInto(`${API_BASE}/blogs`, setBlogs);
+          if (isAdmin) {
+            await fetchInto(`${API_BASE}/registrations`, setRegistrations);
+            await fetchInto(`${API_BASE}/abstracts`, setAbstracts);
+            await fetchInto(`${API_BASE}/contacts`, setContacts);
+            await fetchInto(`${API_BASE}/orders`, setOrders);
+          }
+          break;
+        case 'conferences':
+          await fetchInto(`${API_BASE}/conferences`, setConferences);
+          if (isAdmin) await fetchInto(`${API_BASE}/mentors`, setMentors);
+          await fetchInto(`${API_BASE}/venues`, setVenues);
+          break;
+        case 'webinars':
+          await fetchInto(`${API_BASE}/webinars`, setWebinars);
+          if (isAdmin) await fetchInto(`${API_BASE}/mentors`, setMentors);
+          await fetchInto(`${API_BASE}/venues`, setVenues);
+          break;
+        case 'blogs':
+          await fetchInto(`${API_BASE}/blogs`, setBlogs);
+          break;
+        case 'registrations':
+          await fetchInto(`${API_BASE}/registrations`, setRegistrations);
+          break;
+        case 'abstracts':
+          await fetchInto(`${API_BASE}/abstracts`, setAbstracts);
+          break;
+        case 'contacts':
+          await fetchInto(`${API_BASE}/contacts`, setContacts);
+          break;
+        case 'orders':
+          await fetchInto(`${API_BASE}/orders`, setOrders);
+          break;
+        case 'mediaPartners':
+          await fetchInto(`${API_BASE}/media-partners`, setMediaPartners);
+          break;
+        case 'collaborators':
+          await fetchInto(`${API_BASE}/collaborators`, setCollaborators);
+          break;
+        case 'exhibitors':
+          await fetchInto(`${API_BASE}/exhibitors`, setExhibitors);
+          break;
+        case 'venues':
+          await fetchInto(`${API_BASE}/venues`, setVenues);
+          break;
+        case 'profile':
+          await loadProfile();
+          break;
+        case 'mentors':
+          await fetchInto(`${API_BASE}/mentors`, setMentors);
+          break;
+        case 'liveChat':
+          // chat is loaded via socket; no REST fetch
+          break;
+        default:
+          break;
       }
     } catch (e) {
       console.error('Failed to load data from backend API server', e);
@@ -587,45 +719,66 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const openEventDetails = async (item: Conference | Webinar, type: EventType) => {
-    setEventDetail(null);
-    setEventDetailError('');
-    setEventDetailLoading(true);
-    try {
-      const headers: Record<string, string> = user
-        ? { 'x-user-role': user.role, 'x-user-name': user.username }
-        : {};
-      const endpoint = type === 'conference' ? 'conferences' : 'webinars';
-      const res = await fetch(`${API_BASE}/${endpoint}/${item._id}/participants`, { headers });
-      if (!res.ok) throw new Error('Failed to load event details');
-      setEventDetail(await res.json());
-    } catch (err: any) {
-      console.error('Load event details error:', err);
-      setEventDetailError(err.message || 'Failed to load event details');
-    } finally {
-      setEventDetailLoading(false);
-    }
+  // Kept for backward compatibility with post-mutation refreshes: reloads the current tab's data.
+  const refreshData = async () => {
+    if (!user) return;
+    await loadTabData(activeTab);
   };
 
-  const loadEventExtras = async (item: Conference | Webinar, type: EventType) => {
-    if (!user) return;
+  const loadEventTabData = async () => {
+    if (!eventPage || !eventPageType) return;
     const headers: Record<string, string> = {
-      'x-user-role': user.role,
-      'x-user-name': user.username,
+      'x-user-role': user?.role || '',
+      'x-user-name': user?.username || '',
     };
-    const endpoint = type === 'conference' ? 'conferences' : 'webinars';
-    setEventAbstractsLoading(true);
-    setEventEnquiriesLoading(true);
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    const tab = eventPageTab;
+
     try {
-      const absRes = await fetch(`${API_BASE}/${endpoint}/${item._id}/abstracts`, { headers });
-      if (absRes.ok) setEventAbstracts(await absRes.json());
-      const enqRes = await fetch(`${API_BASE}/${endpoint}/${item._id}/enquiries`, { headers });
-      if (enqRes.ok) setEventEnquiries(await enqRes.json());
+      // dashboard (stats) / participants / payments all come from the participants endpoint
+      if (tab === 'dashboard' || tab === 'participants' || tab === 'payments') {
+        setEventDetail(null);
+        setEventDetailError('');
+        setEventDetailLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/participants`, { headers });
+          if (!res.ok) throw new Error('Failed to load event details');
+          setEventDetail(await res.json());
+        } catch (err: any) {
+          console.error('Load event details error:', err);
+          setEventDetailError(err.message || 'Failed to load event details');
+        } finally {
+          setEventDetailLoading(false);
+        }
+      }
+
+      // abstracts tab
+      if (tab === 'abstracts') {
+        setEventAbstractsLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/abstracts`, { headers });
+          if (res.ok) setEventAbstracts(await res.json());
+        } catch (err) {
+          console.error('Load event abstracts error:', err);
+        } finally {
+          setEventAbstractsLoading(false);
+        }
+      }
+
+      // enquiries tab
+      if (tab === 'enquiries') {
+        setEventEnquiriesLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/enquiries`, { headers });
+          if (res.ok) setEventEnquiries(await res.json());
+        } catch (err) {
+          console.error('Load event enquiries error:', err);
+        } finally {
+          setEventEnquiriesLoading(false);
+        }
+      }
     } catch (err) {
-      console.error('Load event abstracts/enquiries error:', err);
-    } finally {
-      setEventAbstractsLoading(false);
-      setEventEnquiriesLoading(false);
+      console.error('Load event tab data error:', err);
     }
   };
 
@@ -825,17 +978,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (user) refreshData();
+    if (user) loadTabData(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, activeTab]);
 
   useEffect(() => {
-    if (eventPage && eventPageType) {
-      openEventDetails(eventPage, eventPageType);
-      loadEventExtras(eventPage, eventPageType);
-    }
+    loadEventTabData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventPageId, eventPageType, user]);
+  }, [eventPageId, eventPageType, eventPageTab, user]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -950,6 +1100,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setConfIsOnline(loc.isOnline);
       setConfOnlineLink(loc.onlineLink);
       setConfVenue(loc.venue);
+      setConfSubdomain(item.subdomain || '');
+      setConfFaqs(Array.isArray(item.faqs) ? item.faqs : []);
+      setConfSponsors(Array.isArray(item.sponsors) ? item.sponsors : []);
+      setConfExhibitors(Array.isArray(item.exhibitors) ? item.exhibitors : []);
+      setConfGuidelines(item.guidelines || '');
+      setConfTerms(item.termsAndConditions || '');
     } else if (type === 'webinar') {
       setWebTitle(item.title);
       setWebDesc(item.description || '');
@@ -971,6 +1127,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setWebIsOnline(loc.isOnline);
       setWebOnlineLink(loc.onlineLink);
       setWebVenue(loc.venue);
+      setWebFaqs(Array.isArray(item.faqs) ? item.faqs : []);
+      setWebSponsors(Array.isArray(item.sponsors) ? item.sponsors : []);
+      setWebExhibitors(Array.isArray(item.exhibitors) ? item.exhibitors : []);
+      setWebGuidelines(item.guidelines || '');
+      setWebTerms(item.termsAndConditions || '');
     }
   };
 
@@ -983,6 +1144,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setWizardMedia = (m: SetStateAction<MediaAssetState>) => (wizardType === 'conference' ? setConfMedia(m) : setWebMedia(m));
   const wizardTracks = () => (wizardType === 'conference' ? confTracks : webTracks);
   const setWizardTracks = (tracks: SetStateAction<Track[]>) => (wizardType === 'conference' ? setConfTracks(tracks) : setWebTracks(tracks));
+  const wizardFaqs = () => (wizardType === 'conference' ? confFaqs : webFaqs);
+  const setWizardFaqs = (v: SetStateAction<FAQ[]>) => (wizardType === 'conference' ? setConfFaqs(v) : setWebFaqs(v));
+  const wizardSponsors = () => (wizardType === 'conference' ? confSponsors : webSponsors);
+  const setWizardSponsors = (v: SetStateAction<EventSponsor[]>) => (wizardType === 'conference' ? setConfSponsors(v) : setWebSponsors(v));
+  const wizardExhibitors = () => (wizardType === 'conference' ? confExhibitors : webExhibitors);
+  const setWizardExhibitors = (v: SetStateAction<EventExhibitor[]>) => (wizardType === 'conference' ? setConfExhibitors(v) : setWebExhibitors(v));
+  const wizardGuidelines = () => (wizardType === 'conference' ? confGuidelines : webGuidelines);
+  const setWizardGuidelines = (v: string) => (wizardType === 'conference' ? setConfGuidelines(v) : setWebGuidelines(v));
+  const wizardTerms = () => (wizardType === 'conference' ? confTerms : webTerms);
+  const setWizardTerms = (v: string) => (wizardType === 'conference' ? setConfTerms(v) : setWebTerms(v));
   const wizardTitle = () => (wizardType === 'conference' ? confTitle : webTitle);
   const setWizardTitle = (v: string) => (wizardType === 'conference' ? setConfTitle(v) : setWebTitle(v));
   const wizardDesc = () => (wizardType === 'conference' ? confDesc : webDesc);
@@ -995,6 +1166,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setWizardIsOnline = (v: boolean) => (wizardType === 'conference' ? setConfIsOnline(v) : setWebIsOnline(v));
   const wizardVenue = () => (wizardType === 'conference' ? confVenue : webVenue);
   const setWizardVenue = (v: string) => (wizardType === 'conference' ? setConfVenue(v) : setWebVenue(v));
+  const wizardSubdomain = () => (wizardType === 'conference' ? confSubdomain : webSubdomain);
+  const setWizardSubdomain = (v: string) => (wizardType === 'conference' ? setConfSubdomain(v) : setWebSubdomain(v));
   const wizardOnlineLink = () => (wizardType === 'conference' ? confOnlineLink : webOnlineLink);
   const setWizardOnlineLink = (v: string) => (wizardType === 'conference' ? setConfOnlineLink(v) : setWebOnlineLink(v));
   const wizardStartTime = () => (wizardType === 'conference' ? confStartTime : webStartTime);
@@ -1010,6 +1183,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardFees(next);
   };
   const removeFeeRow = (index: number) => setWizardFees(wizardFees().filter((_, i) => i !== index));
+
+  const addFaq = () => setWizardFaqs([...wizardFaqs(), { question: '', answer: '', category: '', order: 0 }]);
+  const updateFaq = (index: number, field: keyof FAQ, value: string | number) => {
+    const next = [...wizardFaqs()];
+    next[index] = { ...next[index], [field]: value };
+    setWizardFaqs(next);
+  };
+  const removeFaq = (index: number) => setWizardFaqs(wizardFaqs().filter((_, i) => i !== index));
+
+  const addSponsor = () => setWizardSponsors([...wizardSponsors(), { name: '', logo: '', website: '', description: '', tier: 'supporter', order: 0 }]);
+  const updateSponsor = (index: number, field: keyof EventSponsor, value: string) => {
+    const next = [...wizardSponsors()];
+    next[index] = { ...next[index], [field]: value };
+    setWizardSponsors(next);
+  };
+  const removeSponsor = (index: number) => setWizardSponsors(wizardSponsors().filter((_, i) => i !== index));
+
+  const addExhibitor = () => setWizardExhibitors([...wizardExhibitors(), { name: '', logo: '', website: '', description: '', boothNumber: '', contactEmail: '', order: 0 }]);
+  const updateExhibitor = (index: number, field: keyof EventExhibitor, value: string) => {
+    const next = [...wizardExhibitors()];
+    next[index] = { ...next[index], [field]: value };
+    setWizardExhibitors(next);
+  };
+  const removeExhibitor = (index: number) => setWizardExhibitors(wizardExhibitors().filter((_, i) => i !== index));
 
   const addTrack = () =>
     setWizardTracks([...wizardTracks(), { title: '', description: '', image: '', imagePreview: '', referenceLinks: [] }]);
@@ -1061,6 +1258,62 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('Track image upload error:', err);
       alert('Failed to upload track image');
+    }
+  };
+
+  const handleSponsorLogoUpload = async (index: number, file: File | null) => {
+    if (!file || !user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = [...wizardSponsors()];
+      next[index].logoPreview = String(reader.result || '');
+      setWizardSponsors(next);
+    };
+    reader.readAsDataURL(file);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const next = [...wizardSponsors()];
+      next[index].logo = data.url;
+      setWizardSponsors(next);
+    } catch (err) {
+      console.error('Sponsor logo upload error:', err);
+      alert('Failed to upload sponsor logo');
+    }
+  };
+
+  const handleExhibitorLogoUpload = async (index: number, file: File | null) => {
+    if (!file || !user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = [...wizardExhibitors()];
+      next[index].logoPreview = String(reader.result || '');
+      setWizardExhibitors(next);
+    };
+    reader.readAsDataURL(file);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const next = [...wizardExhibitors()];
+      next[index].logo = data.url;
+      setWizardExhibitors(next);
+    } catch (err) {
+      console.error('Exhibitor logo upload error:', err);
+      alert('Failed to upload exhibitor logo');
     }
   };
 
@@ -1118,14 +1371,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const canGoNext = () => {
     if (wizardStep === 1) {
       if (!wizardTitle().trim()) return false;
+      if (!wizardSubdomain().trim()) return false;
       if (wizardType === 'webinar' && !webSpeaker.trim()) return false;
       return true;
     }
-    if (wizardStep === 2) {
-      if (!wizardStartDate()) return false;
-      if (wizardIsOnline() ? !wizardOnlineLink().trim() : !wizardVenue().trim()) return false;
-      return true;
-    }
+    return true;
+  };
+
+  const canGoToStep = (target: number) => {
+    if (target === 1) return true;
+    if (!wizardTitle().trim()) return false;
+    if (!wizardSubdomain().trim()) return false;
+    if (wizardType === 'webinar' && !webSpeaker.trim()) return false;
     return true;
   };
 
@@ -1158,7 +1415,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         day,
         month,
         location,
+        venue: wizardIsOnline() ? '' : (wizardVenue() || ''),
         eventDate: wizardStartDate(),
+        startDate: wizardStartDate(),
+        endDate: wizardEndDate() || wizardStartDate(),
+        subdomain: wizardSubdomain() || undefined,
         startTime: wizardStartTime(),
         endTime: wizardEndTime(),
         brochureUrl: wizardMedia().brochureUrl,
@@ -1172,6 +1433,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           referenceLinks: t.referenceLinks.filter((l) => l.url.trim()),
         })),
         organizerContact: wizardOrg(),
+        faqs: wizardFaqs().filter((f) => f.question.trim()),
+        sponsors: wizardSponsors().filter((s) => s.name.trim()).map(({ logoPreview, ...rest }) => rest),
+        exhibitors: wizardExhibitors().filter((e) => e.name.trim()).map(({ logoPreview, ...rest }) => rest),
+        guidelines: wizardGuidelines(),
+        termsAndConditions: wizardTerms(),
       };
       if (wizardType === 'webinar') bodyData.speaker = webSpeaker;
 
@@ -1472,6 +1738,43 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const closeForm = () => setShowForm(false);
 
+  const openAssignMentor = (item: Conference | Webinar) => {
+    setAssignTarget(item);
+    setAssignUsername(item.assignedMentor || '');
+    setAssignOpen(true);
+  };
+
+  const closeAssignMentor = () => {
+    setAssignOpen(false);
+    setAssignTarget(null);
+    setAssignUsername('');
+  };
+
+  const submitAssignMentor = async () => {
+    if (!user || !assignTarget) return;
+    const endpoint = (assignTarget as Webinar).speaker ? 'webinars' : 'conferences';
+    try {
+      const res = await fetch(`${API_BASE}/${endpoint}/${assignTarget._id}/assign`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify({ assignedMentor: assignUsername || null }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to assign mentor');
+      }
+      closeAssignMentor();
+      refreshData();
+    } catch (err: any) {
+      console.error('Assign mentor error:', err);
+      alert(err.message || 'Failed to assign mentor');
+    }
+  };
+
   const value: AppStoreValue = {
     user,
     loginLoading,
@@ -1491,6 +1794,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     eventPage,
     openEventPage,
     closeEventPage,
+    updateEventField,
     loadingData,
     conferences,
     webinars,
@@ -1506,6 +1810,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     profile,
     mentors,
     refreshData,
+    loadTabData,
     showForm,
     editingItemType,
     editingItemId,
@@ -1525,6 +1830,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardStep,
     closeWizard,
     canGoNext,
+    canGoToStep,
     submitWizard,
     confTitle,
     setConfTitle,
@@ -1540,6 +1846,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setConfIsOnline,
     confVenue,
     setConfVenue,
+    confSubdomain,
+    setConfSubdomain,
     confOnlineLink,
     setConfOnlineLink,
     confStartTime,
@@ -1570,6 +1878,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWebIsOnline,
     webVenue,
     setWebVenue,
+    webSubdomain,
+    setWebSubdomain,
     webOnlineLink,
     setWebOnlineLink,
     webStartTime,
@@ -1596,6 +1906,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardIsOnline,
     wizardVenue,
     setWizardVenue,
+    wizardSubdomain,
+    setWizardSubdomain,
     wizardOnlineLink,
     setWizardOnlineLink,
     wizardStartTime,
@@ -1610,6 +1922,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardMedia,
     wizardTracks,
     setWizardTracks,
+    wizardFaqs,
+    setWizardFaqs,
+    wizardSponsors,
+    setWizardSponsors,
+    wizardExhibitors,
+    setWizardExhibitors,
+    wizardGuidelines,
+    setWizardGuidelines,
+    wizardTerms,
+    setWizardTerms,
     addFeeRow,
     updateFeeRow,
     removeFeeRow,
@@ -1619,7 +1941,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     addReferenceLink,
     updateReferenceLink,
     removeReferenceLink,
+    addFaq,
+    updateFaq,
+    removeFaq,
+    addSponsor,
+    updateSponsor,
+    removeSponsor,
+    addExhibitor,
+    updateExhibitor,
+    removeExhibitor,
     handleTrackImageUpload,
+    handleSponsorLogoUpload,
+    handleExhibitorLogoUpload,
     handleMediaUpload,
     clearMedia,
     blogTitle,
@@ -1672,6 +2005,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     handleAbstractAction,
     viewingParticipant,
     setViewingParticipant,
+    assignOpen,
+    assignTarget,
+    assignUsername,
+    openAssignMentor,
+    closeAssignMentor,
+    setAssignUsername,
+    submitAssignMentor,
     chatSessions,
     activeChatId,
     activeChatMessages,

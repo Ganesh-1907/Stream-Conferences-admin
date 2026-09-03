@@ -1,8 +1,11 @@
 import { useAppStore } from '@/store/app-store';
 import { mediaUrl } from '@/lib/utils';
+import { usePagination } from '@/hooks/use-pagination';
+import { PaginationBar } from '@/components/ui/pagination-bar';
 
 export function AbstractsTab() {
   const { abstracts, abstractActionLoading, handleAbstractAction } = useAppStore();
+  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(abstracts);
 
   return (
     <div className="space-y-6">
@@ -25,7 +28,7 @@ export function AbstractsTab() {
             </tr>
           </thead>
           <tbody>
-            {abstracts.map((abs) => (
+            {paginatedItems.map((abs) => (
               <tr key={abs._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                 <td className="p-4 font-semibold">
                   <div>{abs.name || `${abs.firstName || ''} ${abs.lastName || ''}`.trim()}</div>
@@ -83,7 +86,7 @@ export function AbstractsTab() {
                 </td>
               </tr>
             ))}
-            {abstracts.length === 0 && (
+            {totalItems === 0 && (
               <tr>
                 <td colSpan={7} className="p-8 text-center text-muted-foreground">No abstract submissions in database.</td>
               </tr>
@@ -91,6 +94,7 @@ export function AbstractsTab() {
           </tbody>
         </table>
       </div>
+      <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={setPage} />
     </div>
   );
 }

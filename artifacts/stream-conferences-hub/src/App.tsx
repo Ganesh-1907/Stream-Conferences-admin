@@ -9,6 +9,7 @@ import { Wizard } from '@/components/wizard';
 import { EventPage } from '@/components/event-page';
 import { BlogFormModal } from '@/components/blog-form-modal';
 import { ParticipantModal } from '@/components/participant-modal';
+import { AssignMentorModal } from '@/components/assign-mentor-modal';
 import { OverviewTab } from '@/components/tabs/overview-tab';
 import { ConferencesTab } from '@/components/tabs/conferences-tab';
 import { WebinarsTab } from '@/components/tabs/webinars-tab';
@@ -70,6 +71,7 @@ function Root() {
 
       <BlogFormModal />
       <ParticipantModal />
+      <AssignMentorModal />
     </div>
   );
 }

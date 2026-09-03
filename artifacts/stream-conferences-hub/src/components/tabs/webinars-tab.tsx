@@ -1,8 +1,12 @@
-import { MoreVertical, Plus } from 'lucide-react';
+import { MoreVertical, Plus, ExternalLink, UserPlus } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+import { subdomainUrlFor } from '@/lib/utils';
+import { usePagination } from '@/hooks/use-pagination';
+import { PaginationBar } from '@/components/ui/pagination-bar';
 
 export function WebinarsTab() {
-  const { webinars, activeDropdownId, setActiveDropdownId, openEventPage, openEditForm, handleDeleteItem, openAddForm } = useAppStore();
+  const { webinars, activeDropdownId, setActiveDropdownId, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor } = useAppStore();
+  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(webinars);
 
   return (
     <div className="space-y-6">
@@ -11,9 +15,11 @@ export function WebinarsTab() {
           <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Webinars</h1>
           <p className="text-sm text-muted-foreground">List and organize digital panel talks and webinars.</p>
         </div>
-        <button onClick={() => openAddForm('webinar')} className="cta-button">
-          <Plus size={14} /> Add Webinar
-        </button>
+        {user?.role === 'admin' && (
+          <button onClick={() => openAddForm('webinar')} className="cta-button">
+            <Plus size={14} /> Add Webinar
+          </button>
+        )}
       </div>
 
       <div className="border border-foreground/10 rounded-xl">
@@ -25,11 +31,12 @@ export function WebinarsTab() {
               <th className="p-4">Speaker</th>
               <th className="p-4">Location</th>
               <th className="p-4">Announced By</th>
+              <th className="p-4">Assigned Mentor</th>
               <th className="p-4 text-right rounded-tr-xl">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {webinars.map((web) => (
+            {paginatedItems.map((web) => (
               <tr key={web._id} className="border-b border-foreground/5 bg-card hover:bg-foreground/[0.015] last:border-0 transition-colors">
                 <td className="p-4 font-mono font-medium">
                   {web.month} {web.day}
@@ -39,18 +46,41 @@ export function WebinarsTab() {
                 <td className="p-4 text-xs font-bold text-accent">{web.speaker}</td>
                 <td className="p-4 text-xs text-muted-foreground">{web.location}</td>
                 <td className="p-4 text-xs font-semibold">{web.announcedBy}</td>
+                <td className="p-4 text-xs font-semibold text-accent">{web.assignedMentor || '—'}</td>
                 <td className="p-4 text-right relative">
-                  <div className="inline-block text-left">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveDropdownId(activeDropdownId === web._id ? null : web._id);
-                      }}
-                      className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 active:scale-90 cursor-pointer"
-                    >
-                      <MoreVertical size={16} />
-                    </button>
+                  <div className="flex items-center justify-end gap-1">
+                    {subdomainUrlFor(web) && (
+                      <a
+                        href={subdomainUrlFor(web)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="View site"
+                        className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 cursor-pointer inline-flex"
+                      >
+                        <ExternalLink size={15} />
+                      </a>
+                    )}
+                    {user?.role === 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => openAssignMentor(web)}
+                        title="Assign mentor"
+                        className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 cursor-pointer inline-flex"
+                      >
+                        <UserPlus size={15} />
+                      </button>
+                    )}
+                    <div className="inline-block text-left">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDropdownId(activeDropdownId === web._id ? null : web._id);
+                        }}
+                        className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 active:scale-90 cursor-pointer"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
 
                     {activeDropdownId === web._id && (
                       <>
@@ -78,18 +108,20 @@ export function WebinarsTab() {
                         </div>
                       </>
                     )}
+                    </div>
                   </div>
                 </td>
               </tr>
             ))}
-            {webinars.length === 0 && (
+            {totalItems === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground">No webinars scheduled.</td>
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">No webinars scheduled.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={setPage} />
     </div>
   );
 }

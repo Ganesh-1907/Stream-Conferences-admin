@@ -1,6 +1,6 @@
 import { twMerge } from 'tailwind-merge';
 import { clsx, type ClassValue } from 'clsx';
-import { SERVER_ORIGIN } from './constants';
+import { SERVER_ORIGIN, ROOT_DOMAIN } from './constants';
 import { Conference, Webinar } from './types';
 
 export function cn(...inputs: ClassValue[]) {
@@ -36,7 +36,14 @@ export const formatDisplayDate = (str: string): string => {
   return `${parts[1]}/${parts[2]}/${parts[0]}`;
 };
 
+export const subdomainUrlFor = (item: Conference | Webinar): string | null => {
+  if (!item.subdomain) return null;
+  const protocol = ROOT_DOMAIN === 'localhost' ? 'http' : 'https';
+  return `${protocol}://${item.subdomain}.${ROOT_DOMAIN}`;
+};
+
 export const registerLinkFor = (item: Conference | Webinar): string =>
+  subdomainUrlFor(item) ||
   item.registrationLink ||
   `${window.location.origin}/register?event=${item.eventId || item.slug || item._id}`;
 

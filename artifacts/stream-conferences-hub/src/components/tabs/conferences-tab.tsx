@@ -1,8 +1,12 @@
-import { MoreVertical, Plus } from 'lucide-react';
+import { MoreVertical, Plus, ExternalLink, UserPlus } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+import { subdomainUrlFor } from '@/lib/utils';
+import { usePagination } from '@/hooks/use-pagination';
+import { PaginationBar } from '@/components/ui/pagination-bar';
 
 export function ConferencesTab() {
-  const { conferences, activeDropdownId, setActiveDropdownId, openEventPage, openEditForm, handleDeleteItem, openAddForm } = useAppStore();
+  const { conferences, activeDropdownId, setActiveDropdownId, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor } = useAppStore();
+  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(conferences);
 
   return (
     <div className="space-y-6">
@@ -11,9 +15,11 @@ export function ConferencesTab() {
           <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Conferences</h1>
           <p className="text-sm text-muted-foreground">Announce and oversee global conference schedules.</p>
         </div>
-        <button onClick={() => openAddForm('conference')} className="cta-button">
-          <Plus size={14} /> Add Conference
-        </button>
+        {user?.role === 'admin' && (
+          <button onClick={() => openAddForm('conference')} className="cta-button">
+            <Plus size={14} /> Add Conference
+          </button>
+        )}
       </div>
 
       <div className="border border-foreground/10 rounded-xl">
@@ -24,12 +30,13 @@ export function ConferencesTab() {
               <th className="p-4">Title</th>
               <th className="p-4">Location</th>
               <th className="p-4">Announced By</th>
+              <th className="p-4">Mentor</th>
               <th className="p-4">Status</th>
               <th className="p-4 text-right rounded-tr-xl">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {conferences.map((conf) => (
+            {paginatedItems.map((conf) => (
               <tr key={conf._id} className="border-b border-foreground/5 bg-card hover:bg-foreground/[0.015] last:border-0 transition-colors">
                 <td className="p-4 font-mono font-medium">
                   {conf.month} {conf.day}
@@ -38,34 +45,59 @@ export function ConferencesTab() {
                 <td className="p-4 font-semibold">{conf.title}</td>
                 <td className="p-4 text-xs text-muted-foreground">{conf.location}</td>
                 <td className="p-4 text-xs font-semibold">{conf.announcedBy}</td>
+                <td className="p-4 text-xs font-semibold text-accent">{conf.assignedMentor || '—'}</td>
                 <td className="p-4 capitalize">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${conf.date === 'upcoming' ? 'bg-green-500/10 text-green-500' : 'bg-foreground/10 text-muted-foreground'}`}>
                     {conf.date}
                   </span>
                 </td>
                 <td className="p-4 text-right relative">
-                  <ActionDropdown
-                    id={conf._id}
-                    activeId={activeDropdownId}
-                    onToggle={setActiveDropdownId}
-                    onViewDetails={() => openEventPage(conf, 'conference', 'details')}
-                    onEdit={() => openEditForm(conf, 'conference')}
-                    onDashboard={() => openEventPage(conf, 'conference', 'dashboard')}
-                    onParticipants={() => openEventPage(conf, 'conference', 'participants')}
-                    onPayments={() => openEventPage(conf, 'conference', 'payments')}
-                    onDelete={() => handleDeleteItem(conf._id, 'conferences')}
-                  />
+                  <div className="flex items-center justify-end gap-1">
+                    {subdomainUrlFor(conf) && (
+                      <a
+                        href={subdomainUrlFor(conf)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="View site"
+                        className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 cursor-pointer inline-flex"
+                      >
+                        <ExternalLink size={15} />
+                      </a>
+                    )}
+                    {user?.role === 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => openAssignMentor(conf)}
+                        title="Assign mentor"
+                        className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 cursor-pointer inline-flex"
+                      >
+                        <UserPlus size={15} />
+                      </button>
+                    )}
+                    <ActionDropdown
+                      id={conf._id}
+                      activeId={activeDropdownId}
+                      onToggle={setActiveDropdownId}
+                      onViewDetails={() => openEventPage(conf, 'conference', 'details')}
+                      onEdit={() => openEditForm(conf, 'conference')}
+                      onDashboard={() => openEventPage(conf, 'conference', 'dashboard')}
+                      onParticipants={() => openEventPage(conf, 'conference', 'participants')}
+                      onPayments={() => openEventPage(conf, 'conference', 'payments')}
+                      onDelete={() => handleDeleteItem(conf._id, 'conferences')}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
-            {conferences.length === 0 && (
+            {totalItems === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground">No conferences managed yet.</td>
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">No conferences managed yet.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={setPage} />
     </div>
   );
 }

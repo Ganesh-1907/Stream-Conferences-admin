@@ -1,7 +1,10 @@
 import { useAppStore } from '@/store/app-store';
+import { usePagination } from '@/hooks/use-pagination';
+import { PaginationBar } from '@/components/ui/pagination-bar';
 
 export function RegistrationsTab() {
   const { registrations } = useAppStore();
+  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(registrations);
 
   return (
     <div className="space-y-6">
@@ -23,7 +26,7 @@ export function RegistrationsTab() {
             </tr>
           </thead>
           <tbody>
-            {registrations.map((reg) => (
+            {paginatedItems.map((reg) => (
               <tr key={reg._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                 <td className="p-4 font-semibold">{reg.name}</td>
                 <td className="p-4 text-xs">
@@ -40,7 +43,7 @@ export function RegistrationsTab() {
                 </td>
               </tr>
             ))}
-            {registrations.length === 0 && (
+            {totalItems === 0 && (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-muted-foreground">No attendee registrations in database.</td>
               </tr>
@@ -48,6 +51,7 @@ export function RegistrationsTab() {
           </tbody>
         </table>
       </div>
+      <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems} onPageChange={setPage} />
     </div>
   );
 }
