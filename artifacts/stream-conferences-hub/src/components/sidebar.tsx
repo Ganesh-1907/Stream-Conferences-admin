@@ -10,8 +10,6 @@ import {
   Play,
   Send,
   Share2,
-  Store,
-  UserCircle,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -36,9 +34,7 @@ const PRIMARY_ITEMS: NavItem[] = [
 const CONTENT_ITEMS: NavItem[] = [
   { tab: 'mediaPartners', label: 'Media Partners', icon: <Share2 size={18} /> },
   { tab: 'collaborators', label: 'Collaborators', icon: <Handshake size={18} /> },
-  { tab: 'exhibitors', label: 'Exhibitors', icon: <Store size={18} /> },
   { tab: 'venues', label: 'Venues', icon: <Building2 size={18} />, adminOnly: true },
-  { tab: 'profile', label: 'My Profile', icon: <UserCircle size={18} /> },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [

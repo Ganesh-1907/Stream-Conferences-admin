@@ -1,7 +1,7 @@
 import { useAppStore } from '@/store/app-store';
 import { registerLinkFor, subdomainUrlFor, mediaUrl } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
-import { EventPageTab, Webinar, Speaker, ItineraryItem, ProgramDay, FAQ, EventSponsor, EventExhibitor, VenueDetails } from '@/lib/types';
+import { EventPageTab, Webinar, Speaker, ItineraryItem, ProgramDay, FAQ, EventPartner, VenueDetails } from '@/lib/types';
 import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
 import { FileUploadCard } from '@/components/file-upload-card';
@@ -9,32 +9,40 @@ import { useState, FormEvent } from 'react';
 import { Plus, Trash2, GripVertical, Upload, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 const SUBTABS: EventPageTab[] = [
-  'dashboard', 'details', 'participants', 'payments', 'abstracts', 'enquiries',
-  'speakers', 'program', 'itinerary', 'faqs', 'sponsors', 'exhibitors',
-  'guidelines', 'terms', 'venue-details'
+  'dashboard', 'details', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
+  'speakers', 'tracks', 'program', 'itinerary', 'banners', 'faqs', 'partners',
+  'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details'
 ];
 
 const SUBTAB_LABELS: Record<EventPageTab, string> = {
   dashboard: 'Overview',
   details: 'Details',
+  fees: 'Fees',
   participants: 'Participants',
   payments: 'Payments',
   abstracts: 'Abstracts',
   enquiries: 'Enquiries',
+  brochures: 'Brochure Leads',
   speakers: 'Speakers',
+  tracks: 'Tracks',
   program: 'Program',
   itinerary: 'Itinerary',
+  banners: 'Banners',
   faqs: 'FAQs',
-  sponsors: 'Sponsors',
-  exhibitors: 'Exhibitors',
+  partners: 'Sponsors / Exhibitors',
   guidelines: 'Guidelines',
-  terms: 'Terms & Conditions',
+  'organizer-contact': 'Organizer Contact',
+  'organizing-committee': 'Organizing Committee',
   'venue-details': 'Venue Details',
 };
 
 export function EventPage() {
   const store = useAppStore();
-  const { eventPage, eventPageType } = store;
+  const { eventPage, eventPageType, currentEventLoading } = store;
+
+  if (currentEventLoading) {
+    return <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">Loading event…</div>;
+  }
 
   if (!eventPage || !eventPageType) return null;
 
@@ -106,37 +114,41 @@ export function EventPage() {
       {/* OVERVIEW TAB */}
       {store.eventPageTab === 'dashboard' && <OverviewTab />}
       {store.eventPageTab === 'details' && <DetailsTab />}
+      {store.eventPageTab === 'fees' && <FeesTab />}
       {store.eventPageTab === 'participants' && <ParticipantsTab />}
       {store.eventPageTab === 'payments' && <PaymentsTab />}
       {store.eventPageTab === 'abstracts' && <AbstractsTab />}
       {store.eventPageTab === 'enquiries' && <EnquiriesTab />}
+      {store.eventPageTab === 'brochures' && <BrochureLeadsTab />}
       {store.eventPageTab === 'speakers' && <SpeakersTab />}
+      {store.eventPageTab === 'tracks' && <TracksTab />}
       {store.eventPageTab === 'program' && <ProgramTab />}
       {store.eventPageTab === 'itinerary' && <ItineraryTab />}
+      {store.eventPageTab === 'banners' && <BannersTab />}
       {store.eventPageTab === 'faqs' && <FAQsTab />}
-      {store.eventPageTab === 'sponsors' && <SponsorsTab />}
-      {store.eventPageTab === 'exhibitors' && <ExhibitorsContentTab />}
+      {store.eventPageTab === 'partners' && <PartnersTab />}
       {store.eventPageTab === 'guidelines' && <GuidelinesTab />}
-      {store.eventPageTab === 'terms' && <TermsTab />}
+      {store.eventPageTab === 'organizer-contact' && <OrganizerContactTab />}
+      {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
       {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
     </div>
   );
 }
 
 function OverviewTab() {
-  const { eventDetail, eventDetailLoading, eventDetailError, eventPage, eventPageType } = useAppStore();
+  const { eventDashboard, eventDetailLoading, eventDetailError, eventPage, eventPageType } = useAppStore();
   if (!eventPage || !eventPageType) return null;
 
   return (
     <div className="space-y-6">
       {eventDetailLoading && <div className="p-8 text-center text-sm text-muted-foreground">Loading event dashboard...</div>}
       {eventDetailError && <div className="p-6 text-center text-sm text-red-500">{eventDetailError}</div>}
-      {eventDetail && (
+      {eventDashboard && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard value={String(eventDetail.stats.totalParticipants)} label="Participants" />
-          <StatCard value={String(eventDetail.stats.totalPayments)} label="Payments" />
-          <StatCard value={String(eventDetail.stats.paidCount)} label="Paid" className="text-green-500" />
-          <StatCard value={`₹${eventDetail.stats.revenue}`} label="Revenue" />
+          <StatCard value={String(eventDashboard.stats.totalParticipants)} label="Participants" />
+          <StatCard value={String(eventDashboard.stats.totalPayments)} label="Payments" />
+          <StatCard value={String(eventDashboard.stats.paidCount)} label="Paid" className="text-green-500" />
+          <StatCard value={`₹${eventDashboard.stats.revenue}`} label="Revenue" />
         </div>
       )}
 
@@ -167,7 +179,7 @@ function OverviewTab() {
 }
 
 function DetailsTab() {
-  const { eventPage, eventPageType } = useAppStore();
+  const { eventPage, eventPageType, uploadHeaderBannerForEvent, removeHeaderBannerForEvent } = useAppStore();
   if (!eventPage || !eventPageType) return null;
 
   return (
@@ -212,6 +224,78 @@ function DetailsTab() {
         </div>
       </div>
 
+      {/* Media Assets & Header Banners */}
+      <div className="bg-muted/10 border border-foreground/5 rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Header Banners (Carousel)</h4>
+            <p className="text-xs text-muted-foreground mt-0.5">Carousel banner images displayed on the event microsite home page.</p>
+          </div>
+          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold cursor-pointer hover:bg-primary/90 transition shadow-sm">
+            <Plus size={13} /> Add Header Banner
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.[0]) {
+                  uploadHeaderBannerForEvent(eventPage._id, eventPageType, e.target.files[0]);
+                  e.target.value = '';
+                }
+              }}
+            />
+          </label>
+        </div>
+
+        {Array.isArray(eventPage.headerBanners) && eventPage.headerBanners.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {eventPage.headerBanners.map((bannerUrl, idx) => (
+              <div key={idx} className="relative group rounded-xl overflow-hidden border border-foreground/10 bg-muted/20 aspect-[16/7] flex items-center justify-center">
+                <img src={mediaUrl(bannerUrl)} alt={`Header Banner ${idx + 1}`} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => removeHeaderBannerForEvent(eventPage._id, eventPageType, idx)}
+                    className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                    title="Delete banner"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+                <span className="absolute bottom-1 left-1.5 px-1.5 py-0.5 bg-black/60 text-[10px] text-white font-mono rounded">
+                  Slide {idx + 1}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="border border-dashed border-foreground/10 rounded-xl p-4 text-center text-xs text-muted-foreground">
+            No carousel header banners uploaded yet. Click &quot;Add Header Banner&quot; above to upload banner slides.
+          </div>
+        )}
+
+        {(eventPage.logoUrl || eventPage.bannerUrl || eventPage.brochureUrl) && (
+          <div className="pt-3 border-t border-foreground/5 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            {eventPage.logoUrl && (
+              <div className="flex items-center gap-2 p-2 bg-muted/20 rounded-lg border border-foreground/5">
+                <img src={mediaUrl(eventPage.logoUrl)} alt="Logo" className="w-9 h-9 rounded-full object-cover border" />
+                <span className="font-medium text-foreground">Logo configured</span>
+              </div>
+            )}
+            {eventPage.bannerUrl && (
+              <div className="flex items-center gap-2 p-2 bg-muted/20 rounded-lg border border-foreground/5">
+                <span className="font-medium text-foreground truncate">Banner: {eventPage.bannerUrl.split('/').pop()}</span>
+              </div>
+            )}
+            {eventPage.brochureUrl && (
+              <div className="flex items-center gap-2 p-2 bg-muted/20 rounded-lg border border-foreground/5">
+                <span className="font-medium text-foreground truncate">Brochure: {eventPage.brochureUrl.split('/').pop()}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {eventPage.description && (
         <div className="bg-muted/10 border border-foreground/5 rounded-xl p-5">
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description / Summary</h4>
@@ -223,19 +307,19 @@ function DetailsTab() {
 }
 
 function ParticipantsTab() {
-  const { eventDetail, eventDetailLoading, setViewingParticipant } = useAppStore();
-  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(eventDetail?.participants ?? []);
+  const { eventParticipants, eventDetailLoading, setViewingParticipant } = useAppStore();
+  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(eventParticipants ?? []);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold tracking-tight">
           Participants
-          {eventDetail && <span className="text-sm text-muted-foreground font-normal ml-2">({eventDetail.participants.length})</span>}
+          {eventParticipants && <span className="text-sm text-muted-foreground font-normal ml-2">({eventParticipants.length})</span>}
         </h3>
       </div>
       {eventDetailLoading && <div className="p-8 text-center text-sm text-muted-foreground">Loading participants...</div>}
-      {eventDetail && (
+      {!eventDetailLoading && (
         <div className="border border-foreground/10 rounded-xl overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead>
@@ -287,16 +371,16 @@ function ParticipantsTab() {
 }
 
 function PaymentsTab() {
-  const { eventDetail, eventDetailLoading } = useAppStore();
+  const { eventPayments, eventDetailLoading } = useAppStore();
 
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-bold tracking-tight">
         Payments
-        {eventDetail && <span className="text-sm text-muted-foreground font-normal ml-2">({eventDetail.payments.length})</span>}
+        {eventPayments && <span className="text-sm text-muted-foreground font-normal ml-2">({eventPayments.length})</span>}
       </h3>
       {eventDetailLoading && <div className="p-8 text-center text-sm text-muted-foreground">Loading payments...</div>}
-      {eventDetail && (
+      {!eventDetailLoading && (
         <div className="border border-foreground/10 rounded-xl overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead>
@@ -309,7 +393,7 @@ function PaymentsTab() {
               </tr>
             </thead>
             <tbody>
-              {eventDetail.payments.map((o) => (
+              {eventPayments.map((o) => (
                 <tr key={o._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                   <td className="p-4 font-mono text-xs text-muted-foreground">{o.orderId}</td>
                   <td className="p-4 font-semibold">{o.name}</td>
@@ -323,7 +407,7 @@ function PaymentsTab() {
                   </td>
                 </tr>
               ))}
-              {eventDetail.payments.length === 0 && (
+              {eventPayments.length === 0 && (
                 <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No payments yet.</td></tr>
               )}
             </tbody>
@@ -461,6 +545,49 @@ function EnquiriesTab() {
             ))}
             {!eventEnquiriesLoading && eventEnquiries.length === 0 && (
               <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No enquiries for this {eventPageType} yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function BrochureLeadsTab() {
+  const { eventBrochureLeads, eventBrochureLeadsLoading, eventPageType } = useAppStore();
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-bold tracking-tight">
+        Brochure Download Leads
+        <span className="text-sm text-muted-foreground font-normal ml-2">({eventBrochureLeads.length})</span>
+      </h3>
+      {eventBrochureLeadsLoading && <div className="p-8 text-center text-sm text-muted-foreground">Loading brochure leads...</div>}
+      <div className="border border-foreground/10 rounded-xl overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
+              <th className="p-4">Name</th>
+              <th className="p-4">Email</th>
+              <th className="p-4">Phone</th>
+              <th className="p-4">Institution</th>
+              <th className="p-4">Country</th>
+              <th className="p-4">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {eventBrochureLeads.map((lead) => (
+              <tr key={lead._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
+                <td className="p-4 font-semibold">{lead.firstName} {lead.lastName}</td>
+                <td className="p-4 text-xs">{lead.email}</td>
+                <td className="p-4 text-xs text-muted-foreground">{lead.phone || '—'}</td>
+                <td className="p-4 text-xs text-muted-foreground">{lead.institution || '—'}</td>
+                <td className="p-4 text-xs text-muted-foreground">{lead.country || '—'}</td>
+                <td className="p-4 text-xs text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</td>
+              </tr>
+            ))}
+            {!eventBrochureLeadsLoading && eventBrochureLeads.length === 0 && (
+              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No brochure downloads for this {eventPageType} yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -890,7 +1017,7 @@ function FAQsTab() {
   const { eventPage, updateEventField } = useAppStore();
   const faqs: FAQ[] = (eventPage as any)?.faqs || [];
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<FAQ>({ question: '', answer: '', category: 'general', order: 0 });
+  const [formData, setFormData] = useState<FAQ>({ question: '', answer: '', order: 0 });
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const handleSave = () => {
@@ -902,14 +1029,14 @@ function FAQsTab() {
     }
     updateEventField('faqs', updated);
     setEditingIndex(null);
-    setFormData({ question: '', answer: '', category: 'general', order: 0 });
+    setFormData({ question: '', answer: '', order: 0 });
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold tracking-tight">FAQs ({faqs.length})</h3>
-        <button type="button" onClick={() => { setEditingIndex(null); setFormData({ question: '', answer: '', category: 'general', order: faqs.length }); }} className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold flex items-center gap-1">
+        <button type="button" onClick={() => { setEditingIndex(null); setFormData({ question: '', answer: '', order: faqs.length }); }} className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold flex items-center gap-1">
           <Plus size={14} /> Add FAQ
         </button>
       </div>
@@ -929,10 +1056,6 @@ function FAQsTab() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
-                <input className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.category || ''} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder="e.g., registration, payment" />
-              </div>
-              <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Order</label>
                 <input type="number" className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.order || 0} onChange={(e) => setFormData({ ...formData, order: Number(e.target.value) })} />
               </div>
@@ -942,7 +1065,7 @@ function FAQsTab() {
             <button type="button" onClick={handleSave} disabled={!formData.question || !formData.answer} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
               {editingIndex !== null ? 'Update' : 'Add'} FAQ
             </button>
-            <button type="button" onClick={() => { setEditingIndex(null); setFormData({ question: '', answer: '', category: 'general', order: 0 }); }} className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-xs font-semibold">Cancel</button>
+            <button type="button" onClick={() => { setEditingIndex(null); setFormData({ question: '', answer: '', order: 0 }); }} className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-xs font-semibold">Cancel</button>
           </div>
         </div>
       )}
@@ -954,7 +1077,6 @@ function FAQsTab() {
             <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30" onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{faq.question}</p>
-                {faq.category && <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{faq.category}</span>}
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={(e) => { e.stopPropagation(); setEditingIndex(index); setFormData(faq); }} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground">Edit</button>
@@ -976,243 +1098,79 @@ function FAQsTab() {
 }
 
 // ============ SPONSORS TAB ============
-function SponsorsTab() {
-  const { eventPage, updateEventField, user } = useAppStore();
-  const sponsors: EventSponsor[] = (eventPage as any)?.sponsors || [];
+function PartnersTab() {
+  const { eventPage, updateEventField } = useAppStore();
+  const rawPartners = (eventPage as any)?.partners?.length
+    ? (eventPage as any).partners
+    : ((eventPage as any)?.sponsors?.length
+      ? (eventPage as any).sponsors
+      : (eventPage as any)?.exhibitors || []);
+  const partners: EventPartner[] = Array.isArray(rawPartners)
+    ? rawPartners.map((p: any, idx: number) => ({ title: p.title || p.name || '', order: typeof p.order === 'number' ? p.order : idx }))
+    : [];
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<EventSponsor>({ name: '', logo: '', logoPreview: '', website: '', description: '', order: 0 });
+  const [title, setTitle] = useState('');
 
   const handleSave = () => {
-    const updated = [...sponsors];
+    if (!title.trim()) return;
+    const updated = [...partners];
     if (editingIndex !== null) {
-      updated[editingIndex] = formData;
+      updated[editingIndex] = { title: title.trim(), order: editingIndex };
     } else {
-      updated.push(formData);
+      updated.push({ title: title.trim(), order: partners.length });
     }
-    updateEventField('sponsors', updated);
+    updateEventField('partners', updated);
     setEditingIndex(null);
-    setFormData({ name: '', logo: '', logoPreview: '', website: '', description: '', order: 0 });
-  };
-
-  const handleLogo = (file: File | null) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setFormData((cur) => ({ ...cur, logoPreview: String(reader.result || '') }));
-    reader.readAsDataURL(file);
-    if (user) {
-      const fd = new FormData();
-      fd.append('file', file);
-      fetch(`${API_BASE}/uploads/upload`, {
-        method: 'POST',
-        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
-        body: fd,
-      })
-        .then((res) => res.json())
-        .then((data) => setFormData((cur) => ({ ...cur, logo: data.url })))
-        .catch((err) => console.error('Logo upload error:', err));
-    }
+    setTitle('');
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold tracking-tight">Sponsors ({sponsors.length})</h3>
-        <button type="button" onClick={() => { setEditingIndex(null); setFormData({ name: '', logo: '', logoPreview: '', website: '', description: '', order: sponsors.length }); }} className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold flex items-center gap-1">
-          <Plus size={14} /> Add Sponsor
+        <h3 className="text-lg font-bold tracking-tight">Sponsors / Exhibitors ({partners.length})</h3>
+        <button type="button" onClick={() => { setEditingIndex(null); setTitle(''); }} className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold flex items-center gap-1">
+          <Plus size={14} /> Add Sponsor / Exhibitor
         </button>
       </div>
 
-      {/* Form */}
-      {(editingIndex !== null || formData.name) && (
+      {(editingIndex !== null || title) && (
         <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-4">
-          <h4 className="font-bold text-sm">{editingIndex !== null ? 'Edit Sponsor' : 'Add New Sponsor'}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Name *</label>
-              <input className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Website</label>
-              <input className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.website || ''} onChange={(e) => setFormData({ ...formData, website: e.target.value })} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Logo</label>
-              <div className="mt-1">
-                <FileUploadCard
-                  title="Logo"
-                  accept="image/*"
-                  preview={formData.logoPreview || mediaUrl(formData.logo || '')}
-                  onSelect={handleLogo}
-                  onClear={() => setFormData((cur) => ({ ...cur, logo: '', logoPreview: '' }))}
-                />
-              </div>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</label>
-              <textarea className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" rows={2} value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-            </div>
+          <h4 className="font-bold text-sm">{editingIndex !== null ? 'Edit Sponsor / Exhibitor' : 'Add New Sponsor / Exhibitor'}</h4>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title *</label>
+            <input className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }} placeholder="e.g. Gold Sponsor, Silver Exhibitor..." />
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={handleSave} disabled={!formData.name} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
-              {editingIndex !== null ? 'Update' : 'Add'} Sponsor
+            <button type="button" onClick={handleSave} disabled={!title.trim()} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
+              {editingIndex !== null ? 'Update' : 'Add'} Sponsor / Exhibitor
             </button>
-            <button type="button" onClick={() => { setEditingIndex(null); setFormData({ name: '', logo: '', logoPreview: '', website: '', description: '', order: 0 }); }} className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-xs font-semibold">Cancel</button>
+            <button type="button" onClick={() => { setEditingIndex(null); setTitle(''); }} className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-xs font-semibold">Cancel</button>
           </div>
         </div>
       )}
 
-      {/* List */}
       <div className="border border-foreground/10 rounded-xl overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
-              <th className="p-4">Logo</th>
-              <th className="p-4">Name</th>
-              <th className="p-4">Website</th>
+              <th className="p-4">#</th>
+              <th className="p-4">Title</th>
               <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {sponsors.map((sponsor, index) => (
+            {partners.map((partner, index) => (
               <tr key={index} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
-                <td className="p-4">
-                  {sponsor.logo ? <img src={mediaUrl(sponsor.logo)} alt={sponsor.name} className="w-10 h-10 object-contain rounded" /> : <span className="text-xs text-muted-foreground">—</span>}
-                </td>
-                <td className="p-4 font-semibold">{sponsor.name}</td>
-                <td className="p-4 text-xs text-muted-foreground">{sponsor.website || '—'}</td>
+                <td className="p-4 text-muted-foreground">{index + 1}</td>
+                <td className="p-4 font-semibold">{partner.title}</td>
                 <td className="p-4 text-right">
-                  <button type="button" onClick={() => { setEditingIndex(index); setFormData({ ...sponsor, logoPreview: mediaUrl(sponsor.logo || '') }); }} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground mr-2">Edit</button>
-                  <button type="button" onClick={() => { const updated = sponsors.filter((_, i) => i !== index); updateEventField('sponsors', updated); }} className="px-2 py-1 text-xs text-red-500 hover:text-red-600">Delete</button>
+                  <button type="button" onClick={() => { setEditingIndex(index); setTitle(partner.title); }} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground mr-2">Edit</button>
+                  <button type="button" onClick={() => { const updated = partners.filter((_, i) => i !== index); updateEventField('partners', updated); }} className="px-2 py-1 text-xs text-red-500 hover:text-red-600">Delete</button>
                 </td>
               </tr>
             ))}
-            {sponsors.length === 0 && (
-              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">No sponsors added yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ============ EXHIBITORS CONTENT TAB ============
-function ExhibitorsContentTab() {
-  const { eventPage, updateEventField, user } = useAppStore();
-  const exhibitors: EventExhibitor[] = (eventPage as any)?.exhibitors || [];
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<EventExhibitor>({ name: '', logo: '', logoPreview: '', website: '', description: '', contactEmail: '', order: 0 });
-
-  const handleSave = () => {
-    const updated = [...exhibitors];
-    if (editingIndex !== null) {
-      updated[editingIndex] = formData;
-    } else {
-      updated.push(formData);
-    }
-    updateEventField('exhibitors', updated);
-    setEditingIndex(null);
-    setFormData({ name: '', logo: '', logoPreview: '', website: '', description: '', contactEmail: '', order: 0 });
-  };
-
-  const handleLogo = (file: File | null) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setFormData((cur) => ({ ...cur, logoPreview: String(reader.result || '') }));
-    reader.readAsDataURL(file);
-    if (user) {
-      const fd = new FormData();
-      fd.append('file', file);
-      fetch(`${API_BASE}/uploads/upload`, {
-        method: 'POST',
-        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
-        body: fd,
-      })
-        .then((res) => res.json())
-        .then((data) => setFormData((cur) => ({ ...cur, logo: data.url })))
-        .catch((err) => console.error('Logo upload error:', err));
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold tracking-tight">Exhibitors ({exhibitors.length})</h3>
-        <button type="button" onClick={() => { setEditingIndex(null); setFormData({ name: '', logo: '', logoPreview: '', website: '', description: '', contactEmail: '', order: exhibitors.length }); }} className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold flex items-center gap-1">
-          <Plus size={14} /> Add Exhibitor
-        </button>
-      </div>
-
-      {/* Form */}
-      {(editingIndex !== null || formData.name) && (
-        <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-4">
-          <h4 className="font-bold text-sm">{editingIndex !== null ? 'Edit Exhibitor' : 'Add New Exhibitor'}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Name *</label>
-              <input className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Website</label>
-              <input className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.website || ''} onChange={(e) => setFormData({ ...formData, website: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Contact Email</label>
-              <input type="email" className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.contactEmail || ''} onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Logo</label>
-              <div className="mt-1">
-                <FileUploadCard
-                  title="Logo"
-                  accept="image/*"
-                  preview={formData.logoPreview || mediaUrl(formData.logo || '')}
-                  onSelect={handleLogo}
-                  onClear={() => setFormData((cur) => ({ ...cur, logo: '', logoPreview: '' }))}
-                />
-              </div>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</label>
-              <textarea className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" rows={2} value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={handleSave} disabled={!formData.name} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
-              {editingIndex !== null ? 'Update' : 'Add'} Exhibitor
-            </button>
-            <button type="button" onClick={() => { setEditingIndex(null); setFormData({ name: '', logo: '', logoPreview: '', website: '', description: '', contactEmail: '', order: 0 }); }} className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-xs font-semibold">Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* List */}
-      <div className="border border-foreground/10 rounded-xl overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
-              <th className="p-4">Logo</th>
-              <th className="p-4">Name</th>
-              <th className="p-4">Contact</th>
-              <th className="p-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {exhibitors.map((exhibitor, index) => (
-              <tr key={index} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
-                <td className="p-4">
-                  {exhibitor.logo ? <img src={mediaUrl(exhibitor.logo)} alt={exhibitor.name} className="w-10 h-10 object-contain rounded" /> : <span className="text-xs text-muted-foreground">—</span>}
-                </td>
-                <td className="p-4 font-semibold">{exhibitor.name}</td>
-                <td className="p-4 text-xs text-muted-foreground">{exhibitor.contactEmail || '—'}</td>
-                <td className="p-4 text-right">
-                  <button type="button" onClick={() => { setEditingIndex(index); setFormData({ ...exhibitor, logoPreview: mediaUrl(exhibitor.logo || '') }); }} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground mr-2">Edit</button>
-                  <button type="button" onClick={() => { const updated = exhibitors.filter((_, i) => i !== index); updateEventField('exhibitors', updated); }} className="px-2 py-1 text-xs text-red-500 hover:text-red-600">Delete</button>
-                </td>
-              </tr>
-            ))}
-            {exhibitors.length === 0 && (
-              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">No exhibitors added yet.</td></tr>
+            {partners.length === 0 && (
+              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">No partners added yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -1263,44 +1221,493 @@ function GuidelinesTab() {
   );
 }
 
-// ============ TERMS TAB ============
-function TermsTab() {
+// ============ BANNERS TAB ============
+function BannersTab() {
+  const { eventPage, eventPageType, uploadHeaderBannerForEvent, removeHeaderBannerForEvent, user } = useAppStore();
+  const [uploading, setUploading] = useState(false);
+  const banners: string[] = (eventPage as any)?.headerBanners || [];
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !eventPage || !eventPageType) return;
+    setUploading(true);
+    await uploadHeaderBannerForEvent(eventPage._id, eventPageType, file);
+    setUploading(false);
+    e.target.value = '';
+  };
+
+  const handleRemove = async (index: number) => {
+    if (!eventPage || !eventPageType) return;
+    await removeHeaderBannerForEvent(eventPage._id, eventPageType, index);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">Header Banners (Carousel)</h3>
+          <p className="text-sm text-muted-foreground mt-1">Add images that will rotate in the banner carousel on the event homepage.</p>
+        </div>
+        <label className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold cursor-pointer hover:opacity-90 disabled:opacity-50">
+          {uploading ? 'Uploading...' : 'Add Banner'}
+          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+        </label>
+      </div>
+
+      {banners.length === 0 ? (
+        <div className="border border-dashed border-foreground/20 rounded-xl p-12 text-center">
+          <p className="text-sm text-muted-foreground">No banners uploaded yet. Add images for the carousel.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {banners.map((url, i) => (
+            <div key={i} className="relative group border border-foreground/10 rounded-xl overflow-hidden">
+              <img src={mediaUrl(url)} alt={`Banner ${i + 1}`} className="w-full h-40 object-cover" />
+              <button
+                type="button"
+                onClick={() => handleRemove(i)}
+                className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition"
+              >
+                Remove
+              </button>
+              <div className="p-3 text-xs text-muted-foreground">Banner {i + 1}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ TRACKS TAB ============
+function TracksTab() {
+  const { eventPage, updateEventField, user } = useAppStore();
+  const tracks: any[] = (eventPage as any)?.tracks || [];
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ title: '', description: '', image: '', referenceLinks: [] as { label: string; url: string }[] });
+
+  const resetForm = () => {
+    setFormData({ title: '', description: '', image: '', referenceLinks: [] });
+    setEditingIndex(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (index: number) => {
+    const track = tracks[index];
+    setFormData({ title: track.title, description: track.description || '', image: track.image || '', referenceLinks: track.referenceLinks || [] });
+    setEditingIndex(index);
+    setShowForm(true);
+  };
+
+  const handleSave = () => {
+    const updated = [...tracks];
+    if (editingIndex !== null) {
+      updated[editingIndex] = formData;
+    } else {
+      updated.push(formData);
+    }
+    updateEventField('tracks', updated);
+    resetForm();
+  };
+
+  const handleDelete = (index: number) => {
+    const updated = tracks.filter((_, i) => i !== index);
+    updateEventField('tracks', updated);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
+    const file = e.target.files?.[0];
+    if (!file || !eventPage) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API_BASE}/uploads/upload`, {
+      method: 'POST',
+      headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+      body: fd,
+    });
+    const data = await res.json();
+    if (data.url) {
+      if (index !== undefined) {
+        const updated = [...tracks];
+        updated[index] = { ...updated[index], image: data.url };
+        updateEventField('tracks', updated);
+      } else {
+        setFormData(prev => ({ ...prev, image: data.url }));
+      }
+    }
+    e.target.value = '';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">Conference Tracks</h3>
+          <p className="text-sm text-muted-foreground mt-1">Define the main themes or tracks for this event.</p>
+        </div>
+        <button type="button" onClick={() => { resetForm(); setShowForm(true); }} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90">
+          Add Track
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="border border-foreground/10 rounded-xl p-5 space-y-4 bg-muted/20">
+          <h4 className="font-bold text-sm">{editingIndex !== null ? 'Edit Track' : 'New Track'}</h4>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Title</label>
+            <input value={formData.title} onChange={e => setFormData(p => ({ ...p, title: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="Track title" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Description</label>
+            <textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" rows={3} placeholder="Brief description" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Image</label>
+            {formData.image && <img src={mediaUrl(formData.image)} alt="Track" className="w-32 h-20 object-cover rounded-lg mb-2" />}
+            <label className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold cursor-pointer">
+              Upload Image
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e)} />
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={handleSave} disabled={!formData.title} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
+              {editingIndex !== null ? 'Update' : 'Add Track'}
+            </button>
+            <button type="button" onClick={resetForm} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="border border-foreground/10 rounded-xl overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
+              <th className="p-4">#</th>
+              <th className="p-4">Title</th>
+              <th className="p-4">Description</th>
+              <th className="p-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tracks.map((track, index) => (
+              <tr key={index} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
+                <td className="p-4 text-muted-foreground">{index + 1}</td>
+                <td className="p-4 font-semibold">{track.title}</td>
+                <td className="p-4 text-muted-foreground text-xs max-w-xs truncate">{track.description || '—'}</td>
+                <td className="p-4 text-right">
+                  <button type="button" onClick={() => handleEdit(index)} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground mr-2">Edit</button>
+                  <button type="button" onClick={() => handleDelete(index)} className="px-2 py-1 text-xs text-red-500 hover:text-red-600">Delete</button>
+                </td>
+              </tr>
+            ))}
+            {tracks.length === 0 && (
+              <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No tracks added yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ============ FEES TAB ============
+function FeesTab() {
   const { eventPage, updateEventField } = useAppStore();
-  const terms = (eventPage as any)?.termsAndConditions || '';
-  const [content, setContent] = useState(terms);
+  const fees: { label: string; amount: number }[] = (eventPage as any)?.fees || [];
+  const [label, setLabel] = useState('');
+  const [amount, setAmount] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  const handleSave = () => {
+    if (!label || !amount) return;
+    const updated = [...fees];
+    const entry = { label, amount: Number(amount) };
+    if (editingIndex !== null) {
+      updated[editingIndex] = entry;
+    } else {
+      updated.push(entry);
+    }
+    updateEventField('fees', updated);
+    setLabel('');
+    setAmount('');
+    setEditingIndex(null);
+  };
+
+  const handleEdit = (index: number) => {
+    setLabel(fees[index].label);
+    setAmount(String(fees[index].amount));
+    setEditingIndex(index);
+  };
+
+  const handleDelete = (index: number) => {
+    updateEventField('fees', fees.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-bold tracking-tight">Registration Fees</h3>
+        <p className="text-sm text-muted-foreground mt-1">Define registration categories and their fees.</p>
+      </div>
+
+      <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Category Label</label>
+            <input value={label} onChange={e => setLabel(e.target.value)} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="e.g. Early Bird, Student" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Amount (INR)</label>
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="e.g. 5000" />
+          </div>
+          <div className="flex items-end gap-2">
+            <button type="button" onClick={handleSave} disabled={!label || !amount} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
+              {editingIndex !== null ? 'Update' : 'Add Fee'}
+            </button>
+            {editingIndex !== null && (
+              <button type="button" onClick={() => { setLabel(''); setAmount(''); setEditingIndex(null); }} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold">
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="border border-foreground/10 rounded-xl overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
+              <th className="p-4">#</th>
+              <th className="p-4">Category</th>
+              <th className="p-4 text-right">Amount (INR)</th>
+              <th className="p-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fees.map((fee, index) => (
+              <tr key={index} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
+                <td className="p-4 text-muted-foreground">{index + 1}</td>
+                <td className="p-4 font-semibold">{fee.label}</td>
+                <td className="p-4 text-right">₹{fee.amount.toLocaleString()}</td>
+                <td className="p-4 text-right">
+                  <button type="button" onClick={() => handleEdit(index)} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground mr-2">Edit</button>
+                  <button type="button" onClick={() => handleDelete(index)} className="px-2 py-1 text-xs text-red-500 hover:text-red-600">Delete</button>
+                </td>
+              </tr>
+            ))}
+            {fees.length === 0 && (
+              <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No fee categories defined yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ============ ORGANIZER CONTACT TAB ============
+function OrganizerContactTab() {
+  const { eventPage, updateEventField } = useAppStore();
+  const contact: any = (eventPage as any)?.organizerContact || {};
+  const [form, setForm] = useState({
+    name: contact.name || '',
+    email: contact.email || '',
+    phone: contact.phone || '',
+    website: contact.website || '',
+    address: contact.address || '',
+  });
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    updateEventField('termsAndConditions', content);
+    updateEventField('organizerContact', form);
     setSaving(false);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold tracking-tight">Terms & Conditions</h3>
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">Organizer Contact</h3>
+          <p className="text-sm text-muted-foreground mt-1">Contact information displayed on the event website.</p>
+        </div>
         <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
-      <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5">
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Terms & Conditions Content (HTML supported)</label>
-        <textarea
-          className="w-full px-4 py-3 bg-background border border-foreground/10 rounded-lg text-sm font-mono"
-          rows={20}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Enter terms and conditions here... HTML is supported."
-        />
-        <p className="mt-2 text-xs text-muted-foreground">You can use HTML tags for formatting. Preview will be shown on the conference website.</p>
+
+      <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Contact Person Name</label>
+            <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="Full name" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Email</label>
+            <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="contact@example.com" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Phone</label>
+            <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="+91 XXXXX XXXXX" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Website</label>
+            <input value={form.website} onChange={e => setForm(p => ({ ...p, website: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="https://..." />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Address</label>
+          <textarea value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" rows={2} placeholder="Full address" />
+        </div>
       </div>
-      {content && (
-        <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Preview</h4>
-          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
+    </div>
+  );
+}
+
+// ============ ORGANIZING COMMITTEE TAB ============
+function OrganizingCommitteeTab() {
+  const { eventPage, updateEventField, user } = useAppStore();
+  const committee: any[] = (eventPage as any)?.organizingCommittee || [];
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ name: '', degree: '', specialization: '', country: '', biography: '', researchArea: '', image: '' });
+
+  const resetForm = () => {
+    setFormData({ name: '', degree: '', specialization: '', country: '', biography: '', researchArea: '', image: '' });
+    setEditingIndex(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (index: number) => {
+    const member = committee[index];
+    setFormData({ name: member.name || '', degree: member.degree || '', specialization: member.specialization || '', country: member.country || '', biography: member.biography || '', researchArea: member.researchArea || '', image: member.image || '' });
+    setEditingIndex(index);
+    setShowForm(true);
+  };
+
+  const handleSave = () => {
+    const updated = [...committee];
+    if (editingIndex !== null) {
+      updated[editingIndex] = formData;
+    } else {
+      updated.push(formData);
+    }
+    updateEventField('organizingCommittee', updated);
+    resetForm();
+  };
+
+  const handleDelete = (index: number) => {
+    updateEventField('organizingCommittee', committee.filter((_, i) => i !== index));
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API_BASE}/uploads/upload`, {
+      method: 'POST',
+      headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+      body: fd,
+    });
+    const data = await res.json();
+    if (data.url) setFormData(prev => ({ ...prev, image: data.url }));
+    e.target.value = '';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">Organizing Committee</h3>
+          <p className="text-sm text-muted-foreground mt-1">Members of the organizing committee for this event.</p>
+        </div>
+        <button type="button" onClick={() => { resetForm(); setShowForm(true); }} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90">
+          Add Member
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="border border-foreground/10 rounded-xl p-5 space-y-4 bg-muted/20">
+          <h4 className="font-bold text-sm">{editingIndex !== null ? 'Edit Member' : 'New Member'}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Name</label>
+              <input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="Full name" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Degree / Title</label>
+              <input value={formData.degree} onChange={e => setFormData(p => ({ ...p, degree: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="e.g. MD, PhD" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Specialization</label>
+              <input value={formData.specialization} onChange={e => setFormData(p => ({ ...p, specialization: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="e.g. Cardiology" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Country</label>
+              <input value={formData.country} onChange={e => setFormData(p => ({ ...p, country: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="Country" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Research Area</label>
+            <input value={formData.researchArea} onChange={e => setFormData(p => ({ ...p, researchArea: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="Research interests" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Biography</label>
+            <textarea value={formData.biography} onChange={e => setFormData(p => ({ ...p, biography: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" rows={3} placeholder="Brief bio" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Photo</label>
+            {formData.image && <img src={mediaUrl(formData.image)} alt="Member" className="w-20 h-20 object-cover rounded-full mb-2" />}
+            <label className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold cursor-pointer">
+              Upload Photo
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={handleSave} disabled={!formData.name} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50">
+              {editingIndex !== null ? 'Update' : 'Add Member'}
+            </button>
+            <button type="button" onClick={resetForm} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold">
+              Cancel
+            </button>
+          </div>
         </div>
       )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {committee.map((member, index) => (
+          <div key={index} className="border border-foreground/10 rounded-xl p-4 space-y-2">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                {member.image ? (
+                  <img src={mediaUrl(member.image)} alt={member.name} className="w-12 h-12 rounded-full object-cover" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-sm font-bold">{member.name?.charAt(0)}</div>
+                )}
+                <div>
+                  <div className="font-semibold text-sm">{member.name}</div>
+                  <div className="text-xs text-muted-foreground">{member.degree} {member.specialization}</div>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <button type="button" onClick={() => handleEdit(index)} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground">Edit</button>
+                <button type="button" onClick={() => handleDelete(index)} className="px-2 py-1 text-xs text-red-500 hover:text-red-600">Delete</button>
+              </div>
+            </div>
+            {member.country && <div className="text-xs text-muted-foreground">{member.country}</div>}
+            {member.researchArea && <div className="text-xs text-muted-foreground">Research: {member.researchArea}</div>}
+          </div>
+        ))}
+        {committee.length === 0 && (
+          <div className="col-span-full border border-dashed border-foreground/20 rounded-xl p-12 text-center">
+            <p className="text-sm text-muted-foreground">No committee members added yet.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

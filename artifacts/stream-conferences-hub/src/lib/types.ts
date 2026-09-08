@@ -18,9 +18,7 @@ export type Tab =
   | 'orders'
   | 'mediaPartners'
   | 'collaborators'
-  | 'exhibitors'
   | 'venues'
-  | 'profile'
   | 'mentors'
   | 'liveChat';
 
@@ -28,18 +26,22 @@ export type EventType = 'conference' | 'webinar';
 export type EventPageTab =
   | 'dashboard'
   | 'details'
+  | 'fees'
   | 'participants'
   | 'payments'
   | 'abstracts'
   | 'enquiries'
+  | 'brochures'
   | 'speakers'
+  | 'tracks'
   | 'program'
   | 'itinerary'
+  | 'banners'
   | 'faqs'
-  | 'sponsors'
-  | 'exhibitors'
+  | 'partners'
   | 'guidelines'
-  | 'terms'
+  | 'organizer-contact'
+  | 'organizing-committee'
   | 'venue-details';
 
 export interface Track {
@@ -87,24 +89,19 @@ export interface FAQ {
   order?: number;
 }
 
-export interface EventSponsor {
-  name: string;
-  logo?: string;
-  logoPreview?: string;
-  website?: string;
-  description?: string;
-  tier?: 'platinum' | 'gold' | 'silver' | 'bronze' | 'supporter';
-  order?: number;
+export interface OrganizingCommitteeMember {
+  name?: string;
+  image?: string;
+  imagePreview?: string;
+  degree?: string;
+  specialization?: string;
+  country?: string;
+  biography?: string;
+  researchArea?: string;
 }
 
-export interface EventExhibitor {
-  name: string;
-  logo?: string;
-  logoPreview?: string;
-  website?: string;
-  description?: string;
-  boothNumber?: string;
-  contactEmail?: string;
+export interface EventPartner {
+  title: string;
   order?: number;
 }
 
@@ -129,6 +126,7 @@ export interface Conference {
   title: string;
   slug?: string;
   description: string;
+  theme?: string;
   day: string;
   month: string;
   location: string;
@@ -143,12 +141,14 @@ export interface Conference {
   endDate?: string;
   subdomain?: string;
   assignedMentor?: string | null;
+  mentorName?: string | null;
   venue?: string;
   venueAddress?: string;
   venueMapUrl?: string;
   brochureUrl?: string;
   bannerUrl?: string;
   logoUrl?: string;
+  headerBanners?: string[];
   fees?: { label: string; amount: number }[];
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
   
@@ -157,11 +157,11 @@ export interface Conference {
   speakers?: Speaker[];
   program?: ProgramDay[];
   faqs?: FAQ[];
-  sponsors?: EventSponsor[];
-  exhibitors?: EventExhibitor[];
+  partners?: EventPartner[];
   guidelines?: string;
   termsAndConditions?: string;
   venueDetails?: VenueDetails;
+  organizingCommittee?: OrganizingCommitteeMember[];
 }
 
 export interface Webinar {
@@ -170,6 +170,7 @@ export interface Webinar {
   title: string;
   slug?: string;
   description: string;
+  theme?: string;
   day: string;
   month: string;
   location: string;
@@ -185,12 +186,14 @@ export interface Webinar {
   endDate?: string;
   subdomain?: string;
   assignedMentor?: string | null;
+  mentorName?: string | null;
   venue?: string;
   venueAddress?: string;
   venueMapUrl?: string;
   brochureUrl?: string;
   bannerUrl?: string;
   logoUrl?: string;
+  headerBanners?: string[];
   fees?: { label: string; amount: number }[];
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
   
@@ -199,11 +202,11 @@ export interface Webinar {
   speakers?: Speaker[];
   program?: ProgramDay[];
   faqs?: FAQ[];
-  sponsors?: EventSponsor[];
-  exhibitors?: EventExhibitor[];
+  partners?: EventPartner[];
   guidelines?: string;
   termsAndConditions?: string;
   venueDetails?: VenueDetails;
+  organizingCommittee?: OrganizingCommitteeMember[];
 }
 
 export interface Blog {
@@ -265,6 +268,21 @@ export interface Contact {
   subject?: string;
   conference?: string;
   message: string;
+  createdAt: string;
+}
+
+export interface BrochureLead {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  institution?: string;
+  country?: string;
+  eventId?: string;
+  eventType?: string;
+  eventTitle?: string;
+  eventSlug?: string;
   createdAt: string;
 }
 
@@ -336,6 +354,7 @@ export interface MentorProfile {
   experiences: { title: string; organization: string; duration: string; description: string }[];
   certifications: { name: string; issuer: string; year: string }[];
   isActive?: boolean;
+  password?: string;
 }
 
 export interface EventDetail {
@@ -352,13 +371,29 @@ export interface EventDetail {
   payments: Order[];
 }
 
+export interface EventDashboard {
+  eventId: string;
+  title?: string;
+  stats: {
+    totalParticipants: number;
+    totalPayments: number;
+    paidCount: number;
+    pendingCount: number;
+    failedCount: number;
+    revenuePaise: number;
+    revenue: string;
+  };
+}
+
 export interface MediaAssetState {
   brochureUrl: string;
   bannerUrl: string;
   logoUrl: string;
+  headerBanners: string[];
   brochurePreview: string;
   bannerPreview: string;
   logoPreview: string;
+  headerBannersPreviews: string[];
 }
 
 export type LogoKind = 'partner' | 'collaborator' | 'exhibitor';

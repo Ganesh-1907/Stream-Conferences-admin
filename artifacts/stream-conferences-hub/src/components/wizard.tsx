@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { FileUploadCard } from '@/components/file-upload-card';
+import { RichTextEditor } from '@/components/rich-text-editor';
 import { useAppStore } from '@/store/app-store';
 import { formatDisplayDate, stringToDate, dateToString, mediaUrl } from '@/lib/utils';
 import { ROOT_DOMAIN } from '@/lib/constants';
@@ -38,7 +39,7 @@ export function Wizard() {
       <div className="flex flex-wrap gap-2">
         {[
           'Event Info', 'Schedule & Venue', 'Fees', 'Tracks',
-          'FAQs', 'Sponsors', 'Exhibitors', 'Guidelines', 'Terms & Conditions', 'Contact',
+          'FAQs', 'Sponsors / Exhibitors', 'Guidelines', 'Terms & Conditions', 'Contact', 'Organizing Committee',
         ].map((label, i) => {
           const stepNum = i + 1;
           const canNavigate = stepNum <= store.wizardStep || store.canGoToStep(stepNum);
@@ -115,12 +116,22 @@ export function Wizard() {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description</label>
-            <textarea
+            <RichTextEditor
               value={store.wizardDesc()}
-              onChange={(e) => store.setWizardDesc(e.target.value)}
+              onChange={(html) => store.setWizardDesc(html)}
               placeholder="Short summary/agenda outline..."
-              rows={5}
-              className="w-full px-6 py-4 bg-muted/20 border border-foreground/10 rounded-2xl text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition duration-200 resize-none"
+              minHeight={180}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Theme</label>
+            <input
+              type="text"
+              value={store.wizardTheme()}
+              onChange={(e) => store.setWizardTheme(e.target.value)}
+              placeholder="e.g. Innovation, Sustainability, Future Tech..."
+              className="w-full px-6 py-4 bg-muted/20 border border-foreground/10 rounded-2xl text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition duration-200"
             />
           </div>
 
@@ -131,6 +142,56 @@ export function Wizard() {
               <FileUploadCard title="Banner" preview={store.wizardMedia().bannerPreview} onSelect={(f) => store.handleMediaUpload('banner', f)} onClear={() => store.clearMedia('banner')} />
               <FileUploadCard title="Logo" preview={store.wizardMedia().logoPreview} onSelect={(f) => store.handleMediaUpload('logo', f)} onClear={() => store.clearMedia('logo')} />
             </div>
+          </div>
+
+          <div className="pt-2">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Header Banners (Carousel)</h4>
+                <p className="text-xs text-muted-foreground">Upload banner slides to rotate in the microsite header carousel.</p>
+              </div>
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold cursor-pointer hover:bg-primary/90 transition shadow-sm">
+                <Plus size={13} /> Add Banner
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      store.handleHeaderBannerUpload(e.target.files[0]);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
+            {((store.wizardMedia().headerBannersPreviews && store.wizardMedia().headerBannersPreviews.length > 0) || (store.wizardMedia().headerBanners && store.wizardMedia().headerBanners.length > 0)) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-3">
+                {(store.wizardMedia().headerBannersPreviews?.length ? store.wizardMedia().headerBannersPreviews : store.wizardMedia().headerBanners || []).map((previewUrl, idx) => (
+                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-foreground/10 bg-muted/20 aspect-[16/7] flex items-center justify-center">
+                    <img src={previewUrl} alt={`Header Banner ${idx + 1}`} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => store.removeHeaderBanner(idx)}
+                        className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                        title="Delete banner"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                    <span className="absolute bottom-1 left-1.5 px-1.5 py-0.5 bg-black/60 text-[10px] text-white font-mono rounded">
+                      Slide {idx + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-2 border-2 border-dashed border-foreground/10 rounded-2xl p-6 text-center bg-muted/5">
+                <p className="text-xs text-muted-foreground">No carousel header banners added yet. Click &quot;Add Banner&quot; above to upload banner slides.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -455,10 +516,6 @@ export function Wizard() {
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Answer</label>
                 <textarea value={faq.answer} onChange={(e) => store.updateFaq(index, 'answer', e.target.value)} placeholder="Detailed answer..." rows={3} className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition resize-none" />
               </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Category (optional)</label>
-                <input type="text" value={faq.category || ''} onChange={(e) => store.updateFaq(index, 'category', e.target.value)} placeholder="e.g. Registration, Venue" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
-              </div>
             </div>
           ))}
           {store.wizardFaqs().length === 0 && (
@@ -467,160 +524,97 @@ export function Wizard() {
         </div>
       )}
 
-      {/* STEP 6: SPONSORS */}
+      {/* STEP 6: PARTNERS (Sponsors / Exhibitors) */}
       {store.wizardStep === 6 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold tracking-tight">Sponsors</h3>
-              <p className="text-sm text-muted-foreground">Add sponsors to showcase on the event website.</p>
+              <h3 className="text-lg font-bold tracking-tight">Sponsors / Exhibitors</h3>
+              <p className="text-sm text-muted-foreground">Add sponsors and exhibitors to showcase on the event website.</p>
             </div>
-            <button type="button" onClick={store.addSponsor} className="cta-button">
-              <Plus size={14} /> Add Sponsor
+            <button
+              type="button"
+              onClick={store.addPartner}
+              className="cta-button"
+            >
+              <Plus size={14} /> Add Sponsor / Exhibitor
             </button>
           </div>
-          {store.wizardSponsors().map((sponsor, index) => (
+
+          {(store.wizardPartners().length === 0 ? [{ title: '', order: 0 }] : store.wizardPartners()).map((partner, index) => (
             <div key={index} className="border border-foreground/10 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-accent">Sponsor {index + 1}</span>
-                <button type="button" onClick={() => store.removeSponsor(index)} className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer">
-                  <Trash2 size={15} />
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Name</label>
-                  <input type="text" value={sponsor.name} onChange={(e) => store.updateSponsor(index, 'name', e.target.value)} placeholder="e.g. Acme Biotech" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Website (optional)</label>
-                  <input type="text" value={sponsor.website || ''} onChange={(e) => store.updateSponsor(index, 'website', e.target.value)} placeholder="https://..." className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
-                </div>
+                <span className="text-sm font-bold text-accent">
+                  Sponsor / Exhibitor {index + 1}
+                </span>
+                {store.wizardPartners().length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => store.removePartner(index)}
+                    className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Logo</label>
-                <FileUploadCard
-                  title="Logo"
-                  accept="image/*"
-                  preview={sponsor.logoPreview || mediaUrl(sponsor.logo || '')}
-                  onSelect={(f) => store.handleSponsorLogoUpload(index, f)}
-                  onClear={() => {
-                    const next = [...store.wizardSponsors()];
-                    next[index].logo = '';
-                    next[index].logoPreview = '';
-                    store.setWizardSponsors(next);
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={partner.title || (partner as any).name || ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (store.wizardPartners().length === 0) {
+                      store.setWizardPartners([{ title: v, order: 0 }]);
+                    } else {
+                      store.updatePartner(index, 'title', v);
+                    }
                   }}
+                  placeholder="e.g. Gold Sponsor, Silver Exhibitor..."
+                  className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description (optional)</label>
-                <textarea value={sponsor.description || ''} onChange={(e) => store.updateSponsor(index, 'description', e.target.value)} placeholder="Short description..." rows={2} className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition resize-none" />
               </div>
             </div>
           ))}
-          {store.wizardSponsors().length === 0 && (
-            <div className="border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">No sponsors added yet. Click "Add Sponsor" to create one.</div>
-          )}
         </div>
       )}
 
-      {/* STEP 7: EXHIBITORS */}
+      {/* STEP 7: GUIDELINES */}
       {store.wizardStep === 7 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold tracking-tight">Exhibitors</h3>
-              <p className="text-sm text-muted-foreground">Add exhibitors to showcase on the event website.</p>
-            </div>
-            <button type="button" onClick={store.addExhibitor} className="cta-button">
-              <Plus size={14} /> Add Exhibitor
-            </button>
-          </div>
-          {store.wizardExhibitors().map((ex, index) => (
-            <div key={index} className="border border-foreground/10 rounded-xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-accent">Exhibitor {index + 1}</span>
-                <button type="button" onClick={() => store.removeExhibitor(index)} className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer">
-                  <Trash2 size={15} />
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Name</label>
-                  <input type="text" value={ex.name} onChange={(e) => store.updateExhibitor(index, 'name', e.target.value)} placeholder="e.g. MedTech Corp" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Website (optional)</label>
-                  <input type="text" value={ex.website || ''} onChange={(e) => store.updateExhibitor(index, 'website', e.target.value)} placeholder="https://..." className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Contact Email (optional)</label>
-                  <input type="text" value={ex.contactEmail || ''} onChange={(e) => store.updateExhibitor(index, 'contactEmail', e.target.value)} placeholder="contact@..." className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Logo</label>
-                <FileUploadCard
-                  title="Logo"
-                  accept="image/*"
-                  preview={ex.logoPreview || mediaUrl(ex.logo || '')}
-                  onSelect={(f) => store.handleExhibitorLogoUpload(index, f)}
-                  onClear={() => {
-                    const next = [...store.wizardExhibitors()];
-                    next[index].logo = '';
-                    next[index].logoPreview = '';
-                    store.setWizardExhibitors(next);
-                  }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description (optional)</label>
-                <textarea value={ex.description || ''} onChange={(e) => store.updateExhibitor(index, 'description', e.target.value)} placeholder="Short description..." rows={2} className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition resize-none" />
-              </div>
-            </div>
-          ))}
-          {store.wizardExhibitors().length === 0 && (
-            <div className="border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">No exhibitors added yet. Click "Add Exhibitor" to create one.</div>
-          )}
-        </div>
-      )}
-
-      {/* STEP 8: GUIDELINES */}
-      {store.wizardStep === 8 && (
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-bold tracking-tight">Guidelines</h3>
             <p className="text-sm text-muted-foreground">Add submission or participation guidelines (HTML supported) for the event website.</p>
           </div>
-          <textarea
+          <RichTextEditor
             value={store.wizardGuidelines()}
-            onChange={(e) => store.setWizardGuidelines(e.target.value)}
-            placeholder="<p>Submission guidelines...</p>"
-            rows={10}
-            className="w-full px-4 py-3 bg-muted/20 border border-foreground/10 rounded-lg text-sm font-mono focus:outline-none focus:border-secondary transition resize-none"
+            onChange={(html) => store.setWizardGuidelines(html)}
+            placeholder="Submission guidelines..."
+            minHeight={220}
           />
         </div>
       )}
 
-      {/* STEP 9: TERMS & CONDITIONS */}
-      {store.wizardStep === 9 && (
+      {/* STEP 8: TERMS & CONDITIONS */}
+      {store.wizardStep === 8 && (
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-bold tracking-tight">Terms & Conditions</h3>
             <p className="text-sm text-muted-foreground">Add terms and conditions (HTML supported) for the event website.</p>
           </div>
-          <textarea
+          <RichTextEditor
             value={store.wizardTerms()}
-            onChange={(e) => store.setWizardTerms(e.target.value)}
-            placeholder="<p>Terms and conditions...</p>"
-            rows={10}
-            className="w-full px-4 py-3 bg-muted/20 border border-foreground/10 rounded-lg text-sm font-mono focus:outline-none focus:border-secondary transition resize-none"
+            onChange={(html) => store.setWizardTerms(html)}
+            placeholder="Terms and conditions..."
+            minHeight={220}
           />
         </div>
       )}
 
-      {/* STEP 10: ORGANIZER CONTACT */}
-      {store.wizardStep === 10 && (
+      {/* STEP 9: ORGANIZER CONTACT */}
+      {store.wizardStep === 9 && (
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-bold tracking-tight">Organizer Contact</h3>
@@ -631,8 +625,10 @@ export function Wizard() {
           {store.mentors.length > 0 && (
             <MentorSelector
               mentors={store.mentors}
-              selectedName={store.wizardOrg().name}
-              onSelect={(mentor) => store.setWizardOrg({ name: mentor.fullName, email: mentor.email, phone: mentor.phone })}
+              selectedName={store.wizardMentor()
+                ? (store.mentors.find((m) => m.username === store.wizardMentor())?.fullName || store.wizardMentor())
+                : store.wizardOrg().name}
+              onSelect={(mentor) => store.selectMentor(mentor.username)}
             />
           )}
 
@@ -677,6 +673,121 @@ export function Wizard() {
         </div>
       )}
 
+      {/* STEP 10: ORGANIZING COMMITTEE */}
+      {store.wizardStep === 10 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Organizing Committee</h3>
+              <p className="text-sm text-muted-foreground">Add members of the organizing committee. All fields are optional.</p>
+            </div>
+            <button type="button" onClick={store.addOrganizingCommitteeMember} className="cta-button">
+              <Plus size={14} /> Add Member
+            </button>
+          </div>
+
+          {store.wizardOrganizingCommittee().map((member, mi) => (
+            <div key={mi} className="border border-foreground/10 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-accent">Member {mi + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => store.removeOrganizingCommitteeMember(mi)}
+                  className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={member.name || ''}
+                    onChange={(e) => store.updateOrganizingCommitteeMember(mi, 'name', e.target.value)}
+                    placeholder="e.g. Dr. John Smith"
+                    className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Degree / Highest Degree</label>
+                  <input
+                    type="text"
+                    value={member.degree || ''}
+                    onChange={(e) => store.updateOrganizingCommitteeMember(mi, 'degree', e.target.value)}
+                    placeholder="e.g. Ph.D, M.D., M.Tech"
+                    className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Specialization</label>
+                  <input
+                    type="text"
+                    value={member.specialization || ''}
+                    onChange={(e) => store.updateOrganizingCommitteeMember(mi, 'specialization', e.target.value)}
+                    placeholder="e.g. Cardiology, Data Science"
+                    className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Country</label>
+                  <input
+                    type="text"
+                    value={member.country || ''}
+                    onChange={(e) => store.updateOrganizingCommitteeMember(mi, 'country', e.target.value)}
+                    placeholder="e.g. India, USA"
+                    className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Research Area</label>
+                  <input
+                    type="text"
+                    value={member.researchArea || ''}
+                    onChange={(e) => store.updateOrganizingCommitteeMember(mi, 'researchArea', e.target.value)}
+                    placeholder="e.g. Artificial Intelligence, Neuroscience"
+                    className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Profile Image</label>
+                <FileUploadCard
+                  title="Member Image"
+                  accept="image/*"
+                  preview={member.imagePreview || ''}
+                  onSelect={(f) => store.handleCommitteeMemberImageUpload(mi, f)}
+                  onClear={() => {
+                    const next = [...store.wizardOrganizingCommittee()];
+                    next[mi].image = '';
+                    next[mi].imagePreview = '';
+                    store.setWizardOrganizingCommittee(next);
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Biography</label>
+                <RichTextEditor
+                  value={member.biography || ''}
+                  onChange={(html) => store.updateOrganizingCommitteeMember(mi, 'biography', html)}
+                  placeholder="Brief biography of the member..."
+                  minHeight={120}
+                />
+              </div>
+            </div>
+          ))}
+
+          {store.wizardOrganizingCommittee().length === 0 && (
+            <div className="border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">
+              No committee members added yet. Click "Add Member" to create one.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Nav buttons */}
       <div className="pt-4 border-t border-foreground/10 flex justify-between gap-3">
         <button
@@ -713,7 +824,7 @@ export function Wizard() {
 function MentorSelector({ mentors, selectedName, onSelect }: {
   mentors: { fullName: string; email: string; phone: string; username: string }[];
   selectedName: string;
-  onSelect: (mentor: { fullName: string; email: string; phone: string }) => void;
+  onSelect: (mentor: { fullName: string; email: string; phone: string; username: string }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');

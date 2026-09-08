@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/app-store';
-import { UserPlus, Mail, User, ShieldAlert, Plus, Power, PowerOff } from 'lucide-react';
+import { UserPlus, Mail, User, ShieldAlert, Plus, Power, PowerOff, Copy, Check, KeyRound } from 'lucide-react';
 import { API_BASE, SERVER_ORIGIN } from '@/lib/constants';
 import {
   Dialog,
@@ -20,6 +20,7 @@ export function MentorsTab() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const handleRegisterMentor = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +91,16 @@ export function MentorsTab() {
     }
   };
 
+  const handleCopy = async (text: string, fieldKey: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldKey);
+      setTimeout(() => setCopiedField(null), 1500);
+    } catch {
+      // fallback
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -115,6 +126,7 @@ export function MentorsTab() {
             <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
               <th className="p-4">Name</th>
               <th className="p-4">Email</th>
+              <th className="p-4">Password</th>
               <th className="p-4">Designation</th>
               <th className="p-4">Status</th>
               <th className="p-4 text-right">Actions</th>
@@ -139,7 +151,21 @@ export function MentorsTab() {
                     <span className="font-semibold text-foreground">{m.fullName}</span>
                   </div>
                 </td>
-                <td className="p-4 text-xs text-muted-foreground">{m.username}</td>
+                <td className="p-4 text-xs text-foreground font-medium">{m.username}</td>
+                <td className="p-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-foreground font-mono bg-muted/50 px-2 py-1 rounded border border-foreground/5">{m.password || '—'}</span>
+                    {m.password && (
+                      <button
+                        onClick={() => handleCopy(m.password!, `pw-${m._id}`)}
+                        className="p-1 rounded hover:bg-foreground/5 text-muted-foreground hover:text-foreground transition"
+                        title="Copy password"
+                      >
+                        {copiedField === `pw-${m._id}` ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td className="p-4 text-xs text-foreground font-medium">{m.title || 'Not set'}</td>
                 <td className="p-4">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -174,7 +200,7 @@ export function MentorsTab() {
             ))}
             {mentors.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                <td colSpan={6} className="p-8 text-center text-muted-foreground">
                   No mentors registered yet.
                 </td>
               </tr>

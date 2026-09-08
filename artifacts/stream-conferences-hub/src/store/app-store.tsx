@@ -6,8 +6,9 @@ import {
   useEffect,
   useRef,
   useState,
-  ReactNode,
-  FormEvent,
+  useCallback,
+  type FormEvent,
+  type ReactNode,
 } from 'react';
 import { useLocation } from 'wouter';
 import { io, type Socket } from 'socket.io-client';
@@ -20,16 +21,16 @@ import {
 import {
   Abstract,
   Blog,
+  BrochureLead,
   ChatMessage,
   ChatSession,
   Collaborator,
   Conference,
   Contact,
-  EventDetail,
+  EventDashboard,
   EventPageTab,
   EventType,
-  EventSponsor,
-  EventExhibitor,
+  EventPartner,
   Exhibitor,
   FAQ,
   LogoKind,
@@ -38,6 +39,7 @@ import {
   MentorProfile,
   Order,
   PartnerFormState,
+  OrganizingCommitteeMember,
   Registration,
   Tab,
   Track,
@@ -61,6 +63,11 @@ interface OrganizerContact {
   phone: string;
 }
 
+interface DashboardStats {
+  counts: { conferences: number; webinars: number; blogs: number; registrations: number; abstracts: number; confUpcoming: number; confPast: number; webUpcoming: number; webPast: number };
+  recent: { conferences: any[]; webinars: any[]; blogs: any[]; registrations: any[]; abstracts: any[] };
+}
+
 interface AppStoreValue {
   // Session
   user: User | null;
@@ -81,12 +88,14 @@ interface AppStoreValue {
   eventPageId: string | null;
   eventPageTab: EventPageTab;
   eventPage: Conference | Webinar | null;
+  currentEventLoading: boolean;
   openEventPage: (item: Conference | Webinar, type: EventType, tab?: EventPageTab) => void;
   closeEventPage: () => void;
   updateEventField: (field: string, value: any) => void;
 
   // Data lists
   loadingData: boolean;
+  dashboardStats: DashboardStats | null;
   conferences: Conference[];
   webinars: Webinar[];
   blogs: Blog[];
@@ -199,6 +208,8 @@ interface AppStoreValue {
   setWizardTitle: (v: string) => void;
   wizardDesc: () => string;
   setWizardDesc: (v: string) => void;
+  wizardTheme: () => string;
+  setWizardTheme: (v: string) => void;
   wizardStartDate: () => string;
   setWizardStartDate: (v: string) => void;
   wizardEndDate: () => string;
@@ -219,16 +230,19 @@ interface AppStoreValue {
   setWizardFees: (fees: FeeRow[]) => void;
   wizardOrg: () => OrganizerContact;
   setWizardOrg: (org: OrganizerContact) => void;
+  wizardMentor: () => string;
+  setWizardMentor: (v: string) => void;
+  selectMentor: (username: string) => void;
   wizardMedia: () => MediaAssetState;
   setWizardMedia: (m: SetStateAction<MediaAssetState>) => void;
   wizardTracks: () => Track[];
   setWizardTracks: (tracks: SetStateAction<Track[]>) => void;
   wizardFaqs: () => FAQ[];
   setWizardFaqs: (v: SetStateAction<FAQ[]>) => void;
-  wizardSponsors: () => EventSponsor[];
-  setWizardSponsors: (v: SetStateAction<EventSponsor[]>) => void;
-  wizardExhibitors: () => EventExhibitor[];
-  setWizardExhibitors: (v: SetStateAction<EventExhibitor[]>) => void;
+  wizardPartners: () => EventPartner[];
+  setWizardPartners: (v: SetStateAction<EventPartner[]>) => void;
+  wizardOrganizingCommittee: () => OrganizingCommitteeMember[];
+  setWizardOrganizingCommittee: (v: SetStateAction<OrganizingCommitteeMember[]>) => void;
   wizardGuidelines: () => string;
   setWizardGuidelines: (v: string) => void;
   wizardTerms: () => string;
@@ -242,20 +256,23 @@ interface AppStoreValue {
   addFaq: () => void;
   updateFaq: (index: number, field: keyof FAQ, value: string | number) => void;
   removeFaq: (index: number) => void;
-  addSponsor: () => void;
-  updateSponsor: (index: number, field: keyof EventSponsor, value: string) => void;
-  removeSponsor: (index: number) => void;
-  addExhibitor: () => void;
-  updateExhibitor: (index: number, field: keyof EventExhibitor, value: string) => void;
-  removeExhibitor: (index: number) => void;
+  addPartner: () => void;
+  updatePartner: (index: number, field: keyof EventPartner, value: string) => void;
+  removePartner: (index: number) => void;
+  addOrganizingCommitteeMember: () => void;
+  updateOrganizingCommitteeMember: (index: number, field: keyof OrganizingCommitteeMember, value: string) => void;
+  removeOrganizingCommitteeMember: (index: number) => void;
+  handleCommitteeMemberImageUpload: (index: number, file: File | null) => Promise<void>;
   addReferenceLink: (trackIndex: number) => void;
   updateReferenceLink: (trackIndex: number, linkIndex: number, field: 'label' | 'url', value: string) => void;
   removeReferenceLink: (trackIndex: number, linkIndex: number) => void;
   handleTrackImageUpload: (trackIndex: number, file: File | null) => Promise<void>;
-  handleSponsorLogoUpload: (index: number, file: File | null) => Promise<void>;
-  handleExhibitorLogoUpload: (index: number, file: File | null) => Promise<void>;
   handleMediaUpload: (kind: 'brochure' | 'banner' | 'logo', file: File | null) => Promise<void>;
   clearMedia: (kind: 'brochure' | 'banner' | 'logo') => void;
+  handleHeaderBannerUpload: (file: File | null) => Promise<void>;
+  removeHeaderBanner: (index: number) => void;
+  uploadHeaderBannerForEvent: (eventId: string, eventType: 'conference' | 'webinar', file: File) => Promise<void>;
+  removeHeaderBannerForEvent: (eventId: string, eventType: 'conference' | 'webinar', index: number) => Promise<void>;
 
   // Blog fields
   blogTitle: string;
@@ -303,13 +320,17 @@ interface AppStoreValue {
   changePassword: (newPassword: string) => Promise<void>;
 
   // Per-event data
-  eventDetail: EventDetail | null;
+  eventDashboard: EventDashboard | null;
+  eventParticipants: Registration[];
+  eventPayments: Order[];
   eventDetailLoading: boolean;
   eventDetailError: string;
   eventAbstracts: Abstract[];
   eventEnquiries: Contact[];
   eventAbstractsLoading: boolean;
   eventEnquiriesLoading: boolean;
+  eventBrochureLeads: BrochureLead[];
+  eventBrochureLeadsLoading: boolean;
   abstractActionLoading: string | null;
   handleAbstractAction: (id: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   viewingParticipant: Registration | null;
@@ -341,9 +362,11 @@ const EMPTY_MEDIA: MediaAssetState = {
   brochureUrl: '',
   bannerUrl: '',
   logoUrl: '',
+  headerBanners: [],
   brochurePreview: '',
   bannerPreview: '',
   logoPreview: '',
+  headerBannersPreviews: [],
 };
 
 const EMPTY_ORG: OrganizerContact = { name: '', email: '', phone: '' };
@@ -396,10 +419,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // Navigation
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  // Navigation — read initial tab from URL hash so refresh restores it
+  const VALID_TABS: Tab[] = [
+    'overview','conferences','webinars','blogs','registrations','abstracts',
+    'contacts','orders','mediaPartners','collaborators','venues',
+    'mentors','liveChat'
+  ];
+  const getTabFromHash = (): Tab => {
+    const hash = window.location.hash.replace('#', '');
+    return VALID_TABS.includes(hash as Tab) ? (hash as Tab) : 'overview';
+  };
+  const [activeTab, setActiveTab] = useState<Tab>(getTabFromHash);
 
   // Data lists
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -415,6 +448,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
+  // Cache: track when each tab's data was last fetched (skip re-fetch within 30s)
+  const lastFetched = useRef<Record<string, number>>({});
+  const CACHE_TTL = 30_000;
+
   // Modal / form state
   const [showForm, setShowForm] = useState(false);
   const [editingItemType, setEditingItemType] = useState<EditableType | null>(null);
@@ -422,7 +459,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
 
   // Event detail data
-  const [eventDetail, setEventDetail] = useState<EventDetail | null>(null);
+  const [eventDashboard, setEventDashboard] = useState<EventDashboard | null>(null);
+  const [eventParticipants, setEventParticipants] = useState<Registration[]>([]);
+  const [eventPayments, setEventPayments] = useState<Order[]>([]);
   const [eventDetailLoading, setEventDetailLoading] = useState(false);
   const [eventDetailError, setEventDetailError] = useState('');
 
@@ -437,6 +476,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Conference fields
   const [confTitle, setConfTitle] = useState('');
   const [confDesc, setConfDesc] = useState('');
+  const [confTheme, setConfTheme] = useState('');
   const [confLocation, setConfLocation] = useState('');
   const [confStartDate, setConfStartDate] = useState('');
   const [confEndDate, setConfEndDate] = useState('');
@@ -448,17 +488,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [confEndTime, setConfEndTime] = useState('');
   const [confFees, setConfFees] = useState<FeeRow[]>([]);
   const [confOrg, setConfOrg] = useState<OrganizerContact>(EMPTY_ORG);
+  const [wizardMentorUsername, setWizardMentorUsername] = useState('');
   const [confMedia, setConfMedia] = useState<MediaAssetState>(EMPTY_MEDIA);
   const [confTracks, setConfTracks] = useState<Track[]>([]);
   const [confFaqs, setConfFaqs] = useState<FAQ[]>([]);
-  const [confSponsors, setConfSponsors] = useState<EventSponsor[]>([]);
-  const [confExhibitors, setConfExhibitors] = useState<EventExhibitor[]>([]);
+  const [confPartners, setConfPartners] = useState<EventPartner[]>([]);
+  const [confOrganizingCommittee, setConfOrganizingCommittee] = useState<OrganizingCommitteeMember[]>([]);
   const [confGuidelines, setConfGuidelines] = useState('');
   const [confTerms, setConfTerms] = useState('');
 
   // Webinar fields
   const [webTitle, setWebTitle] = useState('');
   const [webDesc, setWebDesc] = useState('');
+  const [webTheme, setWebTheme] = useState('');
   const [webLocation, setWebLocation] = useState('');
   const [webSpeaker, setWebSpeaker] = useState('');
   const [webStartDate, setWebStartDate] = useState('');
@@ -474,8 +516,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [webMedia, setWebMedia] = useState<MediaAssetState>(EMPTY_MEDIA);
   const [webTracks, setWebTracks] = useState<Track[]>([]);
   const [webFaqs, setWebFaqs] = useState<FAQ[]>([]);
-  const [webSponsors, setWebSponsors] = useState<EventSponsor[]>([]);
-  const [webExhibitors, setWebExhibitors] = useState<EventExhibitor[]>([]);
+  const [webPartners, setWebPartners] = useState<EventPartner[]>([]);
+  const [webOrganizingCommittee, setWebOrganizingCommittee] = useState<OrganizingCommitteeMember[]>([]);
   const [webGuidelines, setWebGuidelines] = useState('');
   const [webTerms, setWebTerms] = useState('');
 
@@ -515,11 +557,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [eventEnquiries, setEventEnquiries] = useState<Contact[]>([]);
   const [eventAbstractsLoading, setEventAbstractsLoading] = useState(false);
   const [eventEnquiriesLoading, setEventEnquiriesLoading] = useState(false);
+  const [eventBrochureLeads, setEventBrochureLeads] = useState<BrochureLead[]>([]);
+  const [eventBrochureLeadsLoading, setEventBrochureLeadsLoading] = useState(false);
+  const [currentEvent, setCurrentEvent] = useState<Conference | Webinar | null>(null);
+  const [currentEventLoading, setCurrentEventLoading] = useState(false);
   const [abstractActionLoading, setAbstractActionLoading] = useState<string | null>(null);
 
   // URL-driven event page resolution
   const eventPageTab: EventPageTab =
-    (['dashboard', 'details', 'participants', 'payments', 'abstracts', 'enquiries'] as const).find(
+    (['dashboard', 'details', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
+      'speakers', 'tracks', 'program', 'itinerary', 'banners', 'faqs', 'partners',
+      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details'] as const).find(
       (t) => location.includes(`/${t}`),
     ) || 'dashboard';
   const eventPageType: EventType | null = location.startsWith('/conference/')
@@ -531,9 +579,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const isEventPage = Boolean(eventPageType && eventPageId);
 
   const eventPage: Conference | Webinar | null = isEventPage
-    ? eventPageType === 'conference'
-      ? conferences.find((c) => c._id === eventPageId) || null
-      : webinars.find((w) => w._id === eventPageId) || null
+    ? (currentEvent && currentEvent._id === eventPageId
+        ? currentEvent
+        : (eventPageType === 'conference'
+            ? conferences.find((c) => c._id === eventPageId) || null
+            : webinars.find((w) => w._id === eventPageId) || null))
     : null;
 
   const openEventPage = (
@@ -545,6 +595,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const closeEventPage = () => {
+    setCurrentEvent(null);
     navigate('/');
   };
 
@@ -567,6 +618,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       
       if (res.ok) {
         const updated = await res.json();
+        setCurrentEvent(updated);
         if (eventPageType === 'conference') {
           setConferences((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
         } else {
@@ -598,19 +650,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
     setActiveTab(tab);
     navigate('/');
+    window.location.hash = tab;
   };
 
   const resetWizardFields = () => {
-    setConfTitle(''); setConfDesc(''); setConfLocation(''); setConfStartDate(''); setConfEndDate('');
+    setConfTitle(''); setConfDesc(''); setConfTheme(''); setConfLocation(''); setConfStartDate(''); setConfEndDate('');
     setConfIsOnline(false); setConfVenue(''); setConfSubdomain(''); setConfOnlineLink('');
     setConfStartTime(''); setConfEndTime(''); setConfFees([]); setConfOrg(EMPTY_ORG);
     setConfMedia(EMPTY_MEDIA); setConfTracks([]);
-    setConfFaqs([]); setConfSponsors([]); setConfExhibitors([]); setConfGuidelines(''); setConfTerms('');
-    setWebTitle(''); setWebDesc(''); setWebLocation(''); setWebSpeaker('');
+    setWizardMentorUsername('');
+    setConfFaqs([]); setConfPartners([]); setConfOrganizingCommittee([]); setConfGuidelines(''); setConfTerms('');
+    setWebTitle(''); setWebDesc(''); setWebTheme(''); setWebLocation(''); setWebSpeaker('');
     setWebStartDate(''); setWebEndDate(''); setWebIsOnline(false); setWebVenue(''); setWebSubdomain(''); setWebOnlineLink('');
     setWebStartTime(''); setWebEndTime(''); setWebFees([]); setWebOrg(EMPTY_ORG);
     setWebMedia(EMPTY_MEDIA); setWebTracks([]);
-    setWebFaqs([]); setWebSponsors([]); setWebExhibitors([]); setWebGuidelines(''); setWebTerms('');
+    setWebFaqs([]); setWebPartners([]); setWebOrganizingCommittee([]); setWebGuidelines(''); setWebTerms('');
     setBlogTitle(''); setBlogLabel(''); setBlogCopy(''); setBlogContent('');
     setBlogBannerUrl(''); setBlogBannerPreview('');
   };
@@ -638,6 +692,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const loadTabData = async (tab: Tab) => {
     if (!user) return;
+    const now = Date.now();
+    const cacheKey = `tab:${tab}`;
+    if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
     setLoadingData(true);
     const headers: Record<string, string> = {
       'x-user-role': user.role,
@@ -653,25 +710,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       switch (tab) {
         case 'overview':
-          await fetchInto(`${API_BASE}/conferences`, setConferences);
-          await fetchInto(`${API_BASE}/webinars`, setWebinars);
-          await fetchInto(`${API_BASE}/blogs`, setBlogs);
-          if (isAdmin) {
-            await fetchInto(`${API_BASE}/registrations`, setRegistrations);
-            await fetchInto(`${API_BASE}/abstracts`, setAbstracts);
-            await fetchInto(`${API_BASE}/contacts`, setContacts);
-            await fetchInto(`${API_BASE}/orders`, setOrders);
-          }
+          await fetchInto(`${API_BASE}/stats`, setDashboardStats);
           break;
         case 'conferences':
-          await fetchInto(`${API_BASE}/conferences`, setConferences);
-          if (isAdmin) await fetchInto(`${API_BASE}/mentors`, setMentors);
-          await fetchInto(`${API_BASE}/venues`, setVenues);
+          await fetchInto(`${API_BASE}/conferences?summary=true`, setConferences);
           break;
         case 'webinars':
-          await fetchInto(`${API_BASE}/webinars`, setWebinars);
-          if (isAdmin) await fetchInto(`${API_BASE}/mentors`, setMentors);
-          await fetchInto(`${API_BASE}/venues`, setVenues);
+          await fetchInto(`${API_BASE}/webinars?summary=true`, setWebinars);
           break;
         case 'blogs':
           await fetchInto(`${API_BASE}/blogs`, setBlogs);
@@ -694,24 +739,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         case 'collaborators':
           await fetchInto(`${API_BASE}/collaborators`, setCollaborators);
           break;
-        case 'exhibitors':
-          await fetchInto(`${API_BASE}/exhibitors`, setExhibitors);
-          break;
         case 'venues':
           await fetchInto(`${API_BASE}/venues`, setVenues);
-          break;
-        case 'profile':
-          await loadProfile();
           break;
         case 'mentors':
           await fetchInto(`${API_BASE}/mentors`, setMentors);
           break;
         case 'liveChat':
-          // chat is loaded via socket; no REST fetch
+          await loadChatSessions();
           break;
         default:
           break;
       }
+      lastFetched.current[cacheKey] = Date.now();
     } catch (e) {
       console.error('Failed to load data from backend API server', e);
     } finally {
@@ -719,10 +759,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Kept for backward compatibility with post-mutation refreshes: reloads the current tab's data.
+  // Reloads current tab data. If on an event page, also refreshes that event.
   const refreshData = async () => {
     if (!user) return;
+    // Invalidate cache for current tab so it re-fetches
+    lastFetched.current[`tab:${activeTab}`] = 0;
     await loadTabData(activeTab);
+    // If on an event page, invalidate and re-fetch the single event
+    if (isEventPage && eventPageId && eventPageType) {
+      lastFetched.current[`evt:${eventPageId}:dashboard`] = 0;
+      lastFetched.current[`evt:${eventPageId}:participants`] = 0;
+      lastFetched.current[`evt:${eventPageId}:payments`] = 0;
+      lastFetched.current[`evt:${eventPageId}:abstracts`] = 0;
+      lastFetched.current[`evt:${eventPageId}:enquiries`] = 0;
+      const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+      try {
+        const res = await fetch(`${API_BASE}/${endpoint}/${eventPageId}`, {
+          headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        });
+        if (res.ok) setCurrentEvent(await res.json());
+      } catch { /* ignore */ }
+    }
   };
 
   const loadEventTabData = async () => {
@@ -733,20 +790,63 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
     const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
     const tab = eventPageTab;
+    const now = Date.now();
 
     try {
-      // dashboard (stats) / participants / payments all come from the participants endpoint
-      if (tab === 'dashboard' || tab === 'participants' || tab === 'payments') {
-        setEventDetail(null);
+      // dashboard tab - stats only
+      if (tab === 'dashboard') {
+        const cacheKey = `evt:${eventPage._id}:dashboard`;
+        if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
+        setEventDetailError('');
+        setEventDetailLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/dashboard`, { headers });
+          if (!res.ok) throw new Error('Failed to load event dashboard');
+          setEventDashboard(await res.json());
+          lastFetched.current[cacheKey] = Date.now();
+        } catch (err: any) {
+          console.error('Load event dashboard error:', err);
+          setEventDetailError(err.message || 'Failed to load event dashboard');
+        } finally {
+          setEventDetailLoading(false);
+        }
+      }
+
+      // participants tab - participants only
+      if (tab === 'participants') {
+        const cacheKey = `evt:${eventPage._id}:participants`;
+        if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
         setEventDetailError('');
         setEventDetailLoading(true);
         try {
           const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/participants`, { headers });
-          if (!res.ok) throw new Error('Failed to load event details');
-          setEventDetail(await res.json());
+          if (!res.ok) throw new Error('Failed to load participants');
+          const data = await res.json();
+          setEventParticipants(data.participants || []);
+          lastFetched.current[cacheKey] = Date.now();
         } catch (err: any) {
-          console.error('Load event details error:', err);
-          setEventDetailError(err.message || 'Failed to load event details');
+          console.error('Load participants error:', err);
+          setEventDetailError(err.message || 'Failed to load participants');
+        } finally {
+          setEventDetailLoading(false);
+        }
+      }
+
+      // payments tab - payments only
+      if (tab === 'payments') {
+        const cacheKey = `evt:${eventPage._id}:payments`;
+        if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
+        setEventDetailError('');
+        setEventDetailLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/payments`, { headers });
+          if (!res.ok) throw new Error('Failed to load payments');
+          const data = await res.json();
+          setEventPayments(data.payments || []);
+          lastFetched.current[cacheKey] = Date.now();
+        } catch (err: any) {
+          console.error('Load payments error:', err);
+          setEventDetailError(err.message || 'Failed to load payments');
         } finally {
           setEventDetailLoading(false);
         }
@@ -754,10 +854,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       // abstracts tab
       if (tab === 'abstracts') {
+        const cacheKey = `evt:${eventPage._id}:abstracts`;
+        if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
         setEventAbstractsLoading(true);
         try {
           const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/abstracts`, { headers });
           if (res.ok) setEventAbstracts(await res.json());
+          lastFetched.current[cacheKey] = Date.now();
         } catch (err) {
           console.error('Load event abstracts error:', err);
         } finally {
@@ -767,14 +870,33 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       // enquiries tab
       if (tab === 'enquiries') {
+        const cacheKey = `evt:${eventPage._id}:enquiries`;
+        if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
         setEventEnquiriesLoading(true);
         try {
           const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/enquiries`, { headers });
           if (res.ok) setEventEnquiries(await res.json());
+          lastFetched.current[cacheKey] = Date.now();
         } catch (err) {
           console.error('Load event enquiries error:', err);
         } finally {
           setEventEnquiriesLoading(false);
+        }
+      }
+
+      // brochure leads tab
+      if (tab === 'brochures') {
+        const cacheKey = `evt:${eventPage._id}:brochures`;
+        if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
+        setEventBrochureLeadsLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/brochure-requests?eventId=${eventPage._id}`, { headers });
+          if (res.ok) setEventBrochureLeads(await res.json());
+          lastFetched.current[cacheKey] = Date.now();
+        } catch (err) {
+          console.error('Load brochure leads error:', err);
+        } finally {
+          setEventBrochureLeadsLoading(false);
         }
       }
     } catch (err) {
@@ -925,6 +1047,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Sync tab from URL hash (handles browser back/forward and manual hash edits)
+  useEffect(() => {
+    // Set initial hash if missing
+    if (!window.location.hash) {
+      window.location.hash = activeTab;
+    }
+    const onHashChange = () => {
+      const tab = getTabFromHash();
+      setActiveTab((prev) => (prev === tab ? prev : tab));
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   // Realtime socket for the team member
   useEffect(() => {
     if (!user) return;
@@ -978,14 +1114,34 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (user) loadTabData(activeTab);
+    if (user && !isEventPage) loadTabData(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeTab]);
 
   useEffect(() => {
     loadEventTabData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventPageId, eventPageType, eventPageTab, user]);
+  }, [eventPageId, eventPageType, eventPageTab, user, currentEvent]);
+
+  // Fetch the full single event by ID when navigating to the event page,
+  // so the details/content tabs always have complete data.
+  useEffect(() => {
+    if (!isEventPage || !eventPageId || !eventPageType || !user) return;
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    const cacheKey = `evt:${eventPageId}:detail`;
+    const now = Date.now();
+    if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
+    let active = true;
+    setCurrentEventLoading(true);
+    fetch(`${API_BASE}/${endpoint}/${eventPageId}`, {
+      headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Not found'))))
+      .then((data) => { if (active) { setCurrentEvent(data); lastFetched.current[cacheKey] = Date.now(); } })
+      .catch(() => { if (active) setCurrentEvent(null); })
+      .finally(() => { if (active) setCurrentEventLoading(false); });
+    return () => { active = false; };
+  }, [isEventPage, eventPageId, eventPageType, user]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -1036,6 +1192,31 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardEditId(null);
     setWizardError('');
     setWizardOpen(true);
+    // Lazy-load mentors and venues for the wizard dropdowns
+    ensureMentorsAndVenues();
+  };
+
+  const ensureMentorsAndVenues = async () => {
+    if (!user) return;
+    const headers: Record<string, string> = {
+      'x-user-role': user.role,
+      'x-user-name': user.username,
+    };
+    const now = Date.now();
+    try {
+      const needs = [];
+      const mKey = 'wizard:mentors';
+      const vKey = 'wizard:venues';
+      if (!(lastFetched.current[mKey] && now - lastFetched.current[mKey] < CACHE_TTL)) {
+        needs.push(fetch(`${API_BASE}/mentors`, { headers }).then((r) => (r.ok ? r.json() : Promise.resolve(null))).then((d) => { if (d) { setMentors(d); lastFetched.current[mKey] = Date.now(); } }));
+      }
+      if (!(lastFetched.current[vKey] && now - lastFetched.current[vKey] < CACHE_TTL)) {
+        needs.push(fetch(`${API_BASE}/venues`, { headers }).then((r) => (r.ok ? r.json() : Promise.resolve(null))).then((d) => { if (d) { setVenues(d); lastFetched.current[vKey] = Date.now(); } }));
+      }
+      await Promise.all(needs);
+    } catch (err) {
+      console.error('Load mentors/venues for wizard error:', err);
+    }
   };
 
   const openEditForm = (item: any, type: EditableType) => {
@@ -1051,11 +1232,38 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setShowForm(true);
       return;
     }
+    if (type === 'conference' || type === 'webinar') {
+      populateEditWizard(item, type as 'conference' | 'webinar');
+      if (item._id) {
+        const endpoint = type === 'conference' ? 'conferences' : 'webinars';
+        fetch(`${API_BASE}/${endpoint}/${item._id}`, {
+          headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        })
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to load event'))))
+          .then((data) => populateEditWizard(data, type as 'conference' | 'webinar'))
+          .catch((err) => console.error('Fetch event for edit error:', err));
+      }
+      return;
+    }
+  };
+
+  const populateEditWizard = (item: any, type: 'conference' | 'webinar') => {
     resetWizardFields();
     setWizardType(type);
     setWizardEditId(item._id);
     setWizardError('');
     setWizardOpen(true);
+    ensureMentorsAndVenues();
+
+    // Pre-fill the assigned mentor (and its contact) when editing
+    if (item.assignedMentor) {
+      setWizardMentorUsername(item.assignedMentor);
+      const mentor = mentors.find((m) => m.username === item.assignedMentor);
+      if (mentor) {
+        const org = { name: mentor.fullName || item.assignedMentor, email: mentor.email || '', phone: mentor.phone || '' };
+        if (type === 'conference') setConfOrg(org); else setWebOrg(org);
+      }
+    }
 
     const mapTracks = (tracks: any[]): Track[] =>
       Array.isArray(tracks)
@@ -1083,15 +1291,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (type === 'conference') {
       setConfTitle(item.title);
       setConfDesc(item.description || '');
+      setConfTheme(item.theme || '');
       setConfLocation(item.location);
       setConfStartTime(item.startTime || '');
       setConfEndTime(item.endTime || '');
       setConfFees(Array.isArray(item.fees) ? item.fees.map((f: any) => ({ label: f.label || '', amount: Number(f.amount) || 0 })) : []);
       setConfTracks(mapTracks(item.tracks));
       setConfOrg({ name: item.organizerContact?.name || '', email: item.organizerContact?.email || '', phone: item.organizerContact?.phone || '' });
+      const confHeaderBanners = Array.isArray(item.headerBanners) ? item.headerBanners : [];
       setConfMedia({
         brochureUrl: item.brochureUrl || '', bannerUrl: item.bannerUrl || '', logoUrl: item.logoUrl || '',
+        headerBanners: confHeaderBanners,
         brochurePreview: mediaUrl(item.brochureUrl || ''), bannerPreview: mediaUrl(item.bannerUrl || ''), logoPreview: mediaUrl(item.logoUrl || ''),
+        headerBannersPreviews: confHeaderBanners.map((u: string) => mediaUrl(u)),
       });
       const parsedDates = parseStartAndEndDates(item.eventDate, item.day);
       setConfStartDate(parsedDates.start);
@@ -1102,13 +1314,37 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setConfVenue(loc.venue);
       setConfSubdomain(item.subdomain || '');
       setConfFaqs(Array.isArray(item.faqs) ? item.faqs : []);
-      setConfSponsors(Array.isArray(item.sponsors) ? item.sponsors : []);
-      setConfExhibitors(Array.isArray(item.exhibitors) ? item.exhibitors : []);
+      const confPartnerList = (Array.isArray(item.partners) && item.partners.length > 0)
+        ? item.partners
+        : (Array.isArray(item.sponsors) && item.sponsors.length > 0)
+          ? item.sponsors
+          : (Array.isArray(item.exhibitors) && item.exhibitors.length > 0)
+            ? item.exhibitors
+            : [];
+      setConfPartners(confPartnerList.map((p: any, idx: number) => ({
+        title: p.title || p.name || '',
+        order: typeof p.order === 'number' ? p.order : idx,
+      })));
+      setConfOrganizingCommittee(
+        Array.isArray(item.organizingCommittee)
+          ? item.organizingCommittee.map((m: any) => ({
+              name: m.name || '',
+              image: m.image || '',
+              imagePreview: mediaUrl(m.image || ''),
+              degree: m.degree || '',
+              specialization: m.specialization || '',
+              country: m.country || '',
+              biography: m.biography || '',
+              researchArea: m.researchArea || '',
+            }))
+          : []
+      );
       setConfGuidelines(item.guidelines || '');
       setConfTerms(item.termsAndConditions || '');
     } else if (type === 'webinar') {
       setWebTitle(item.title);
       setWebDesc(item.description || '');
+      setWebTheme(item.theme || '');
       setWebLocation(item.location);
       setWebSpeaker(item.speaker);
       setWebStartTime(item.startTime || '');
@@ -1116,9 +1352,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setWebFees(Array.isArray(item.fees) ? item.fees.map((f: any) => ({ label: f.label || '', amount: Number(f.amount) || 0 })) : []);
       setWebTracks(mapTracks(item.tracks));
       setWebOrg({ name: item.organizerContact?.name || '', email: item.organizerContact?.email || '', phone: item.organizerContact?.phone || '' });
+      const webHeaderBanners = Array.isArray(item.headerBanners) ? item.headerBanners : [];
       setWebMedia({
         brochureUrl: item.brochureUrl || '', bannerUrl: item.bannerUrl || '', logoUrl: item.logoUrl || '',
+        headerBanners: webHeaderBanners,
         brochurePreview: mediaUrl(item.brochureUrl || ''), bannerPreview: mediaUrl(item.bannerUrl || ''), logoPreview: mediaUrl(item.logoUrl || ''),
+        headerBannersPreviews: webHeaderBanners.map((u: string) => mediaUrl(u)),
       });
       const parsedDates = parseStartAndEndDates(item.eventDate, item.day);
       setWebStartDate(parsedDates.start);
@@ -1128,8 +1367,31 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setWebOnlineLink(loc.onlineLink);
       setWebVenue(loc.venue);
       setWebFaqs(Array.isArray(item.faqs) ? item.faqs : []);
-      setWebSponsors(Array.isArray(item.sponsors) ? item.sponsors : []);
-      setWebExhibitors(Array.isArray(item.exhibitors) ? item.exhibitors : []);
+      const webPartnerList = (Array.isArray(item.partners) && item.partners.length > 0)
+        ? item.partners
+        : (Array.isArray(item.sponsors) && item.sponsors.length > 0)
+          ? item.sponsors
+          : (Array.isArray(item.exhibitors) && item.exhibitors.length > 0)
+            ? item.exhibitors
+            : [];
+      setWebPartners(webPartnerList.map((p: any, idx: number) => ({
+        title: p.title || p.name || '',
+        order: typeof p.order === 'number' ? p.order : idx,
+      })));
+      setWebOrganizingCommittee(
+        Array.isArray(item.organizingCommittee)
+          ? item.organizingCommittee.map((m: any) => ({
+              name: m.name || '',
+              image: m.image || '',
+              imagePreview: mediaUrl(m.image || ''),
+              degree: m.degree || '',
+              specialization: m.specialization || '',
+              country: m.country || '',
+              biography: m.biography || '',
+              researchArea: m.researchArea || '',
+            }))
+          : []
+      );
       setWebGuidelines(item.guidelines || '');
       setWebTerms(item.termsAndConditions || '');
     }
@@ -1140,16 +1402,35 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setWizardFees = (fees: FeeRow[]) => (wizardType === 'conference' ? setConfFees(fees) : setWebFees(fees));
   const wizardOrg = () => (wizardType === 'conference' ? confOrg : webOrg);
   const setWizardOrg = (org: OrganizerContact) => (wizardType === 'conference' ? setConfOrg(org) : setWebOrg(org));
+  const wizardMentor = () => wizardMentorUsername;
+  const setWizardMentor = (v: string) => setWizardMentorUsername(v);
+  const selectMentor = (username: string) => {
+    setWizardMentorUsername(username);
+    const mentor = mentors.find((m) => m.username === username);
+    if (mentor) {
+      setWizardOrg({ name: mentor.fullName || username, email: mentor.email || '', phone: mentor.phone || '' });
+    }
+  };
+
+  // Once mentors load, pre-fill the organizer contact from the assigned mentor
+  useEffect(() => {
+    if (!wizardMentorUsername) return;
+    const mentor = mentors.find((m) => m.username === wizardMentorUsername);
+    if (mentor) {
+      setWizardOrg({ name: mentor.fullName || wizardMentorUsername, email: mentor.email || '', phone: mentor.phone || '' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mentors, wizardMentorUsername]);
   const wizardMedia = () => (wizardType === 'conference' ? confMedia : webMedia);
   const setWizardMedia = (m: SetStateAction<MediaAssetState>) => (wizardType === 'conference' ? setConfMedia(m) : setWebMedia(m));
   const wizardTracks = () => (wizardType === 'conference' ? confTracks : webTracks);
   const setWizardTracks = (tracks: SetStateAction<Track[]>) => (wizardType === 'conference' ? setConfTracks(tracks) : setWebTracks(tracks));
   const wizardFaqs = () => (wizardType === 'conference' ? confFaqs : webFaqs);
   const setWizardFaqs = (v: SetStateAction<FAQ[]>) => (wizardType === 'conference' ? setConfFaqs(v) : setWebFaqs(v));
-  const wizardSponsors = () => (wizardType === 'conference' ? confSponsors : webSponsors);
-  const setWizardSponsors = (v: SetStateAction<EventSponsor[]>) => (wizardType === 'conference' ? setConfSponsors(v) : setWebSponsors(v));
-  const wizardExhibitors = () => (wizardType === 'conference' ? confExhibitors : webExhibitors);
-  const setWizardExhibitors = (v: SetStateAction<EventExhibitor[]>) => (wizardType === 'conference' ? setConfExhibitors(v) : setWebExhibitors(v));
+  const wizardPartners = () => (wizardType === 'conference' ? confPartners : webPartners);
+  const setWizardPartners = (v: SetStateAction<EventPartner[]>) => (wizardType === 'conference' ? setConfPartners(v) : setWebPartners(v));
+  const wizardOrganizingCommittee = () => (wizardType === 'conference' ? confOrganizingCommittee : webOrganizingCommittee);
+  const setWizardOrganizingCommittee = (v: SetStateAction<OrganizingCommitteeMember[]>) => (wizardType === 'conference' ? setConfOrganizingCommittee(v) : setWebOrganizingCommittee(v));
   const wizardGuidelines = () => (wizardType === 'conference' ? confGuidelines : webGuidelines);
   const setWizardGuidelines = (v: string) => (wizardType === 'conference' ? setConfGuidelines(v) : setWebGuidelines(v));
   const wizardTerms = () => (wizardType === 'conference' ? confTerms : webTerms);
@@ -1158,6 +1439,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setWizardTitle = (v: string) => (wizardType === 'conference' ? setConfTitle(v) : setWebTitle(v));
   const wizardDesc = () => (wizardType === 'conference' ? confDesc : webDesc);
   const setWizardDesc = (v: string) => (wizardType === 'conference' ? setConfDesc(v) : setWebDesc(v));
+  const wizardTheme = () => (wizardType === 'conference' ? confTheme : webTheme);
+  const setWizardTheme = (v: string) => (wizardType === 'conference' ? setConfTheme(v) : setWebTheme(v));
   const wizardStartDate = () => (wizardType === 'conference' ? confStartDate : webStartDate);
   const setWizardStartDate = (v: string) => (wizardType === 'conference' ? setConfStartDate(v) : setWebStartDate(v));
   const wizardEndDate = () => (wizardType === 'conference' ? confEndDate : webEndDate);
@@ -1192,21 +1475,48 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   };
   const removeFaq = (index: number) => setWizardFaqs(wizardFaqs().filter((_, i) => i !== index));
 
-  const addSponsor = () => setWizardSponsors([...wizardSponsors(), { name: '', logo: '', website: '', description: '', tier: 'supporter', order: 0 }]);
-  const updateSponsor = (index: number, field: keyof EventSponsor, value: string) => {
-    const next = [...wizardSponsors()];
+  const addPartner = () => setWizardPartners([...wizardPartners(), { title: '', order: 0 }]);
+  const updatePartner = (index: number, field: keyof EventPartner, value: string) => {
+    const next = [...wizardPartners()];
     next[index] = { ...next[index], [field]: value };
-    setWizardSponsors(next);
+    setWizardPartners(next);
   };
-  const removeSponsor = (index: number) => setWizardSponsors(wizardSponsors().filter((_, i) => i !== index));
+  const removePartner = (index: number) => setWizardPartners(wizardPartners().filter((_, i) => i !== index));
 
-  const addExhibitor = () => setWizardExhibitors([...wizardExhibitors(), { name: '', logo: '', website: '', description: '', boothNumber: '', contactEmail: '', order: 0 }]);
-  const updateExhibitor = (index: number, field: keyof EventExhibitor, value: string) => {
-    const next = [...wizardExhibitors()];
+  const addOrganizingCommitteeMember = () => setWizardOrganizingCommittee([...wizardOrganizingCommittee(), { name: '', image: '', imagePreview: '', degree: '', specialization: '', country: '', biography: '', researchArea: '' }]);
+  const updateOrganizingCommitteeMember = (index: number, field: keyof OrganizingCommitteeMember, value: string) => {
+    const next = [...wizardOrganizingCommittee()];
     next[index] = { ...next[index], [field]: value };
-    setWizardExhibitors(next);
+    setWizardOrganizingCommittee(next);
   };
-  const removeExhibitor = (index: number) => setWizardExhibitors(wizardExhibitors().filter((_, i) => i !== index));
+  const removeOrganizingCommitteeMember = (index: number) => setWizardOrganizingCommittee(wizardOrganizingCommittee().filter((_, i) => i !== index));
+  const handleCommitteeMemberImageUpload = async (index: number, file: File | null) => {
+    if (!file || !user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = [...wizardOrganizingCommittee()];
+      next[index].imagePreview = String(reader.result || '');
+      setWizardOrganizingCommittee(next);
+    };
+    reader.readAsDataURL(file);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const next = [...wizardOrganizingCommittee()];
+      next[index].image = data.url;
+      setWizardOrganizingCommittee(next);
+    } catch (err) {
+      console.error('Committee member image upload error:', err);
+      alert('Failed to upload image');
+    }
+  };
 
   const addTrack = () =>
     setWizardTracks([...wizardTracks(), { title: '', description: '', image: '', imagePreview: '', referenceLinks: [] }]);
@@ -1261,62 +1571,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleSponsorLogoUpload = async (index: number, file: File | null) => {
-    if (!file || !user) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const next = [...wizardSponsors()];
-      next[index].logoPreview = String(reader.result || '');
-      setWizardSponsors(next);
-    };
-    reader.readAsDataURL(file);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch(`${API_BASE}/uploads/upload`, {
-        method: 'POST',
-        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
-        body: fd,
-      });
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
-      const next = [...wizardSponsors()];
-      next[index].logo = data.url;
-      setWizardSponsors(next);
-    } catch (err) {
-      console.error('Sponsor logo upload error:', err);
-      alert('Failed to upload sponsor logo');
-    }
-  };
-
-  const handleExhibitorLogoUpload = async (index: number, file: File | null) => {
-    if (!file || !user) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const next = [...wizardExhibitors()];
-      next[index].logoPreview = String(reader.result || '');
-      setWizardExhibitors(next);
-    };
-    reader.readAsDataURL(file);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch(`${API_BASE}/uploads/upload`, {
-        method: 'POST',
-        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
-        body: fd,
-      });
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
-      const next = [...wizardExhibitors()];
-      next[index].logo = data.url;
-      setWizardExhibitors(next);
-    } catch (err) {
-      console.error('Exhibitor logo upload error:', err);
-      alert('Failed to upload exhibitor logo');
-    }
-  };
-
   const handleMediaUpload = async (kind: 'brochure' | 'banner' | 'logo', file: File | null) => {
     if (!file || !user) return;
     const reader = new FileReader();
@@ -1344,6 +1598,104 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const clearMedia = (kind: 'brochure' | 'banner' | 'logo') => {
     setWizardMedia((cur: MediaAssetState) => ({ ...cur, [`${kind}Url`]: '', [`${kind}Preview`]: '' }));
+  };
+
+  const handleHeaderBannerUpload = async (file: File | null) => {
+    if (!file || !user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const preview = String(reader.result || '');
+      setWizardMedia((cur: MediaAssetState) => ({
+        ...cur,
+        headerBannersPreviews: [...(cur.headerBannersPreviews || []), preview],
+      }));
+    };
+    reader.readAsDataURL(file);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      setWizardMedia((cur: MediaAssetState) => ({
+        ...cur,
+        headerBanners: [...(cur.headerBanners || []), data.url],
+      }));
+    } catch (err) {
+      console.error('Header banner upload error:', err);
+      alert('Failed to upload header banner');
+    }
+  };
+
+  const removeHeaderBanner = (index: number) => {
+    setWizardMedia((cur: MediaAssetState) => ({
+      ...cur,
+      headerBanners: (cur.headerBanners || []).filter((_, i) => i !== index),
+      headerBannersPreviews: (cur.headerBannersPreviews || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const uploadHeaderBannerForEvent = async (eventId: string, eventType: 'conference' | 'webinar', file: File) => {
+    if (!file || !user || !eventId) return;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const currentBanners = (eventPage as any)?.headerBanners || [];
+      const updatedBanners = [...currentBanners, data.url];
+      const ep = eventType === 'conference' ? 'conferences' : 'webinars';
+      const patchRes = await fetch(`${API_BASE}/${ep}/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify({ headerBanners: updatedBanners }),
+      });
+      if (!patchRes.ok) throw new Error('Failed to update event header banners');
+      const updatedEvent = await patchRes.json();
+      setCurrentEvent(updatedEvent);
+      refreshData();
+    } catch (err) {
+      console.error('Upload event header banner error:', err);
+      alert('Failed to upload header banner');
+    }
+  };
+
+  const removeHeaderBannerForEvent = async (eventId: string, eventType: 'conference' | 'webinar', index: number) => {
+    if (!user || !eventId) return;
+    try {
+      const currentBanners = (eventPage as any)?.headerBanners || [];
+      const updatedBanners = currentBanners.filter((_: any, i: number) => i !== index);
+      const ep = eventType === 'conference' ? 'conferences' : 'webinars';
+      const patchRes = await fetch(`${API_BASE}/${ep}/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify({ headerBanners: updatedBanners }),
+      });
+      if (!patchRes.ok) throw new Error('Failed to update event header banners');
+      const updatedEvent = await patchRes.json();
+      setCurrentEvent(updatedEvent);
+      refreshData();
+    } catch (err) {
+      console.error('Remove event header banner error:', err);
+      alert('Failed to remove header banner');
+    }
   };
 
   const handleBlogBannerUpload = async (file: File | null) => {
@@ -1412,6 +1764,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const bodyData: any = {
         title: wizardTitle(),
         description: wizardDesc(),
+        theme: wizardTheme(),
         day,
         month,
         location,
@@ -1425,6 +1778,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         brochureUrl: wizardMedia().brochureUrl,
         bannerUrl: wizardMedia().bannerUrl,
         logoUrl: wizardMedia().logoUrl,
+        headerBanners: wizardMedia().headerBanners || [],
         fees: wizardFees().filter((f) => f.label.trim() && f.amount > 0),
         tracks: wizardTracks().filter((t) => t.title.trim()).map((t) => ({
           title: t.title,
@@ -1433,9 +1787,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           referenceLinks: t.referenceLinks.filter((l) => l.url.trim()),
         })),
         organizerContact: wizardOrg(),
+        assignedMentor: wizardMentor() || null,
         faqs: wizardFaqs().filter((f) => f.question.trim()),
-        sponsors: wizardSponsors().filter((s) => s.name.trim()).map(({ logoPreview, ...rest }) => rest),
-        exhibitors: wizardExhibitors().filter((e) => e.name.trim()).map(({ logoPreview, ...rest }) => rest),
+        partners: wizardPartners().filter((p) => p.title.trim()),
+        organizingCommittee: wizardOrganizingCommittee().filter((m) => (m.name || m.degree || m.specialization || m.country || m.biography || m.researchArea || m.image)),
         guidelines: wizardGuidelines(),
         termsAndConditions: wizardTerms(),
       };
@@ -1742,6 +2097,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setAssignTarget(item);
     setAssignUsername(item.assignedMentor || '');
     setAssignOpen(true);
+    ensureMentorsAndVenues();
   };
 
   const closeAssignMentor = () => {
@@ -1792,10 +2148,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     eventPageId,
     eventPageTab,
     eventPage,
+    currentEventLoading,
     openEventPage,
     closeEventPage,
     updateEventField,
     loadingData,
+    dashboardStats,
     conferences,
     webinars,
     blogs,
@@ -1898,6 +2256,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardTitle,
     wizardDesc,
     setWizardDesc,
+    wizardTheme,
+    setWizardTheme,
     wizardStartDate,
     setWizardStartDate,
     wizardEndDate,
@@ -1918,16 +2278,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardFees,
     wizardOrg,
     setWizardOrg,
+    wizardMentor,
+    setWizardMentor,
+    selectMentor,
     wizardMedia,
     setWizardMedia,
     wizardTracks,
     setWizardTracks,
     wizardFaqs,
     setWizardFaqs,
-    wizardSponsors,
-    setWizardSponsors,
-    wizardExhibitors,
-    setWizardExhibitors,
+    wizardPartners,
+    setWizardPartners,
+    wizardOrganizingCommittee,
+    setWizardOrganizingCommittee,
     wizardGuidelines,
     setWizardGuidelines,
     wizardTerms,
@@ -1944,17 +2307,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     addFaq,
     updateFaq,
     removeFaq,
-    addSponsor,
-    updateSponsor,
-    removeSponsor,
-    addExhibitor,
-    updateExhibitor,
-    removeExhibitor,
+    addPartner,
+    updatePartner,
+    removePartner,
+    addOrganizingCommitteeMember,
+    updateOrganizingCommitteeMember,
+    removeOrganizingCommitteeMember,
+    handleCommitteeMemberImageUpload,
     handleTrackImageUpload,
-    handleSponsorLogoUpload,
-    handleExhibitorLogoUpload,
     handleMediaUpload,
     clearMedia,
+    handleHeaderBannerUpload,
+    removeHeaderBanner,
+    uploadHeaderBannerForEvent,
+    removeHeaderBannerForEvent,
     blogTitle,
     setBlogTitle,
     blogLabel,
@@ -1994,13 +2360,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     saveProfile,
     handleProfileAvatarUpload,
     changePassword,
-    eventDetail,
+    eventDashboard,
+    eventParticipants,
+    eventPayments,
     eventDetailLoading,
     eventDetailError,
     eventAbstracts,
     eventEnquiries,
     eventAbstractsLoading,
     eventEnquiriesLoading,
+    eventBrochureLeads,
+    eventBrochureLeadsLoading,
     abstractActionLoading,
     handleAbstractAction,
     viewingParticipant,

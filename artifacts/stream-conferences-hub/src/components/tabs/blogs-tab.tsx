@@ -26,7 +26,6 @@ export function BlogsTab() {
               <th className="p-4">Label</th>
               <th className="p-4">Title</th>
               <th className="p-4">Excerpt</th>
-              <th className="p-4">Publisher</th>
               <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -36,7 +35,6 @@ export function BlogsTab() {
                 <td className="p-4 font-mono font-medium text-xs uppercase tracking-wider text-accent">{blog.label}</td>
                 <td className="p-4 font-semibold">{blog.title}</td>
                 <td className="p-4 text-xs text-muted-foreground max-w-xs truncate">{blog.copy}</td>
-                <td className="p-4 text-xs font-semibold">{blog.announcedBy}</td>
                 <td className="p-4 text-right space-x-2">
                   <button onClick={() => openEditForm(blog, 'blog')} className="p-1 hover:text-secondary inline-block">
                     <Edit size={14} />
@@ -49,7 +47,7 @@ export function BlogsTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground">No blog posts written.</td>
+                <td colSpan={4} className="p-8 text-center text-muted-foreground">No blog posts written.</td>
               </tr>
             )}
           </tbody>

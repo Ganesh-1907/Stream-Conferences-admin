@@ -30,7 +30,6 @@ export function WebinarsTab() {
               <th className="p-4">Title</th>
               <th className="p-4">Speaker</th>
               <th className="p-4">Location</th>
-              <th className="p-4">Announced By</th>
               <th className="p-4">Assigned Mentor</th>
               <th className="p-4 text-right rounded-tr-xl">Actions</th>
             </tr>
@@ -45,8 +44,7 @@ export function WebinarsTab() {
                 <td className="p-4 font-semibold">{web.title}</td>
                 <td className="p-4 text-xs font-bold text-accent">{web.speaker}</td>
                 <td className="p-4 text-xs text-muted-foreground">{web.location}</td>
-                <td className="p-4 text-xs font-semibold">{web.announcedBy}</td>
-                <td className="p-4 text-xs font-semibold text-accent">{web.assignedMentor || '—'}</td>
+                <td className="p-4 text-xs font-semibold text-accent">{web.mentorName || web.assignedMentor || '—'}</td>
                 <td className="p-4 text-right relative">
                   <div className="flex items-center justify-end gap-1">
                     {subdomainUrlFor(web) && (
@@ -115,7 +113,7 @@ export function WebinarsTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-muted-foreground">No webinars scheduled.</td>
+                <td colSpan={6} className="p-8 text-center text-muted-foreground">No webinars scheduled.</td>
               </tr>
             )}
           </tbody>

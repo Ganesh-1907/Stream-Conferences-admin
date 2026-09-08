@@ -1,4 +1,4 @@
-import { MoreVertical, Plus, ExternalLink, UserPlus } from 'lucide-react';
+import { Plus, MoreVertical, ExternalLink, UserPlus } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { subdomainUrlFor } from '@/lib/utils';
 import { usePagination } from '@/hooks/use-pagination';
@@ -29,7 +29,6 @@ export function ConferencesTab() {
               <th className="p-4 rounded-tl-xl">Schedule</th>
               <th className="p-4">Title</th>
               <th className="p-4">Location</th>
-              <th className="p-4">Announced By</th>
               <th className="p-4">Mentor</th>
               <th className="p-4">Status</th>
               <th className="p-4 text-right rounded-tr-xl">Actions</th>
@@ -44,8 +43,7 @@ export function ConferencesTab() {
                 </td>
                 <td className="p-4 font-semibold">{conf.title}</td>
                 <td className="p-4 text-xs text-muted-foreground">{conf.location}</td>
-                <td className="p-4 text-xs font-semibold">{conf.announcedBy}</td>
-                <td className="p-4 text-xs font-semibold text-accent">{conf.assignedMentor || '—'}</td>
+                <td className="p-4 text-xs font-semibold text-accent">{conf.mentorName || conf.assignedMentor || '—'}</td>
                 <td className="p-4 capitalize">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${conf.date === 'upcoming' ? 'bg-green-500/10 text-green-500' : 'bg-foreground/10 text-muted-foreground'}`}>
                     {conf.date}
@@ -91,7 +89,7 @@ export function ConferencesTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-muted-foreground">No conferences managed yet.</td>
+                <td colSpan={6} className="p-8 text-center text-muted-foreground">No conferences managed yet.</td>
               </tr>
             )}
           </tbody>

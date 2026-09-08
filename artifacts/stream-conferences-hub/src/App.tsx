@@ -21,9 +21,7 @@ import { OrdersTab } from '@/components/tabs/orders-tab';
 import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { MediaPartnersTab } from '@/components/tabs/media-partners-tab';
 import { CollaboratorsTab } from '@/components/tabs/collaborators-tab';
-import { ExhibitorsTab } from '@/components/tabs/exhibitors-tab';
 import { VenuesTab } from '@/components/tabs/venues-tab';
-import { ProfileTab } from '@/components/tabs/profile-tab';
 import { MentorsTab } from '@/components/tabs/mentors-tab';
 
 export default function App() {
@@ -92,12 +90,8 @@ function TabPanel() {
       return <MediaPartnersTab />;
     case 'collaborators':
       return <CollaboratorsTab />;
-    case 'exhibitors':
-      return <ExhibitorsTab />;
     case 'venues':
       return store.user?.role === 'admin' ? <VenuesTab /> : null;
-    case 'profile':
-      return <ProfileTab />;
     case 'registrations':
       return store.user?.role === 'admin' ? <RegistrationsTab /> : null;
     case 'abstracts':
