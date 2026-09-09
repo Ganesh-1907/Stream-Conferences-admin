@@ -3,8 +3,8 @@ import { LoginPanel } from '@/components/login-panel';
 import { ResetPasswordPanel } from '@/components/reset-password-panel';
 import { ForceChangePasswordPanel } from '@/components/force-change-password-panel';
 import { Header } from '@/components/header';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 import { useLocation } from 'wouter';
-import { Sidebar } from '@/components/sidebar';
 import { Wizard } from '@/components/wizard';
 import { EventPage } from '@/components/event-page';
 import { BlogFormModal } from '@/components/blog-form-modal';
@@ -14,10 +14,6 @@ import { OverviewTab } from '@/components/tabs/overview-tab';
 import { ConferencesTab } from '@/components/tabs/conferences-tab';
 import { WebinarsTab } from '@/components/tabs/webinars-tab';
 import { BlogsTab } from '@/components/tabs/blogs-tab';
-import { RegistrationsTab } from '@/components/tabs/registrations-tab';
-import { AbstractsTab } from '@/components/tabs/abstracts-tab';
-import { ContactsTab } from '@/components/tabs/contacts-tab';
-import { OrdersTab } from '@/components/tabs/orders-tab';
 import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { MediaPartnersTab } from '@/components/tabs/media-partners-tab';
 import { CollaboratorsTab } from '@/components/tabs/collaborators-tab';
@@ -49,21 +45,28 @@ function Root() {
   return (
     <div className="site-shell min-h-screen bg-background flex flex-col">
       <Header />
+      <Breadcrumbs />
 
-      <div className="flex-1 flex w-full px-6 py-8 gap-8">
-        <Sidebar />
-
-        <main className="flex-1 min-w-0 bg-card border border-foreground/10 rounded-2xl p-8 shadow-sm">
-          {store.wizardOpen && store.wizardType && <Wizard />}
-          {!store.wizardOpen && store.eventPage && store.eventPageType && <EventPage />}
-          {!store.wizardOpen && !store.eventPage && <TabPanel />}
-        </main>
+      <div className="flex-1 w-full px-6 py-6">
+        {store.wizardOpen && store.wizardType && (
+          <main className="w-full bg-card border border-foreground/10 rounded-2xl p-8 shadow-sm">
+            <Wizard />
+          </main>
+        )}
+        {!store.wizardOpen && store.eventPage && store.eventPageType && (
+          <EventPage />
+        )}
+        {!store.wizardOpen && !store.eventPage && (
+          <main className="w-full bg-card border border-foreground/10 rounded-2xl p-8 shadow-sm">
+            <TabPanel />
+          </main>
+        )}
       </div>
 
-      <footer className="footer bg-card border-t border-foreground/10 py-6 mt-auto">
-        <div className="w-full px-6 text-center text-xs text-muted-foreground flex justify-between items-center">
-          <span>© 2027 Stream Conferences Admin Dashboard</span>
-          <span>Unified Data Layer</span>
+      <footer className="footer py-4 mt-auto border-t border-primary/20 dark:border-foreground/10">
+        <div className="w-full px-6 text-xs text-white dark:text-foreground font-medium flex flex-col sm:flex-row justify-between items-center gap-2">
+          <span>© {new Date().getFullYear()} Stream Conferences. All rights reserved.</span>
+          <span className="font-semibold text-white/90 dark:text-foreground/80">Developed by BYV</span>
         </div>
       </footer>
 
@@ -92,14 +95,6 @@ function TabPanel() {
       return <CollaboratorsTab />;
     case 'venues':
       return store.user?.role === 'admin' ? <VenuesTab /> : null;
-    case 'registrations':
-      return store.user?.role === 'admin' ? <RegistrationsTab /> : null;
-    case 'abstracts':
-      return store.user?.role === 'admin' ? <AbstractsTab /> : null;
-    case 'contacts':
-      return store.user?.role === 'admin' ? <ContactsTab /> : null;
-    case 'orders':
-      return store.user?.role === 'admin' ? <OrdersTab /> : null;
     case 'mentors':
       return store.user?.role === 'admin' ? <MentorsTab /> : null;
     case 'liveChat':

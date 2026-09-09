@@ -23,6 +23,7 @@ export function BlogsTab() {
         <table className="w-full text-left border-collapse text-sm">
           <thead>
             <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
+              <th className="p-4">ID</th>
               <th className="p-4">Label</th>
               <th className="p-4">Title</th>
               <th className="p-4">Excerpt</th>
@@ -32,6 +33,7 @@ export function BlogsTab() {
           <tbody>
             {paginatedItems.map((blog) => (
               <tr key={blog._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
+                <td className="p-4 font-mono text-xs font-bold text-accent">{blog.eventId || '—'}</td>
                 <td className="p-4 font-mono font-medium text-xs uppercase tracking-wider text-accent">{blog.label}</td>
                 <td className="p-4 font-semibold">{blog.title}</td>
                 <td className="p-4 text-xs text-muted-foreground max-w-xs truncate">{blog.copy}</td>
@@ -47,7 +49,7 @@ export function BlogsTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-muted-foreground">No blog posts written.</td>
+                <td colSpan={5} className="p-8 text-center text-muted-foreground">No blog posts written.</td>
               </tr>
             )}
           </tbody>

@@ -42,6 +42,25 @@ export const subdomainUrlFor = (item: Conference | Webinar): string | null => {
   return `${protocol}://${item.subdomain}.${ROOT_DOMAIN}`;
 };
 
+export const cohortSubdomainUrlFor = (subdomain: string | null | undefined): string | null => {
+  if (!subdomain) return null;
+  const protocol = ROOT_DOMAIN === 'localhost' ? 'http' : 'https';
+  return `${protocol}://${subdomain}.${ROOT_DOMAIN}`;
+};
+
+// Build the public site URL for a specific cohort. Cohorts are path-scoped under
+// the parent event's subdomain, e.g. https://event.localhost/2026 and /2026/2.
+export const cohortSiteUrlFor = (
+  eventSubdomain: string | null | undefined,
+  cohort: { year: number; batchNo: number; isCurrent?: boolean },
+): string | null => {
+  if (!eventSubdomain) return null;
+  const protocol = ROOT_DOMAIN === 'localhost' ? 'http' : 'https';
+  const base = `${protocol}://${eventSubdomain}.${ROOT_DOMAIN}`;
+  if (cohort.isCurrent) return `${base}/${cohort.year}`;
+  return `${base}/${cohort.year}/${cohort.batchNo}`;
+};
+
 export const registerLinkFor = (item: Conference | Webinar): string =>
   subdomainUrlFor(item) ||
   item.registrationLink ||

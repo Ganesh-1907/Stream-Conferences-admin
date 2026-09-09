@@ -15,18 +15,14 @@ export function ConferencesTab() {
           <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Conferences</h1>
           <p className="text-sm text-muted-foreground">Announce and oversee global conference schedules.</p>
         </div>
-        {user?.role === 'admin' && (
-          <button onClick={() => openAddForm('conference')} className="cta-button">
-            <Plus size={14} /> Add Conference
-          </button>
-        )}
       </div>
 
       <div className="border border-foreground/10 rounded-xl">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10">
-              <th className="p-4 rounded-tl-xl">Schedule</th>
+              <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10">
+              <th className="p-4 rounded-tl-xl">ID</th>
+              <th className="p-4">Schedule</th>
               <th className="p-4">Title</th>
               <th className="p-4">Location</th>
               <th className="p-4">Mentor</th>
@@ -37,11 +33,18 @@ export function ConferencesTab() {
           <tbody>
             {paginatedItems.map((conf) => (
               <tr key={conf._id} className="border-b border-foreground/5 bg-card hover:bg-foreground/[0.015] last:border-0 transition-colors">
+                <td className="p-4 font-mono text-xs font-bold text-accent">{conf.eventId || '—'}</td>
                 <td className="p-4 font-mono font-medium">
                   {conf.month} {conf.day}
                   {conf.eventDate && <div className="text-[10px] text-muted-foreground mt-1">{new Date(conf.eventDate).toLocaleDateString()}</div>}
                 </td>
-                <td className="p-4 font-semibold">{conf.title}</td>
+                <td
+                  className="p-4 font-semibold text-foreground hover:text-primary cursor-pointer transition"
+                  onClick={() => openEventPage(conf, 'conference', 'details', 'view')}
+                  title="Click to view conference details"
+                >
+                  {conf.title}
+                </td>
                 <td className="p-4 text-xs text-muted-foreground">{conf.location}</td>
                 <td className="p-4 text-xs font-semibold text-accent">{conf.mentorName || conf.assignedMentor || '—'}</td>
                 <td className="p-4 capitalize">
@@ -76,11 +79,12 @@ export function ConferencesTab() {
                       id={conf._id}
                       activeId={activeDropdownId}
                       onToggle={setActiveDropdownId}
-                      onViewDetails={() => openEventPage(conf, 'conference', 'details')}
-                      onEdit={() => openEditForm(conf, 'conference')}
-                      onDashboard={() => openEventPage(conf, 'conference', 'dashboard')}
-                      onParticipants={() => openEventPage(conf, 'conference', 'participants')}
-                      onPayments={() => openEventPage(conf, 'conference', 'payments')}
+                      onViewDetails={() => openEventPage(conf, 'conference', 'details', 'view')}
+                      onEdit={() => openEventPage(conf, 'conference', 'details', 'edit')}
+                      onDashboard={() => openEventPage(conf, 'conference', 'dashboard', 'view')}
+                      onParticipants={() => openEventPage(conf, 'conference', 'participants', 'view')}
+                      onPayments={() => openEventPage(conf, 'conference', 'payments', 'view')}
+                      onCohorts={() => openEventPage(conf, 'conference', 'cohorts', 'view')}
                       onDelete={() => handleDeleteItem(conf._id, 'conferences')}
                     />
                   </div>
@@ -89,7 +93,7 @@ export function ConferencesTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground">No conferences managed yet.</td>
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">No conferences managed yet.</td>
               </tr>
             )}
           </tbody>
@@ -109,6 +113,7 @@ function ActionDropdown({
   onDashboard,
   onParticipants,
   onPayments,
+  onCohorts,
   onDelete,
 }: {
   id: string;
@@ -119,6 +124,7 @@ function ActionDropdown({
   onDashboard: () => void;
   onParticipants: () => void;
   onPayments: () => void;
+  onCohorts: () => void;
   onDelete: () => void;
 }) {
   return (
@@ -149,6 +155,7 @@ function ActionDropdown({
             <MenuItem label="Dashboard" onClick={onDashboard} />
             <MenuItem label="Participants" onClick={onParticipants} />
             <MenuItem label="Payments" onClick={onPayments} />
+            <MenuItem label="Cohorts" onClick={onCohorts} />
             <div className="border-t border-foreground/5 my-1" />
             <button
               type="button"

@@ -15,18 +15,14 @@ export function WebinarsTab() {
           <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Webinars</h1>
           <p className="text-sm text-muted-foreground">List and organize digital panel talks and webinars.</p>
         </div>
-        {user?.role === 'admin' && (
-          <button onClick={() => openAddForm('webinar')} className="cta-button">
-            <Plus size={14} /> Add Webinar
-          </button>
-        )}
       </div>
 
       <div className="border border-foreground/10 rounded-xl">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10">
-              <th className="p-4 rounded-tl-xl">Date</th>
+              <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10">
+              <th className="p-4 rounded-tl-xl">ID</th>
+              <th className="p-4">Date</th>
               <th className="p-4">Title</th>
               <th className="p-4">Speaker</th>
               <th className="p-4">Location</th>
@@ -37,11 +33,18 @@ export function WebinarsTab() {
           <tbody>
             {paginatedItems.map((web) => (
               <tr key={web._id} className="border-b border-foreground/5 bg-card hover:bg-foreground/[0.015] last:border-0 transition-colors">
+                <td className="p-4 font-mono text-xs font-bold text-accent">{web.eventId || '—'}</td>
                 <td className="p-4 font-mono font-medium">
                   {web.month} {web.day}
                   {web.eventDate && <div className="text-[10px] text-muted-foreground mt-1">{new Date(web.eventDate).toLocaleDateString()}</div>}
                 </td>
-                <td className="p-4 font-semibold">{web.title}</td>
+                <td
+                  className="p-4 font-semibold text-foreground hover:text-primary cursor-pointer transition"
+                  onClick={() => openEventPage(web, 'webinar', 'details', 'view')}
+                  title="Click to view webinar details"
+                >
+                  {web.title}
+                </td>
                 <td className="p-4 text-xs font-bold text-accent">{web.speaker}</td>
                 <td className="p-4 text-xs text-muted-foreground">{web.location}</td>
                 <td className="p-4 text-xs font-semibold text-accent">{web.mentorName || web.assignedMentor || '—'}</td>
@@ -90,11 +93,12 @@ export function WebinarsTab() {
                           }}
                         />
                         <div className="absolute right-0 mt-1.5 w-48 bg-card border border-foreground/10 rounded-xl shadow-xl z-40 py-1.5 focus:outline-none text-left animate-fade-in">
-                          <MenuBtn label="View Details" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'details'); }} />
-                          <MenuBtn label="Edit" onClick={() => { setActiveDropdownId(null); openEditForm(web, 'webinar'); }} />
-                          <MenuBtn label="Dashboard" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'dashboard'); }} />
-                          <MenuBtn label="Participants" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'participants'); }} />
-                          <MenuBtn label="Payments" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'payments'); }} />
+                          <MenuBtn label="View Details" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'details', 'view'); }} />
+                          <MenuBtn label="Edit" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'details', 'edit'); }} />
+                          <MenuBtn label="Dashboard" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'dashboard', 'view'); }} />
+                          <MenuBtn label="Participants" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'participants', 'view'); }} />
+                          <MenuBtn label="Payments" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'payments', 'view'); }} />
+                          <MenuBtn label="Cohorts" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'cohorts', 'view'); }} />
                           <div className="border-t border-foreground/5 my-1" />
                           <button
                             type="button"
@@ -113,7 +117,7 @@ export function WebinarsTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground">No webinars scheduled.</td>
+                <td colSpan={7} className="p-8 text-center text-muted-foreground">No webinars scheduled.</td>
               </tr>
             )}
           </tbody>

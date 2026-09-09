@@ -3,6 +3,7 @@ export type Role = 'admin' | 'mentor';
 export interface User {
   id: string;
   username: string;
+  email?: string;
   role: Role;
   isTempPassword?: boolean;
 }
@@ -12,10 +13,6 @@ export type Tab =
   | 'conferences'
   | 'webinars'
   | 'blogs'
-  | 'registrations'
-  | 'abstracts'
-  | 'contacts'
-  | 'orders'
   | 'mediaPartners'
   | 'collaborators'
   | 'venues'
@@ -26,6 +23,8 @@ export type EventType = 'conference' | 'webinar';
 export type EventPageTab =
   | 'dashboard'
   | 'details'
+  | 'scientific-program'
+  | 'color-theme'
   | 'fees'
   | 'participants'
   | 'payments'
@@ -35,14 +34,14 @@ export type EventPageTab =
   | 'speakers'
   | 'tracks'
   | 'program'
-  | 'itinerary'
   | 'banners'
   | 'faqs'
   | 'partners'
   | 'guidelines'
   | 'organizer-contact'
   | 'organizing-committee'
-  | 'venue-details';
+  | 'venue-details'
+  | 'cohorts';
 
 export interface Track {
   title: string;
@@ -63,6 +62,7 @@ export interface ItineraryItem {
 
 export interface Speaker {
   name: string;
+  degree?: string;
   designation?: string;
   organization?: string;
   bio?: string;
@@ -105,20 +105,55 @@ export interface EventPartner {
   order?: number;
 }
 
+export interface CourseCohort {
+  _id: string;
+  courseType?: 'conference' | 'webinar';
+  courseId?: string;
+  cohortId?: string;
+  year: number;
+  batchNo: number;
+  title?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  isCurrent?: boolean;
+  label?: string;
+  subdomain?: string | null;
+  assignedMentor?: string | null;
+  mentorName?: string | null;
+  content?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface VenueDetails {
+  venueId?: string;      // reference to Venue model
   name?: string;
   address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  pincode?: string;
+  locationUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  mainImage?: string;
+  subImages?: string[];
   description?: string;
   images?: string[];
-  mapUrl?: string;
-  directions?: string;
-  parking?: string;
-  accommodation?: string;
+  moreInfo?: string;
 }
+
+export interface FeeEntry {
+  type: string;      // accordion header, e.g. "Student"
+  dateLabel: string; // row heading, e.g. "on/before 25 Dec"
+  usd: number;
+  gbp: number;
+  eur: number;
+}
+
+export type FeeGroup = {
+  type: string;
+  rows: FeeEntry[];
+};
 
 export interface Conference {
   _id: string;
@@ -149,11 +184,10 @@ export interface Conference {
   bannerUrl?: string;
   logoUrl?: string;
   headerBanners?: string[];
-  fees?: { label: string; amount: number }[];
+  fees?: FeeEntry[];
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
   
   // New fields for conference website tabs
-  itinerary?: ItineraryItem[];
   speakers?: Speaker[];
   program?: ProgramDay[];
   faqs?: FAQ[];
@@ -162,6 +196,9 @@ export interface Conference {
   termsAndConditions?: string;
   venueDetails?: VenueDetails;
   organizingCommittee?: OrganizingCommitteeMember[];
+  currentCohortId?: string;
+  currentCohort?: CourseCohort | null;
+  cohorts?: CourseCohort[];
 }
 
 export interface Webinar {
@@ -194,11 +231,10 @@ export interface Webinar {
   bannerUrl?: string;
   logoUrl?: string;
   headerBanners?: string[];
-  fees?: { label: string; amount: number }[];
+  fees?: FeeEntry[];
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
   
   // New fields for conference website tabs
-  itinerary?: ItineraryItem[];
   speakers?: Speaker[];
   program?: ProgramDay[];
   faqs?: FAQ[];
@@ -207,10 +243,14 @@ export interface Webinar {
   termsAndConditions?: string;
   venueDetails?: VenueDetails;
   organizingCommittee?: OrganizingCommitteeMember[];
+  currentCohortId?: string;
+  currentCohort?: CourseCohort | null;
+  cohorts?: CourseCohort[];
 }
 
 export interface Blog {
   _id: string;
+  eventId?: string;
   title: string;
   label: string;
   copy: string;

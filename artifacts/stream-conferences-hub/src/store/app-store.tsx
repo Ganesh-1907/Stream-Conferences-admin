@@ -27,6 +27,7 @@ import {
   Collaborator,
   Conference,
   Contact,
+  CourseCohort,
   EventDashboard,
   EventPageTab,
   EventType,
@@ -89,9 +90,16 @@ interface AppStoreValue {
   eventPageTab: EventPageTab;
   eventPage: Conference | Webinar | null;
   currentEventLoading: boolean;
-  openEventPage: (item: Conference | Webinar, type: EventType, tab?: EventPageTab) => void;
+  eventPageMode: 'view' | 'edit';
+  setEventPageMode: (mode: 'view' | 'edit') => void;
+  openEventPage: (item: Conference | Webinar, type: EventType, tab?: EventPageTab, mode?: 'view' | 'edit') => void;
   closeEventPage: () => void;
   updateEventField: (field: string, value: any) => void;
+  updateEventFields: (fields: Record<string, any>) => Promise<void>;
+  eventCohortId: string | null;
+  activeCohort: CourseCohort | null;
+  openCohortTab: (cohort: CourseCohort, tab: EventPageTab) => void;
+  openEventTab: (tab: EventPageTab) => void;
 
   // Data lists
   loadingData: boolean;
@@ -136,6 +144,7 @@ interface AppStoreValue {
   canGoNext: () => boolean;
   canGoToStep: (step: number) => boolean;
   submitWizard: () => Promise<void>;
+  openEditCohortContent: (cohort: CourseCohort) => void;
 
   // Wizard fields (conference)
   confTitle: string;
@@ -336,6 +345,16 @@ interface AppStoreValue {
   viewingParticipant: Registration | null;
   setViewingParticipant: (p: Registration | null) => void;
 
+  // Course cohorts
+  eventCohorts: CourseCohort[];
+  eventCohortsLoading: boolean;
+  loadCohorts: () => Promise<void>;
+  createCohort: (payload: Partial<CourseCohort>) => Promise<void>;
+  updateCohort: (cohortId: string, payload: Partial<CourseCohort>) => Promise<void>;
+  setCurrentCohort: (cohortId: string) => Promise<void>;
+  deleteCohort: (cohortId: string) => Promise<void>;
+  assignCohortMentor: (cohortId: string, assignedMentor: string | null) => Promise<void>;
+
   // Mentor assignment
   assignOpen: boolean;
   assignTarget: Conference | Webinar | null;
@@ -421,8 +440,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   // Navigation — read initial tab from URL hash so refresh restores it
   const VALID_TABS: Tab[] = [
-    'overview','conferences','webinars','blogs','registrations','abstracts',
-    'contacts','orders','mediaPartners','collaborators','venues',
+    'overview','conferences','webinars','blogs','mediaPartners','collaborators','venues',
     'mentors','liveChat'
   ];
   const getTabFromHash = (): Tab => {
@@ -470,6 +488,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [wizardType, setWizardType] = useState<EventType | null>(null);
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardEditId, setWizardEditId] = useState<string | null>(null);
+  const [wizardTargetCohortId, setWizardTargetCohortId] = useState<string | null>(null);
   const [wizardSaving, setWizardSaving] = useState(false);
   const [wizardError, setWizardError] = useState('');
 
@@ -562,14 +581,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [currentEvent, setCurrentEvent] = useState<Conference | Webinar | null>(null);
   const [currentEventLoading, setCurrentEventLoading] = useState(false);
   const [abstractActionLoading, setAbstractActionLoading] = useState<string | null>(null);
+  const [eventCohorts, setEventCohorts] = useState<CourseCohort[]>([]);
+  const [eventCohortsLoading, setEventCohortsLoading] = useState(false);
 
   // URL-driven event page resolution
+  const isEditPath =
+    location.includes('/edit/') ||
+    location.endsWith('/edit') ||
+    new URLSearchParams(window.location.search).get('mode') === 'edit';
+
+  const eventPageMode: 'view' | 'edit' = isEditPath ? 'edit' : 'view';
+
   const eventPageTab: EventPageTab =
-    (['dashboard', 'details', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
-      'speakers', 'tracks', 'program', 'itinerary', 'banners', 'faqs', 'partners',
-      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details'] as const).find(
+    (['dashboard', 'details', 'scientific-program', 'color-theme', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
+      'speakers', 'tracks', 'program', 'banners', 'faqs', 'partners',
+      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts'] as const).find(
       (t) => location.includes(`/${t}`),
-    ) || 'dashboard';
+    ) || 'details';
   const eventPageType: EventType | null = location.startsWith('/conference/')
     ? 'conference'
     : location.startsWith('/webinar/')
@@ -578,7 +606,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const eventPageId = eventPageType ? location.split('/')[2] || null : null;
   const isEventPage = Boolean(eventPageType && eventPageId);
 
-  const eventPage: Conference | Webinar | null = isEventPage
+  const baseEventPage: Conference | Webinar | null = isEventPage
     ? (currentEvent && currentEvent._id === eventPageId
         ? currentEvent
         : (eventPageType === 'conference'
@@ -586,12 +614,69 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             : webinars.find((w) => w._id === eventPageId) || null))
     : null;
 
+  // Cohort context for the current event page (e.g. ?cohort=SCC00001-2).
+  const eventCohortId = new URLSearchParams(window.location.search).get('cohort');
+
+  const activeCohort: CourseCohort | null = eventCohortId
+    ? (eventCohorts.find((c) => c.cohortId === eventCohortId || c._id === eventCohortId) || null)
+    : null;
+
+  // When a specific cohort is selected, its content overlays the parent event
+  // so the top tabs (fees, speakers, program, ...) show and edit that cohort.
+  const eventPage: Conference | Webinar | null = baseEventPage && activeCohort
+    ? ({ ...baseEventPage, ...(activeCohort.content || {}) } as Conference | Webinar)
+    : baseEventPage;
+
+  const setEventPageMode = (mode: 'view' | 'edit') => {
+    if (!eventPage || !eventPageType) return;
+    const search = new URLSearchParams(window.location.search);
+    search.delete('mode');
+    const qs = search.toString() ? `?${search.toString()}` : '';
+    if (mode === 'edit') {
+      navigate(`/${eventPageType}/${eventPage._id}/edit/${eventPageTab}${qs}`);
+    } else {
+      navigate(`/${eventPageType}/${eventPage._id}/${eventPageTab}${qs}`);
+    }
+  };
+
   const openEventPage = (
     item: Conference | Webinar,
     type: EventType,
-    tab: EventPageTab = 'dashboard',
+    tab: EventPageTab = 'details',
+    mode: 'view' | 'edit' = 'view',
   ) => {
-    navigate(`/${type}/${item._id}/${tab}`);
+    const search = new URLSearchParams();
+    const qs = search.toString() ? `?${search.toString()}` : '';
+    if (mode === 'edit') {
+      navigate(`/${type}/${item._id}/edit/${tab}${qs}`);
+    } else {
+      navigate(`/${type}/${item._id}/${tab}${qs}`);
+    }
+  };
+
+  const openEventTab = (tab: EventPageTab) => {
+    if (!eventPage || !eventPageType) return;
+    const search = new URLSearchParams(window.location.search);
+    search.delete('mode');
+    const qs = search.toString() ? `?${search.toString()}` : '';
+    if (eventPageMode === 'edit') {
+      navigate(`/${eventPageType}/${eventPage._id}/edit/${tab}${qs}`);
+    } else {
+      navigate(`/${eventPageType}/${eventPage._id}/${tab}${qs}`);
+    }
+  };
+
+  const openCohortTab = (cohort: CourseCohort, tab: EventPageTab) => {
+    if (!eventPage || !eventPageType) return;
+    const search = new URLSearchParams(window.location.search);
+    search.set('cohort', cohort.cohortId || cohort._id);
+    search.delete('mode');
+    const qs = search.toString() ? `?${search.toString()}` : '';
+    if (eventPageMode === 'edit') {
+      navigate(`/${eventPageType}/${eventPage._id}/edit/${tab}?${search.toString()}`);
+    } else {
+      navigate(`/${eventPageType}/${eventPage._id}/${tab}?${search.toString()}`);
+    }
   };
 
   const closeEventPage = () => {
@@ -601,14 +686,32 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const updateEventField = async (field: string, value: any) => {
     if (!eventPage || !eventPageType) return;
-    
-    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'x-user-role': user?.role || '',
       'x-user-name': user?.username || '',
     };
-    
+
+    // If a specific cohort is active, update that cohort's content instead.
+    if (activeCohort) {
+      try {
+        const content = { ...(activeCohort.content || {}), [field]: value };
+        const res = await fetch(`${API_BASE}/cohorts/${activeCohort._id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ content }),
+        });
+        if (res.ok) {
+          await loadCohorts();
+        }
+      } catch (error) {
+        console.error('Failed to update cohort field:', error);
+      }
+      return;
+    }
+
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
     try {
       const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}`, {
         method: 'PUT',
@@ -630,11 +733,60 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateEventFields = async (fields: Record<string, any>) => {
+    if (!eventPage || !eventPageType) return;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-user-role': user?.role || '',
+      'x-user-name': user?.username || '',
+    };
+
+    if (activeCohort) {
+      try {
+        const content = { ...(activeCohort.content || {}), ...fields };
+        const res = await fetch(`${API_BASE}/cohorts/${activeCohort._id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ content }),
+        });
+        if (res.ok) {
+          await loadCohorts();
+        }
+      } catch (error) {
+        console.error('Failed to update cohort fields:', error);
+      }
+      return;
+    }
+
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    try {
+      const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(fields),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setCurrentEvent(updated);
+        if (eventPageType === 'conference') {
+          setConferences((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
+        } else {
+          setWebinars((prev) => prev.map((w) => (w._id === updated._id ? updated : w)));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update event fields:', error);
+    }
+  };
+
   const closeWizard = () => {
     setWizardOpen(false);
     setWizardType(null);
     setWizardStep(1);
     setWizardEditId(null);
+    setWizardTargetCohortId(null);
     setWizardError('');
     resetWizardFields();
   };
@@ -721,18 +873,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         case 'blogs':
           await fetchInto(`${API_BASE}/blogs`, setBlogs);
           break;
-        case 'registrations':
-          await fetchInto(`${API_BASE}/registrations`, setRegistrations);
-          break;
-        case 'abstracts':
-          await fetchInto(`${API_BASE}/abstracts`, setAbstracts);
-          break;
-        case 'contacts':
-          await fetchInto(`${API_BASE}/contacts`, setContacts);
-          break;
-        case 'orders':
-          await fetchInto(`${API_BASE}/orders`, setOrders);
-          break;
         case 'mediaPartners':
           await fetchInto(`${API_BASE}/media-partners`, setMediaPartners);
           break;
@@ -782,6 +922,94 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshEventCohortState = async () => {
+    if (!isEventPage || !eventPageId || !eventPageType || !user) return;
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    try {
+      const res = await fetch(`${API_BASE}/${endpoint}/${eventPageId}`, {
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+      });
+      if (res.ok) setCurrentEvent(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const loadCohorts = async () => {
+    if (!eventPage || !eventPageType) return;
+    const headers: Record<string, string> = {
+      'x-user-role': user?.role || '',
+      'x-user-name': user?.username || '',
+    };
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    setEventCohortsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/cohorts`, { headers });
+      if (res.ok) setEventCohorts(await res.json());
+    } catch (err) {
+      console.error('Load cohorts error:', err);
+    } finally {
+      setEventCohortsLoading(false);
+    }
+  };
+
+  const createCohort = async (payload: Partial<CourseCohort>) => {
+    if (!eventPage || !eventPageType || !user) return;
+    const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/cohorts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-role': user.role, 'x-user-name': user.username },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed to create cohort');
+    await loadCohorts();
+    await refreshEventCohortState();
+  };
+
+  const updateCohort = async (cohortId: string, payload: Partial<CourseCohort>) => {
+    if (!user) return;
+    const res = await fetch(`${API_BASE}/cohorts/${cohortId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-user-role': user.role, 'x-user-name': user.username },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed to update cohort');
+    await loadCohorts();
+    await refreshEventCohortState();
+  };
+
+  const setCurrentCohort = async (cohortId: string) => {
+    if (!user) return;
+    const res = await fetch(`${API_BASE}/cohorts/${cohortId}/set-current`, {
+      method: 'PUT',
+      headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed to set current cohort');
+    await loadCohorts();
+    await refreshEventCohortState();
+  };
+
+  const deleteCohort = async (cohortId: string) => {
+    if (!user) return;
+    const res = await fetch(`${API_BASE}/cohorts/${cohortId}`, {
+      method: 'DELETE',
+      headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed to delete cohort');
+    await loadCohorts();
+    await refreshEventCohortState();
+  };
+
+  const assignCohortMentor = async (cohortId: string, assignedMentor: string | null) => {
+    if (!user) return;
+    const res = await fetch(`${API_BASE}/cohorts/${cohortId}/assign`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-user-role': user.role, 'x-user-name': user.username },
+      body: JSON.stringify({ assignedMentor: assignedMentor || null }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed to assign mentor');
+    await loadCohorts();
+    await refreshEventCohortState();
+  };
+
   const loadEventTabData = async () => {
     if (!eventPage || !eventPageType) return;
     const headers: Record<string, string> = {
@@ -791,6 +1019,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
     const tab = eventPageTab;
     const now = Date.now();
+    const cohortParam = eventCohortId ? `&cohortId=${encodeURIComponent(eventCohortId)}` : '';
 
     try {
       // dashboard tab - stats only
@@ -800,7 +1029,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         setEventDetailError('');
         setEventDetailLoading(true);
         try {
-          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/dashboard`, { headers });
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/dashboard${cohortParam ? '?' + cohortParam.slice(1) : ''}`, { headers });
           if (!res.ok) throw new Error('Failed to load event dashboard');
           setEventDashboard(await res.json());
           lastFetched.current[cacheKey] = Date.now();
@@ -819,7 +1048,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         setEventDetailError('');
         setEventDetailLoading(true);
         try {
-          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/participants`, { headers });
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/participants${cohortParam ? '?' + cohortParam.slice(1) : ''}`, { headers });
           if (!res.ok) throw new Error('Failed to load participants');
           const data = await res.json();
           setEventParticipants(data.participants || []);
@@ -839,7 +1068,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         setEventDetailError('');
         setEventDetailLoading(true);
         try {
-          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/payments`, { headers });
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/payments${cohortParam ? '?' + cohortParam.slice(1) : ''}`, { headers });
           if (!res.ok) throw new Error('Failed to load payments');
           const data = await res.json();
           setEventPayments(data.payments || []);
@@ -858,7 +1087,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
         setEventAbstractsLoading(true);
         try {
-          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/abstracts`, { headers });
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/abstracts${cohortParam ? '?' + cohortParam.slice(1) : ''}`, { headers });
           if (res.ok) setEventAbstracts(await res.json());
           lastFetched.current[cacheKey] = Date.now();
         } catch (err) {
@@ -874,7 +1103,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (lastFetched.current[cacheKey] && now - lastFetched.current[cacheKey] < CACHE_TTL) return;
         setEventEnquiriesLoading(true);
         try {
-          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/enquiries`, { headers });
+          const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}/enquiries${cohortParam ? '?' + cohortParam.slice(1) : ''}`, { headers });
           if (res.ok) setEventEnquiries(await res.json());
           lastFetched.current[cacheKey] = Date.now();
         } catch (err) {
@@ -898,6 +1127,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         } finally {
           setEventBrochureLeadsLoading(false);
         }
+      }
+
+      // cohorts tab
+      if (tab === 'cohorts') {
+        await loadCohorts();
       }
     } catch (err) {
       console.error('Load event tab data error:', err);
@@ -1121,7 +1355,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadEventTabData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventPageId, eventPageType, eventPageTab, user, currentEvent]);
+  }, [eventPageId, eventPageType, eventPageTab, user, currentEvent, eventCohortId]);
+
+  // Load cohorts on every event page load so activeCohort resolves
+  // for content tabs (fees, speakers, etc.) not just the cohorts tab.
+  useEffect(() => {
+    if (!isEventPage || !eventPage || !eventPageType) return;
+    loadCohorts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventPage?._id, isEventPage]);
+
+  // Load venues and mentors when on event page (for organizer contact & venue details tabs)
+  useEffect(() => {
+    if (!isEventPage || !user) return;
+    ensureMentorsAndVenues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEventPage]);
 
   // Fetch the full single event by ID when navigating to the event page,
   // so the details/content tabs always have complete data.
@@ -1190,6 +1439,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardType(type);
     setWizardStep(1);
     setWizardEditId(null);
+    setWizardTargetCohortId(null);
     setWizardError('');
     setWizardOpen(true);
     // Lazy-load mentors and venues for the wizard dropdowns
@@ -1233,6 +1483,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (type === 'conference' || type === 'webinar') {
+      setWizardTargetCohortId(null);
       populateEditWizard(item, type as 'conference' | 'webinar');
       if (item._id) {
         const endpoint = type === 'conference' ? 'conferences' : 'webinars';
@@ -1395,6 +1646,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setWebGuidelines(item.guidelines || '');
       setWebTerms(item.termsAndConditions || '');
     }
+  };
+
+  const openEditCohortContent = (cohort: CourseCohort) => {
+    if (!eventPage || !eventPageType) return;
+    const content = cohort.content || {};
+    const item = {
+      ...content,
+      _id: cohort._id,
+      title: eventPage.title || content.title || '',
+      subdomain: eventPage.subdomain || content.subdomain || '',
+      slug: eventPage.slug || content.slug || '',
+      assignedMentor: eventPage.assignedMentor ?? content.assignedMentor ?? null,
+      speaker: content.speaker || (eventPage as any).speaker || '',
+    };
+    setWizardTargetCohortId(cohort._id);
+    populateEditWizard(item, eventPageType);
   };
 
   // Wizard getters/setters
@@ -1796,6 +2063,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       };
       if (wizardType === 'webinar') bodyData.speaker = webSpeaker;
 
+      if (wizardTargetCohortId) {
+        const res = await fetch(`${API_BASE}/cohorts/${wizardTargetCohortId}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ content: bodyData }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to save cohort content');
+        }
+        closeWizard();
+        await loadCohorts();
+        await refreshEventCohortState();
+        return;
+      }
+
       const res = await fetch(url, { method, headers, body: JSON.stringify(bodyData) });
       if (!res.ok) {
         const err = await res.json();
@@ -2149,9 +2432,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     eventPageTab,
     eventPage,
     currentEventLoading,
+    eventPageMode,
+    setEventPageMode,
     openEventPage,
     closeEventPage,
     updateEventField,
+    updateEventFields,
+    eventCohortId,
+    activeCohort,
+    openCohortTab,
+    openEventTab,
     loadingData,
     dashboardStats,
     conferences,
@@ -2190,6 +2480,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     canGoNext,
     canGoToStep,
     submitWizard,
+    openEditCohortContent,
     confTitle,
     setConfTitle,
     confDesc,
@@ -2375,6 +2666,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     handleAbstractAction,
     viewingParticipant,
     setViewingParticipant,
+    eventCohorts,
+    eventCohortsLoading,
+    loadCohorts,
+    createCohort,
+    updateCohort,
+    setCurrentCohort,
+    deleteCohort,
+    assignCohortMentor,
     assignOpen,
     assignTarget,
     assignUsername,

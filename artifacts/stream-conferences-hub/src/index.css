@@ -223,6 +223,7 @@
 .contact-inner .eyebrow { color:hsl(var(--accent)); }
 .contact-inner .cta-button { background:hsl(var(--accent)); }
 .footer { background:hsl(var(--primary)); color:hsl(var(--primary-foreground)); }
+.dark .footer { background:hsl(var(--card)); color:hsl(var(--card-foreground)); }
 .footer-inner { max-width:1240px; margin:0 auto; padding:55px 24px 92px; display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:30px; }
 .footer .brand-mark { background:hsl(var(--primary-foreground)); color:hsl(var(--primary)); }
 .footer .brand-sub, .footer-note { color:hsl(var(--primary-foreground) / .52); }

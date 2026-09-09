@@ -266,8 +266,8 @@ export function Wizard() {
                     <CalendarDays size={18} className="text-muted-foreground" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="!w-[360px] p-0 rounded-2xl border border-foreground/10 bg-card overflow-hidden shadow-2xl z-[100]" align="start">
-                  <Calendar mode="single" selected={stringToDate(store.wizardStartDate())} onSelect={(date) => store.setWizardStartDate(date ? dateToString(date) : '')} initialFocus />
+                <PopoverContent className="!w-[340px] p-0 rounded-2xl border border-border/80 bg-white dark:bg-card text-foreground overflow-hidden shadow-2xl z-[100]" align="start">
+                  <Calendar mode="single" selected={stringToDate(store.wizardStartDate())} onSelect={(date) => store.setWizardStartDate(date ? dateToString(date) : '')} initialFocus className="p-3 bg-white dark:bg-card rounded-none" />
                 </PopoverContent>
               </Popover>
             </div>
@@ -283,8 +283,8 @@ export function Wizard() {
                     <CalendarDays size={18} className="text-muted-foreground" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="!w-[360px] p-0 rounded-2xl border border-foreground/10 bg-card overflow-hidden shadow-2xl z-[100]" align="start">
-                  <Calendar mode="single" selected={stringToDate(store.wizardEndDate())} onSelect={(date) => store.setWizardEndDate(date ? dateToString(date) : '')} initialFocus />
+                <PopoverContent className="!w-[340px] p-0 rounded-2xl border border-border/80 bg-white dark:bg-card text-foreground overflow-hidden shadow-2xl z-[100]" align="start">
+                  <Calendar mode="single" selected={stringToDate(store.wizardEndDate())} onSelect={(date) => store.setWizardEndDate(date ? dateToString(date) : '')} initialFocus className="p-3 bg-white dark:bg-card rounded-none" />
                 </PopoverContent>
               </Popover>
             </div>
@@ -377,6 +377,10 @@ export function Wizard() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-700 dark:text-blue-300">
+            <span>💡 Fee categories entered here are automatically saved when you complete the setup (click <strong>Next</strong> below to proceed to the next step, then <strong>{store.wizardEditId ? 'Save Changes' : 'Create'}</strong> at the final step).</span>
           </div>
         </div>
       )}

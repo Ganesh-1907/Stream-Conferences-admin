@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Maximize2, UploadCloud, X } from 'lucide-react';
+import { FileText, Maximize2, Trash2, Upload, UploadCloud, X } from 'lucide-react';
 
 interface FileUploadCardProps {
   title: string;
@@ -14,10 +14,11 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear }: Fi
   const isPdf = preview.startsWith('data:application/pdf') || preview.toLowerCase().includes('.pdf');
 
   return (
-    <div className="bg-muted/20 border border-foreground/10 rounded-xl p-4">
-      <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{title}</label>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</label>
       {preview ? (
-        <div className="flex items-center gap-4">
+        <div className="p-4 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-4">
+          {/* One Side: Image / File Preview */}
           <div
             onClick={() => {
               if (isPdf) {
@@ -26,39 +27,63 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear }: Fi
                 setLightboxOpen(true);
               }
             }}
-            className="relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-foreground/10 bg-background flex items-center justify-center cursor-pointer group"
-            title="Click to view full screen"
+            className="relative w-28 h-22 sm:w-32 sm:h-24 shrink-0 rounded-xl overflow-hidden border border-foreground/15 bg-muted/10 flex items-center justify-center cursor-pointer group shadow-xs"
+            title="Click to view full preview"
           >
             {isPdf ? (
               <div className="flex flex-col items-center justify-center text-red-500 hover:text-red-600 transition">
-                <FileText size={24} />
-                <span className="text-[8px] font-bold mt-0.5">PDF</span>
+                <FileText size={28} />
+                <span className="text-[9px] font-bold mt-1">PDF</span>
               </div>
             ) : (
               <>
-                <img src={preview} alt={title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                <img src={preview} alt={title} className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105" />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Maximize2 size={12} className="text-white" />
+                  <Maximize2 size={14} className="text-white" />
                 </div>
               </>
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5 min-w-0">
-            <span className="text-xs text-muted-foreground font-semibold truncate max-w-[120px]">
-              {isPdf ? 'Brochure PDF' : `${title} Image`}
-            </span>
-            <div className="flex gap-2">
-              <label className="px-2.5 py-1 bg-muted hover:bg-muted/80 border border-foreground/10 rounded-md text-[10px] font-semibold cursor-pointer inline-block transition">
-                Replace
-                <input type="file" accept={accept || 'image/*'} className="hidden" onChange={(e) => { onSelect(e.target.files?.[0] || null); e.target.value = ''; }} />
+          {/* Beside: Details & Action Buttons */}
+          <div className="flex-1 min-w-0 space-y-2.5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-foreground truncate">
+                  {isPdf ? 'PDF Document' : `${title}`}
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  Uploaded
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                {isPdf ? 'Click preview thumbnail to open file' : 'Click thumbnail to preview full size'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="px-3.5 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs inline-flex items-center gap-1.5">
+                <Upload size={12} />
+                <span>Replace</span>
+                <input
+                  type="file"
+                  accept={accept || 'image/*'}
+                  className="hidden"
+                  onChange={(e) => {
+                    onSelect(e.target.files?.[0] || null);
+                    e.target.value = '';
+                  }}
+                />
               </label>
+
               <button
                 type="button"
                 onClick={onClear}
-                className="px-2.5 py-1 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-md text-[10px] font-semibold cursor-pointer transition"
+                className="px-3.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl text-xs font-bold cursor-pointer transition inline-flex items-center gap-1.5"
+                title="Remove file"
               >
-                Remove
+                <Trash2 size={12} />
+                <span>Remove</span>
               </button>
             </div>
           </div>
@@ -75,7 +100,7 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear }: Fi
                 <button
                   type="button"
                   onClick={() => setLightboxOpen(false)}
-                  className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition shadow-md"
+                  className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition shadow-md cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -85,10 +110,19 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear }: Fi
           )}
         </div>
       ) : (
-        <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-foreground/15 rounded-lg p-5 cursor-pointer hover:border-secondary transition">
-          <UploadCloud size={20} className="text-muted-foreground" />
-          <span className="text-xs text-muted-foreground font-semibold">Upload {title}</span>
-          <input type="file" accept={accept || 'image/*'} className="hidden" onChange={(e) => { onSelect(e.target.files?.[0] || null); e.target.value = ''; }} />
+        <label className="min-h-[110px] border-2 border-dashed border-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition p-4 text-center group">
+          <UploadCloud size={22} className="text-muted-foreground group-hover:text-primary transition mb-1" />
+          <span className="text-xs font-bold text-foreground">Upload {title}</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5">Click to choose {accept?.includes('.pdf') ? 'file or document' : 'image'}</span>
+          <input
+            type="file"
+            accept={accept || 'image/*'}
+            className="hidden"
+            onChange={(e) => {
+              onSelect(e.target.files?.[0] || null);
+              e.target.value = '';
+            }}
+          />
         </label>
       )}
     </div>
