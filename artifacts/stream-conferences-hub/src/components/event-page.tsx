@@ -632,7 +632,7 @@ function OverviewTab() {
 }
 
 function DetailsTab() {
-  const { eventPage, eventPageType, eventPageMode, updateEventFields } = useAppStore();
+  const { eventPage, eventPageType, eventPageMode, updateEventFields, user } = useAppStore();
   const [formData, setFormData] = useState({
     title: eventPage?.title || '',
     description: eventPage?.description || '',
@@ -683,7 +683,11 @@ function DetailsTab() {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: fd });
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        body: fd,
+      });
       const data = await res.json();
       if (data.url) {
         await updateEventFields({ [field]: data.url });
@@ -701,7 +705,11 @@ function DetailsTab() {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: fd });
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        body: fd,
+      });
       const data = await res.json();
       if (data.url) {
         await updateEventFields({ [field]: data.url });
@@ -850,7 +858,7 @@ function DetailsTab() {
 }
 
 function ScientificProgramTab() {
-  const { eventPage, updateEventField, eventPageMode } = useAppStore();
+  const { eventPage, updateEventField, eventPageMode, user } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const scientificProgramUrl = (eventPage as any)?.scientificProgramUrl || '';
   const [uploading, setUploading] = useState(false);
@@ -867,7 +875,11 @@ function ScientificProgramTab() {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: fd });
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        body: fd,
+      });
       const data = await res.json();
       if (data.url) {
         setUrl(data.url);
@@ -885,7 +897,11 @@ function ScientificProgramTab() {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: fd });
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        body: fd,
+      });
       const data = await res.json();
       if (data.url) {
         setUrl(data.url);
