@@ -14,6 +14,7 @@ import { useLocation } from 'wouter';
 import { io, type Socket } from 'socket.io-client';
 import { API_BASE, SERVER_ORIGIN } from '@/lib/constants';
 import {
+  compressImage,
   computeDayAndMonth,
   mediaUrl,
   parseStartAndEndDates,
@@ -1821,8 +1822,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
     reader.readAsDataURL(file);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed);
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
         headers: { 'x-user-role': user.role, 'x-user-name': user.username },
@@ -1874,8 +1876,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
     reader.readAsDataURL(file);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed);
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
         headers: { 'x-user-role': user.role, 'x-user-name': user.username },
@@ -1901,8 +1904,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
     reader.readAsDataURL(file);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed);
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
         headers: { 'x-user-role': user.role, 'x-user-name': user.username },
@@ -1933,8 +1937,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     };
     reader.readAsDataURL(file);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed);
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
         headers: { 'x-user-role': user.role, 'x-user-name': user.username },
@@ -1963,8 +1968,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const uploadHeaderBannerForEvent = async (eventId: string, eventType: 'conference' | 'webinar', file: File) => {
     if (!file || !user || !eventId) return;
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed);
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
         headers: { 'x-user-role': user.role, 'x-user-name': user.username },
@@ -2025,8 +2031,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     reader.onload = () => setBlogBannerPreview(String(reader.result || ''));
     reader.readAsDataURL(file);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed);
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
         headers: { 'x-user-role': user.role, 'x-user-name': user.username },
@@ -2344,8 +2351,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     reader.readAsDataURL(file);
     (async () => {
       try {
+        const compressed = await compressImage(file);
         const fd = new FormData();
-        fd.append('file', file);
+        fd.append('file', compressed);
         const res = await fetch(`${API_BASE}/uploads/upload`, { method: 'POST', headers: { 'x-user-role': user.role, 'x-user-name': user.username }, body: fd });
         if (!res.ok) throw new Error('Upload failed');
         const data = await res.json();
@@ -2396,8 +2404,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     reader.onload = () => setProfileForm((cur) => ({ ...cur, avatarPreview: String(reader.result || '') }));
     reader.readAsDataURL(file);
     try {
+      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', compressed);
       const res = await fetch(`${API_BASE}/uploads/upload`, { method: 'POST', headers: { 'x-user-role': user.role, 'x-user-name': user.username }, body: fd });
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();

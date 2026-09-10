@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store/app-store';
-import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString } from '@/lib/utils';
+import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
 import { EventPageTab, Webinar, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup } from '@/lib/types';
 import { usePagination } from '@/hooks/use-pagination';
@@ -703,7 +703,7 @@ function DetailsTab() {
     if (!file) return;
     setLoading(true);
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', await compressImage(file));
     try {
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
@@ -900,7 +900,7 @@ function ScientificProgramTab() {
     if (!file) return;
     setUploading(true);
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', await compressImage(file));
     try {
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
@@ -2350,7 +2350,7 @@ function TracksTab() {
     if (!file || !eventPage) return;
     setUploadingImage(true);
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', await compressImage(file));
     try {
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
