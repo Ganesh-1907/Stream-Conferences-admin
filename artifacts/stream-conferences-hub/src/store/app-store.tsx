@@ -66,6 +66,10 @@ interface OrganizerContact {
 
 interface DashboardStats {
   counts: { conferences: number; webinars: number; blogs: number; registrations: number; abstracts: number; confUpcoming: number; confPast: number; webUpcoming: number; webPast: number };
+  revenue: { total: number; paidOrders: number; totalOrders: number };
+  registrations: { paid: number; unpaid: number; pending: number };
+  monthly: { conferences: { _id: number; count: number }[]; webinars: { _id: number; count: number }[] };
+  yearly: { conferences: { _id: number; count: number }[]; webinars: { _id: number; count: number }[] };
   recent: { conferences: any[]; webinars: any[]; blogs: any[]; registrations: any[]; abstracts: any[] };
 }
 
@@ -91,11 +95,14 @@ interface AppStoreValue {
   eventPage: Conference | Webinar | null;
   currentEventLoading: boolean;
   eventPageMode: 'view' | 'edit';
+  isAddMode: boolean;
   setEventPageMode: (mode: 'view' | 'edit') => void;
   openEventPage: (item: Conference | Webinar, type: EventType, tab?: EventPageTab, mode?: 'view' | 'edit') => void;
+  createDraftEvent: (type: EventType) => Promise<Conference | Webinar | null>;
+  navigateToAddEvent: (type: EventType) => void;
   closeEventPage: () => void;
   updateEventField: (field: string, value: any) => void;
-  updateEventFields: (fields: Record<string, any>) => Promise<void>;
+  updateEventFields: (fields: Record<string, any>) => Promise<boolean>;
   eventCohortId: string | null;
   activeCohort: CourseCohort | null;
   openCohortTab: (cohort: CourseCohort, tab: EventPageTab) => void;
@@ -590,8 +597,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     location.endsWith('/edit') ||
     new URLSearchParams(window.location.search).get('mode') === 'edit';
 
-  const eventPageMode: 'view' | 'edit' = isEditPath ? 'edit' : 'view';
-
   const eventPageTab: EventPageTab =
     (['dashboard', 'details', 'scientific-program', 'color-theme', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
       'speakers', 'tracks', 'program', 'banners', 'faqs', 'partners',
@@ -603,15 +608,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     : location.startsWith('/webinar/')
       ? 'webinar'
       : null;
-  const eventPageId = eventPageType ? location.split('/')[2] || null : null;
-  const isEventPage = Boolean(eventPageType && eventPageId);
+  const rawEventPageId = eventPageType ? location.split('/')[2] || null : null;
+  const isAddMode = rawEventPageId === 'add';
+  const eventPageId = isAddMode ? null : rawEventPageId;
+  const isEventPage = Boolean(eventPageType && (eventPageId || isAddMode));
+
+  const eventPageMode: 'view' | 'edit' = isAddMode ? 'edit' : (isEditPath ? 'edit' : 'view');
 
   const baseEventPage: Conference | Webinar | null = isEventPage
-    ? (currentEvent && currentEvent._id === eventPageId
-        ? currentEvent
-        : (eventPageType === 'conference'
-            ? conferences.find((c) => c._id === eventPageId) || null
-            : webinars.find((w) => w._id === eventPageId) || null))
+    ? (isAddMode
+        ? ({ _id: '', title: '', description: '', subdomain: '', fees: [], tracks: [], faqs: [], partners: [], organizingCommittee: [], guidelines: '', termsAndConditions: '', organizerContact: {} } as any as Conference | Webinar)
+        : (currentEvent && currentEvent._id === eventPageId
+            ? currentEvent
+            : (eventPageType === 'conference'
+                ? conferences.find((c) => c._id === eventPageId) || null
+                : webinars.find((w) => w._id === eventPageId) || null)))
     : null;
 
   // Cohort context for the current event page (e.g. ?cohort=SCC00001-2).
@@ -654,8 +665,39 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const createDraftEvent = async (type: EventType): Promise<Conference | Webinar | null> => {
+    if (!user) return null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-user-role': user.role,
+      'x-user-name': user.username,
+    };
+    try {
+      const url = `${API_BASE}/${type === 'conference' ? 'conferences' : 'webinars'}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ title: 'Untitled' }),
+      });
+      if (!res.ok) throw new Error('Failed to create draft');
+      const item = await res.json();
+      refreshData();
+      return item;
+    } catch {
+      return null;
+    }
+  };
+
+  const navigateToAddEvent = (type: EventType) => {
+    navigate(`/${type}/add`);
+  };
+
   const openEventTab = (tab: EventPageTab) => {
     if (!eventPage || !eventPageType) return;
+    if (isAddMode) {
+      navigate(`/${eventPageType}/add/${tab}`);
+      return;
+    }
     const search = new URLSearchParams(window.location.search);
     search.delete('mode');
     const qs = search.toString() ? `?${search.toString()}` : '';
@@ -733,8 +775,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateEventFields = async (fields: Record<string, any>) => {
-    if (!eventPage || !eventPageType) return;
+  const updateEventFields = async (fields: Record<string, any>): Promise<boolean> => {
+    if (!eventPage || !eventPageType) return false;
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -756,13 +798,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Failed to update cohort fields:', error);
       }
-      return;
+      return false;
     }
 
     const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
     try {
-      const res = await fetch(`${API_BASE}/${endpoint}/${eventPage._id}`, {
-        method: 'PUT',
+      const isCreating = isAddMode || !eventPage._id;
+      const url = isCreating
+        ? `${API_BASE}/${endpoint}`
+        : `${API_BASE}/${endpoint}/${eventPage._id}`;
+      const res = await fetch(url, {
+        method: isCreating ? 'POST' : 'PUT',
         headers,
         body: JSON.stringify(fields),
       });
@@ -771,13 +817,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const updated = await res.json();
         setCurrentEvent(updated);
         if (eventPageType === 'conference') {
-          setConferences((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
+          setConferences((prev) => isCreating ? [...prev, updated] : prev.map((c) => (c._id === updated._id ? updated : c)));
         } else {
-          setWebinars((prev) => prev.map((w) => (w._id === updated._id ? updated : w)));
+          setWebinars((prev) => isCreating ? [...prev, updated] : prev.map((w) => (w._id === updated._id ? updated : w)));
         }
+        if (isCreating) {
+          navigate(`/${eventPageType}/${updated._id}/edit/${eventPageTab}`);
+        }
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Failed to update event fields:', error);
+      return false;
     }
   };
 
@@ -934,7 +986,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const loadCohorts = async () => {
-    if (!eventPage || !eventPageType) return;
+    if (!eventPage || !eventPageType || !eventPage._id) return;
     const headers: Record<string, string> = {
       'x-user-role': user?.role || '',
       'x-user-name': user?.username || '',
@@ -1283,8 +1335,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   // Sync tab from URL hash (handles browser back/forward and manual hash edits)
   useEffect(() => {
-    // Set initial hash if missing
-    if (!window.location.hash) {
+    // Skip hash sync when on event pages (path-based routing)
+    const currentPath = window.location.pathname;
+    const isOnEventPage = currentPath.startsWith('/conference/') || currentPath.startsWith('/webinar/');
+    if (!isOnEventPage && !window.location.hash) {
       window.location.hash = activeTab;
     }
     const onHashChange = () => {
@@ -2433,8 +2487,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     eventPage,
     currentEventLoading,
     eventPageMode,
+    isAddMode,
     setEventPageMode,
     openEventPage,
+    createDraftEvent,
+    navigateToAddEvent,
     closeEventPage,
     updateEventField,
     updateEventFields,

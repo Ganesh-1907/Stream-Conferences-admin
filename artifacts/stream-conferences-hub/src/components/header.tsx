@@ -10,6 +10,7 @@ import {
   Plus,
   CalendarDays,
   Video,
+  FileText,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useTheme } from '@/hooks/use-theme';
@@ -32,15 +33,17 @@ const MORE_NAV_ITEMS: NavItem[] = [
 
 export function Header() {
   const { theme, toggle } = useTheme();
-  const { user, handleLogout, activeTab, goToTab, isEventPage, closeEventPage, openAddForm } = useAppStore();
+  const { user, handleLogout, activeTab, goToTab, isEventPage, closeEventPage, navigateToAddEvent, openAddForm } = useAppStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [conferencesDropdownOpen, setConferencesDropdownOpen] = useState(false);
   const [webinarsDropdownOpen, setWebinarsDropdownOpen] = useState(false);
+  const [blogsDropdownOpen, setBlogsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const conferencesDropdownRef = useRef<HTMLDivElement>(null);
   const webinarsDropdownRef = useRef<HTMLDivElement>(null);
+  const blogsDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on click outside or escape key
   useEffect(() => {
@@ -57,13 +60,17 @@ export function Header() {
       if (webinarsDropdownRef.current && !webinarsDropdownRef.current.contains(e.target as Node)) {
         setWebinarsDropdownOpen(false);
       }
+      if (blogsDropdownRef.current && !blogsDropdownRef.current.contains(e.target as Node)) {
+        setBlogsDropdownOpen(false);
+      }
     }
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         setDropdownOpen(false);
         setUserMenuOpen(false);
-        setConferencesDropdownOpen(false);
-        setWebinarsDropdownOpen(false);
+    setConferencesDropdownOpen(false);
+    setWebinarsDropdownOpen(false);
+    setBlogsDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -85,12 +92,14 @@ export function Header() {
   };
 
   const handleAddEvent = (type: 'conference' | 'webinar') => {
-    if (isEventPage) {
-      closeEventPage();
-    }
     setConferencesDropdownOpen(false);
     setWebinarsDropdownOpen(false);
-    openAddForm(type);
+    navigateToAddEvent(type);
+  };
+
+  const handleAddBlog = () => {
+    setBlogsDropdownOpen(false);
+    openAddForm('blog');
   };
 
   const visibleMoreItems = MORE_NAV_ITEMS.filter(
@@ -130,7 +139,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => handleNavClick('overview')}
-            className={`relative h-16 flex items-center px-3.5 text-sm transition-colors whitespace-nowrap cursor-pointer ${
+            className={`relative h-16 flex items-center px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
               isOverviewActive
                 ? 'text-primary font-bold'
                 : 'text-muted-foreground hover:text-foreground font-medium'
@@ -155,7 +164,7 @@ export function Header() {
                 setConferencesDropdownOpen(false);
                 handleNavClick('conferences');
               }}
-              className={`relative h-16 flex items-center gap-1 px-3.5 text-sm transition-colors whitespace-nowrap cursor-pointer ${
+              className={`relative h-16 flex items-center gap-1 px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
                 isConferencesActive
                   ? 'text-primary font-bold'
                   : 'text-muted-foreground hover:text-foreground font-medium'
@@ -172,7 +181,7 @@ export function Header() {
             </button>
 
             {conferencesDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1 w-52 bg-card border border-foreground/15 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
+              <div className="absolute left-0 top-full pt-2 w-52 bg-card border border-foreground/15 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
                 {user?.role === 'admin' && (
                   <button
                     type="button"
@@ -180,10 +189,10 @@ export function Header() {
                       setConferencesDropdownOpen(false);
                       handleAddEvent('conference');
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition text-left cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-primary/10 hover:text-primary transition text-left cursor-pointer group"
                   >
-                    <Plus size={15} className="text-primary shrink-0" />
-                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition">
+                    <Plus size={16} className="text-primary shrink-0" />
+                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition">
                       New Conference
                     </span>
                   </button>
@@ -194,10 +203,10 @@ export function Header() {
                     setConferencesDropdownOpen(false);
                     handleNavClick('conferences');
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted transition text-left cursor-pointer group"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-muted transition text-left cursor-pointer group"
                 >
-                  <CalendarDays size={15} className="text-muted-foreground group-hover:text-foreground shrink-0" />
-                  <span className="text-xs font-semibold text-foreground transition">
+                  <CalendarDays size={16} className="text-muted-foreground group-hover:text-foreground shrink-0" />
+                  <span className="text-sm font-semibold text-foreground transition">
                     Find Conferences
                   </span>
                 </button>
@@ -218,7 +227,7 @@ export function Header() {
                 setWebinarsDropdownOpen(false);
                 handleNavClick('webinars');
               }}
-              className={`relative h-16 flex items-center gap-1 px-3.5 text-sm transition-colors whitespace-nowrap cursor-pointer ${
+              className={`relative h-16 flex items-center gap-1 px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
                 isWebinarsActive
                   ? 'text-primary font-bold'
                   : 'text-muted-foreground hover:text-foreground font-medium'
@@ -235,18 +244,19 @@ export function Header() {
             </button>
 
             {webinarsDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1 w-52 bg-card border border-foreground/15 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
+              <div className="absolute left-0 top-full pt-2 w-52 bg-card border border-foreground/15 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
                 {user?.role === 'admin' && (
                   <button
                     type="button"
                     onClick={() => {
-                      setWebinarsDropdownOpen(false);
+        setWebinarsDropdownOpen(false);
+        setBlogsDropdownOpen(false);
                       handleAddEvent('webinar');
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition text-left cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-primary/10 hover:text-primary transition text-left cursor-pointer group"
                   >
-                    <Plus size={15} className="text-primary shrink-0" />
-                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition">
+                    <Plus size={16} className="text-primary shrink-0" />
+                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition">
                       New Webinar
                     </span>
                   </button>
@@ -257,10 +267,10 @@ export function Header() {
                     setWebinarsDropdownOpen(false);
                     handleNavClick('webinars');
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted transition text-left cursor-pointer group"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-muted transition text-left cursor-pointer group"
                 >
-                  <Video size={15} className="text-muted-foreground group-hover:text-foreground shrink-0" />
-                  <span className="text-xs font-semibold text-foreground transition">
+                  <Video size={16} className="text-muted-foreground group-hover:text-foreground shrink-0" />
+                  <span className="text-sm font-semibold text-foreground transition">
                     Find Webinars
                   </span>
                 </button>
@@ -268,47 +278,91 @@ export function Header() {
             )}
           </div>
 
-          {/* Blog Editor */}
-          <button
-            type="button"
-            onClick={() => handleNavClick('blogs')}
-            className={`relative h-16 flex items-center px-3.5 text-sm transition-colors whitespace-nowrap cursor-pointer ${
-              isBlogsActive
-                ? 'text-primary font-bold'
-                : 'text-muted-foreground hover:text-foreground font-medium'
-            }`}
+          {/* Blog Editor with Dropdown */}
+          <div
+            className="relative h-full flex items-center"
+            ref={blogsDropdownRef}
+            onMouseEnter={() => setBlogsDropdownOpen(true)}
+            onMouseLeave={() => setBlogsDropdownOpen(false)}
           >
-            <span>Blog Editor</span>
-            {isBlogsActive && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-primary rounded-t-sm" />
+            <button
+              type="button"
+              onClick={() => {
+                setBlogsDropdownOpen(false);
+                handleNavClick('blogs');
+              }}
+              className={`relative h-16 flex items-center gap-1 px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
+                isBlogsActive
+                  ? 'text-primary font-bold'
+                  : 'text-muted-foreground hover:text-foreground font-medium'
+              }`}
+            >
+              <span>Blogs</span>
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-150 ${blogsDropdownOpen ? 'rotate-180' : ''}`}
+              />
+              {isBlogsActive && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-primary rounded-t-sm" />
+              )}
+            </button>
+
+            {blogsDropdownOpen && (
+              <div className="absolute left-0 top-full pt-2 w-52 bg-card border border-foreground/15 rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
+                {user?.role === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={handleAddBlog}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-primary/10 hover:text-primary transition text-left cursor-pointer group"
+                  >
+                    <Plus size={16} className="text-primary shrink-0" />
+                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition">
+                      New Blog
+                    </span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlogsDropdownOpen(false);
+                    handleNavClick('blogs');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-muted transition text-left cursor-pointer group"
+                >
+                  <FileText size={16} className="text-muted-foreground group-hover:text-foreground shrink-0" />
+                  <span className="text-sm font-semibold text-foreground transition">
+                    All Blogs
+                  </span>
+                </button>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* Live Chat (Admin & Mentor) */}
           {(user?.role === 'admin' || user?.role === 'mentor') && (
             <button
               type="button"
               onClick={() => handleNavClick('liveChat')}
-              className={`relative h-16 flex items-center px-3.5 text-sm transition-colors whitespace-nowrap cursor-pointer ${
-                isLiveChatActive
-                  ? 'text-primary font-bold'
-                  : 'text-muted-foreground hover:text-foreground font-medium'
-              }`}
-            >
-              <span>Live Chat</span>
+            className={`relative h-16 flex items-center px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
+              isLiveChatActive
+                ? 'text-primary font-bold'
+                : 'text-muted-foreground hover:text-foreground font-medium'
+            }`}
+          >
+            <span>Live Chat</span>
               {isLiveChatActive && (
                 <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-primary rounded-t-sm" />
               )}
             </button>
           )}
 
-          {/* More dropdown - always labeled "More" */}
-          {visibleMoreItems.length > 0 && (
+          {/* More dropdown - admin only */}
+          {user?.role === 'admin' && visibleMoreItems.length > 0 && (
             <div className="relative h-full flex items-center" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setDropdownOpen((prev) => !prev)}
-                className={`relative h-16 flex items-center gap-1 px-3.5 text-sm transition-colors whitespace-nowrap cursor-pointer ${
+                className={`relative h-16 flex items-center gap-1 px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
                   isMoreActive
                     ? 'text-primary font-bold'
                     : 'text-muted-foreground hover:text-foreground font-medium'
@@ -325,7 +379,7 @@ export function Header() {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute left-0 top-full mt-1 w-52 bg-card border border-foreground/15 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute left-0 top-full pt-2 w-52 bg-card border border-foreground/15 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   {visibleMoreItems.map((item) => {
                     const Icon = item.icon;
                     const isItemActive = !isEventPage && activeTab === item.tab;
@@ -334,14 +388,14 @@ export function Header() {
                         key={item.tab}
                         type="button"
                         onClick={() => handleNavClick(item.tab)}
-                        className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs md:text-sm transition cursor-pointer text-left ${
+                        className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition cursor-pointer text-left ${
                           isItemActive
                             ? 'bg-primary/10 text-primary font-bold'
                             : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
                         }`}
                       >
                         <Icon
-                          size={15}
+                          size={16}
                           className={isItemActive ? 'text-primary' : 'text-muted-foreground'}
                         />
                         <span>{item.label}</span>

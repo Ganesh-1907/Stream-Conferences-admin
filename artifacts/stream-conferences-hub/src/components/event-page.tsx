@@ -156,6 +156,89 @@ export function EventPage() {
 
   if (!eventPage || !eventPageType) return null;
 
+  // Add mode: simplified header
+  if (store.isAddMode) {
+    return (
+      <div className="w-full space-y-6">
+        <div className="bg-card border border-foreground/10 rounded-2xl px-6 py-5 shadow-xs flex items-center gap-4">
+          <button
+            type="button"
+            onClick={store.closeEventPage}
+            className="p-2 bg-muted hover:bg-muted/80 text-foreground rounded-xl border border-foreground/10 transition duration-150 cursor-pointer shrink-0"
+          >
+            <ArrowLeft size={17} />
+          </button>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+              Add {eventPageType === 'conference' ? 'Conference' : 'Webinar'}
+            </h1>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              New
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-6 w-full items-start">
+          <aside className="w-full lg:w-72 shrink-0 bg-card border border-foreground/10 rounded-2xl p-4 shadow-sm space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto">
+            <nav className="space-y-4">
+              {SUBTAB_GROUPS.filter(g => !g.viewOnly).map((group) => {
+                const visibleItems = store.isAddMode
+                  ? group.items.filter(i => i.tab !== 'dashboard' && i.tab !== 'cohorts' && i.tab !== 'participants' && i.tab !== 'payments' && i.tab !== 'abstracts' && i.tab !== 'enquiries' && i.tab !== 'brochures')
+                  : group.items;
+                if (visibleItems.length === 0) return null;
+                return (
+                  <div key={group.title} className="space-y-1">
+                    <div className="text-xs font-black uppercase tracking-wider text-black dark:text-white px-3 py-1">
+                      {group.title}
+                    </div>
+                    <div className="space-y-0.5">
+                      {visibleItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = store.eventPageTab === item.tab;
+                        return (
+                          <button
+                            key={item.tab}
+                            type="button"
+                            onClick={() => store.openEventTab(item.tab)}
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition duration-150 cursor-pointer text-left ${
+                              isActive
+                                ? 'bg-primary text-primary-foreground font-bold shadow-sm'
+                                : 'text-foreground/75 hover:text-foreground hover:bg-foreground/5'
+                            }`}
+                          >
+                            <Icon size={17} className={isActive ? 'text-primary-foreground' : 'text-foreground/70'} />
+                            <span className="truncate">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </nav>
+          </aside>
+
+          <main className="flex-1 min-w-0 bg-card border border-foreground/10 rounded-2xl p-6 md:p-8 shadow-sm w-full">
+            {store.eventPageTab === 'details' && <DetailsTab />}
+            {store.eventPageTab === 'scientific-program' && <ScientificProgramTab />}
+            {store.eventPageTab === 'color-theme' && <ColorThemeTab />}
+            {store.eventPageTab === 'fees' && <FeesTab />}
+            {store.eventPageTab === 'speakers' && <SpeakersTab />}
+            {store.eventPageTab === 'tracks' && <TracksTab />}
+            {store.eventPageTab === 'program' && <ProgramTab />}
+            {store.eventPageTab === 'banners' && <BannersTab />}
+            {store.eventPageTab === 'faqs' && <FAQsTab />}
+            {store.eventPageTab === 'partners' && <PartnersTab />}
+            {store.eventPageTab === 'guidelines' && <GuidelinesTab />}
+            {store.eventPageTab === 'organizer-contact' && <OrganizerContactTab />}
+            {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
+            {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-6">
       {/* Event Top Bar (Matching Reference Layout) */}
@@ -575,16 +658,22 @@ function DetailsTab() {
   if (!eventPage || !eventPageType) return null;
 
   const handleSave = async () => {
+    if (!formData.title.trim()) { alert('Title is required'); return; }
+    if (!formData.subdomain.trim()) { alert('Subdomain is required'); return; }
     setSaving(true);
     setSavedSuccess(false);
-    await updateEventFields({
+    const ok = await updateEventFields({
       title: formData.title,
       description: formData.description,
       subdomain: formData.subdomain,
     });
     setSaving(false);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    if (ok) {
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } else {
+      alert('Failed to save. Please try again.');
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string, setLoading: (v: boolean) => void) => {
@@ -854,7 +943,19 @@ function ScientificProgramTab() {
 function ColorThemeTab() {
   const { eventPage, updateEventField, eventPageMode } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
-  const themeColor = (eventPage as any)?.themeColor || '#0f4c81';
+  const [localColor, setLocalColor] = useState((eventPage as any)?.themeColor || '#0f4c81');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setLocalColor((eventPage as any)?.themeColor || '#0f4c81');
+  }, [eventPage]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    updateEventField('themeColor', localColor);
+    setTimeout(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); }, 300);
+  };
 
   if (!isEditMode) {
     return (
@@ -862,8 +963,8 @@ function ColorThemeTab() {
         <h3 className="text-lg font-bold tracking-tight">Website Color Theme</h3>
         <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
           <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-xl border border-foreground/15 shadow-xs shrink-0" style={{ backgroundColor: themeColor }} />
-            <span className="font-mono text-sm font-bold text-foreground">{themeColor}</span>
+            <span className="w-8 h-8 rounded-xl border border-foreground/15 shadow-xs shrink-0" style={{ backgroundColor: (eventPage as any)?.themeColor || '#0f4c81' }} />
+            <span className="font-mono text-sm font-bold text-foreground">{(eventPage as any)?.themeColor || '#0f4c81'}</span>
             <span className="text-xs text-muted-foreground">(Applied to user website buttons, navigation, and accents)</span>
           </div>
         </div>
@@ -878,51 +979,138 @@ function ColorThemeTab() {
         <p className="text-sm text-muted-foreground mt-1">Choose a color theme for the user-facing website.</p>
       </div>
 
-      <div className="max-w-lg space-y-4">
-        <div className="bg-muted/30 border border-foreground/10 rounded-2xl p-6 space-y-4">
+      <div className="max-w-2xl space-y-4">
+        <div className="bg-muted/30 border border-foreground/10 rounded-2xl p-6 space-y-5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Theme Color</label>
-          <div className="flex flex-wrap items-center gap-2.5">
-            {[
-              { label: 'Conference Blue', color: '#0f4c81' },
-              { label: 'Royal Navy', color: '#1e3a8a' },
-              { label: 'Ocean Teal', color: '#0e7490' },
-              { label: 'Emerald', color: '#047857' },
-              { label: 'Ruby Red', color: '#991b1b' },
-              { label: 'Deep Violet', color: '#581c87' },
-              { label: 'Slate Grey', color: '#334155' },
-            ].map((preset) => (
-              <button
-                key={preset.color}
-                type="button"
-                onClick={() => updateEventField('themeColor', preset.color)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
-                  themeColor?.toLowerCase() === preset.color.toLowerCase()
-                    ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
-                    : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
-                }`}
-              >
-                <span className="w-3.5 h-3.5 rounded-full border border-foreground/10" style={{ backgroundColor: preset.color }} />
-                <span>{preset.label}</span>
-              </button>
-            ))}
+
+          {/* Dark shades */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Dark Shades</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { label: 'Conference Blue', color: '#0f4c81' },
+                { label: 'Royal Navy', color: '#1e3a8a' },
+                { label: 'Ocean Teal', color: '#0e7490' },
+                { label: 'Emerald', color: '#047857' },
+                { label: 'Ruby Red', color: '#991b1b' },
+                { label: 'Deep Violet', color: '#581c87' },
+                { label: 'Charcoal', color: '#334155' },
+              ].map((preset) => (
+                <button
+                  key={preset.color}
+                  type="button"
+                  onClick={() => setLocalColor(preset.color)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                    localColor?.toLowerCase() === preset.color.toLowerCase()
+                      ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
+                      : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
+                  }`}
+                >
+                  <span className="w-3.5 h-3.5 rounded-full border border-foreground/10" style={{ backgroundColor: preset.color }} />
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Light shades */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Light Shades</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { label: 'Sky Blue', color: '#38bdf8' },
+                { label: 'Soft Teal', color: '#2dd4bf' },
+                { label: 'Mint Green', color: '#34d399' },
+                { label: 'Lavender', color: '#a78bfa' },
+                { label: 'Rose Pink', color: '#fb7185' },
+                { label: 'Peach', color: '#fb923c' },
+                { label: 'Warm Grey', color: '#94a3b8' },
+              ].map((preset) => (
+                <button
+                  key={preset.color}
+                  type="button"
+                  onClick={() => setLocalColor(preset.color)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                    localColor?.toLowerCase() === preset.color.toLowerCase()
+                      ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
+                      : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
+                  }`}
+                >
+                  <span className="w-3.5 h-3.5 rounded-full border border-foreground/10" style={{ backgroundColor: preset.color }} />
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pastel shades */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Pastel / Soft</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { label: 'Baby Blue', color: '#7dd3fc' },
+                { label: 'Soft Mint', color: '#6ee7b7' },
+                { label: 'Lilac', color: '#c4b5fd' },
+                { label: 'Blush', color: '#fda4af' },
+                { label: 'Amber', color: '#fcd34d' },
+                { label: 'Coral', color: '#fca5a5' },
+                { label: 'Stone', color: '#d6d3d1' },
+              ].map((preset) => (
+                <button
+                  key={preset.color}
+                  type="button"
+                  onClick={() => setLocalColor(preset.color)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                    localColor?.toLowerCase() === preset.color.toLowerCase()
+                      ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
+                      : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
+                  }`}
+                >
+                  <span className="w-3.5 h-3.5 rounded-full border border-foreground/10" style={{ backgroundColor: preset.color }} />
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom color */}
+          <div className="flex items-center gap-3 pt-2 border-t border-foreground/10">
             <input
               type="color"
-              value={themeColor}
-              onChange={(e) => updateEventField('themeColor', e.target.value)}
+              value={localColor}
+              onChange={(e) => setLocalColor(e.target.value)}
               className="w-10 h-10 p-0.5 rounded-xl border border-foreground/10 cursor-pointer bg-background"
             />
             <input
               type="text"
               placeholder="#0f4c81"
-              value={themeColor}
-              onChange={(e) => updateEventField('themeColor', e.target.value)}
+              value={localColor}
+              onChange={(e) => setLocalColor(e.target.value)}
               className="w-32 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-mono font-semibold"
             />
-            <span className="text-xs text-muted-foreground">Select preset or enter custom HEX color</span>
+            <span className="text-xs text-muted-foreground">Custom HEX</span>
           </div>
+
+          {/* Preview */}
+          <div className="flex items-center gap-3 p-4 bg-background border border-foreground/10 rounded-xl">
+            <span className="w-10 h-10 rounded-xl shadow-sm shrink-0" style={{ backgroundColor: localColor }} />
+            <div>
+              <p className="text-xs text-muted-foreground">Preview</p>
+              <p className="font-mono text-sm font-bold text-foreground">{localColor}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50 cursor-pointer"
+          >
+            {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save Theme'}
+          </button>
+          {saved && <span className="text-xs text-green-600 font-medium">Theme color saved successfully</span>}
         </div>
       </div>
     </div>
