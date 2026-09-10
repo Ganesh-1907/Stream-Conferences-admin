@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, Maximize2, Trash2, Upload, UploadCloud, X } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface FileUploadCardProps {
   title: string;
@@ -7,16 +8,23 @@ interface FileUploadCardProps {
   preview: string;
   onSelect: (f: File | null) => void;
   onClear: () => void;
+  loading?: boolean;
 }
 
-export function FileUploadCard({ title, accept, preview, onSelect, onClear }: FileUploadCardProps) {
+export function FileUploadCard({ title, accept, preview, onSelect, onClear, loading }: FileUploadCardProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const isPdf = preview.startsWith('data:application/pdf') || preview.toLowerCase().includes('.pdf');
 
   return (
     <div className="space-y-1.5">
       <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</label>
-      {preview ? (
+      {loading ? (
+        <div className="min-h-[110px] border-2 border-dashed border-primary/40 bg-primary/5 rounded-2xl flex flex-col items-center justify-center text-center p-4">
+          <Spinner className="size-6 text-primary" />
+          <span className="text-xs font-bold text-foreground mt-2">Uploading {title}...</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5">Please wait, this may take a moment</span>
+        </div>
+      ) : preview ? (
         <div className="p-4 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-4">
           {/* One Side: Image / File Preview */}
           <div

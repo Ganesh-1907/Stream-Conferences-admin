@@ -711,11 +711,14 @@ function DetailsTab() {
         body: fd,
       });
       const data = await res.json();
-      if (data.url) {
+      if (res.ok && data.url) {
         await updateEventFields({ [field]: data.url });
+      } else {
+        alert(data.error || data.message || 'Upload failed. Please try again.');
       }
     } catch (err) {
       console.error('Upload failed', err);
+      alert('Upload failed. Please try again.');
     }
     setLoading(false);
   };
@@ -835,6 +838,7 @@ function DetailsTab() {
             preview={logoUrl ? mediaUrl(logoUrl) : ''}
             onSelect={(f) => handleFileSelect(f, 'logoUrl', setUploadingLogo)}
             onClear={() => handleFileClear('logoUrl')}
+            loading={uploadingLogo}
           />
           <FileUploadCard
             title="Brochure"
@@ -842,6 +846,7 @@ function DetailsTab() {
             preview={brochureUrl ? mediaUrl(brochureUrl) : ''}
             onSelect={(f) => handleFileSelect(f, 'brochureUrl', setUploadingBrochure)}
             onClear={() => handleFileClear('brochureUrl')}
+            loading={uploadingBrochure}
           />
         </div>
 
@@ -903,12 +908,15 @@ function ScientificProgramTab() {
         body: fd,
       });
       const data = await res.json();
-      if (data.url) {
+      if (res.ok && data.url) {
         setUrl(data.url);
         updateEventField('scientificProgramUrl', data.url);
+      } else {
+        alert(data.error || data.message || 'Upload failed. Please try again.');
       }
     } catch (err) {
       console.error('Upload failed', err);
+      alert('Upload failed. Please try again.');
     }
     setUploading(false);
   };
@@ -950,6 +958,7 @@ function ScientificProgramTab() {
           preview={url ? `${API_BASE}${url}` : ''}
           onSelect={handleFileSelect}
           onClear={handleRemove}
+          loading={uploading}
         />
       </div>
     </div>
@@ -2282,6 +2291,7 @@ function TracksTab() {
   const tracks: any[] = (eventPage as any)?.tracks || [];
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formData, setFormData] = useState({ title: '', description: '', image: '', referenceLinks: [] as { label: string; url: string }[] });
 
   const resetForm = () => {
@@ -2338,17 +2348,26 @@ function TracksTab() {
 
   const handleImageSelect = async (file: File | null) => {
     if (!file || !eventPage) return;
+    setUploadingImage(true);
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch(`${API_BASE}/uploads/upload`, {
-      method: 'POST',
-      headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
-      body: fd,
-    });
-    const data = await res.json();
-    if (data.url) {
-      setFormData(prev => ({ ...prev, image: data.url }));
+    try {
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setFormData(prev => ({ ...prev, image: data.url }));
+      } else {
+        alert(data.error || data.message || 'Upload failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('Upload failed', err);
+      alert('Upload failed. Please try again.');
     }
+    setUploadingImage(false);
   };
 
   return (
@@ -2390,6 +2409,7 @@ function TracksTab() {
                 preview={formData.image ? mediaUrl(formData.image) : ''}
                 onSelect={handleImageSelect}
                 onClear={() => setFormData(p => ({ ...p, image: '' }))}
+                loading={uploadingImage}
               />
             </div>
             <div className="flex gap-2">
