@@ -635,6 +635,7 @@ function DetailsTab() {
   const { eventPage, eventPageType, eventPageMode, updateEventFields, user } = useAppStore();
   const [formData, setFormData] = useState({
     title: eventPage?.title || '',
+    theme: eventPage?.theme || '',
     description: eventPage?.description || '',
     subdomain: eventPage?.subdomain || '',
   });
@@ -649,6 +650,7 @@ function DetailsTab() {
     if (eventPage) {
       setFormData({
         title: eventPage.title || '',
+        theme: eventPage.theme || '',
         description: eventPage.description || '',
         subdomain: eventPage.subdomain || '',
       });
@@ -664,6 +666,7 @@ function DetailsTab() {
     setSavedSuccess(false);
     const ok = await updateEventFields({
       title: formData.title,
+      theme: formData.theme,
       description: formData.description,
       subdomain: formData.subdomain,
     });
@@ -733,6 +736,11 @@ function DetailsTab() {
         <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Title</h4>
           <p className="text-base font-bold text-foreground">{eventPage.title || '—'}</p>
+        </div>
+
+        <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Theme</h4>
+          <p className="text-sm font-semibold text-foreground">{eventPage.theme || '—'}</p>
         </div>
 
         <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
@@ -816,6 +824,19 @@ function DetailsTab() {
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Theme</label>
+          <input
+            className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-medium"
+            placeholder="e.g. Advancements in Life Sciences & Healthcare Innovation"
+            value={formData.theme}
+            onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Theme title/tagline displayed directly under the main event title in the hero section.
+          </p>
         </div>
 
         <div>
