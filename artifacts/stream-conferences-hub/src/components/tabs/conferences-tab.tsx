@@ -86,6 +86,7 @@ export function ConferencesTab() {
                       onPayments={() => openEventPage(conf, 'conference', 'payments', 'view')}
                       onCohorts={() => openEventPage(conf, 'conference', 'cohorts', 'view')}
                       onDelete={() => handleDeleteItem(conf._id, 'conferences')}
+                      isMentor={user?.role === 'mentor'}
                     />
                   </div>
                 </td>
@@ -115,6 +116,7 @@ function ActionDropdown({
   onPayments,
   onCohorts,
   onDelete,
+  isMentor,
 }: {
   id: string;
   activeId: string | null;
@@ -126,6 +128,7 @@ function ActionDropdown({
   onPayments: () => void;
   onCohorts: () => void;
   onDelete: () => void;
+  isMentor?: boolean;
 }) {
   return (
     <div className="inline-block text-left">
@@ -155,7 +158,7 @@ function ActionDropdown({
             <MenuItem label="Dashboard" onClick={onDashboard} />
             <MenuItem label="Participants" onClick={onParticipants} />
             <MenuItem label="Payments" onClick={onPayments} />
-            <MenuItem label="Cohorts" onClick={onCohorts} />
+            {!isMentor && <MenuItem label="Cohorts" onClick={onCohorts} />}
             <div className="border-t border-foreground/5 my-1" />
             <button
               type="button"

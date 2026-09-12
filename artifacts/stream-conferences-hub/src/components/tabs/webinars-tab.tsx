@@ -98,7 +98,7 @@ export function WebinarsTab() {
                           <MenuBtn label="Dashboard" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'dashboard', 'view'); }} />
                           <MenuBtn label="Participants" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'participants', 'view'); }} />
                           <MenuBtn label="Payments" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'payments', 'view'); }} />
-                          <MenuBtn label="Cohorts" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'cohorts', 'view'); }} />
+                          {user?.role !== 'mentor' && <MenuBtn label="Cohorts" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'cohorts', 'view'); }} />}
                           <div className="border-t border-foreground/5 my-1" />
                           <button
                             type="button"

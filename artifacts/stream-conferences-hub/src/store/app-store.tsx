@@ -658,6 +658,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     mode: 'view' | 'edit' = 'view',
   ) => {
     const search = new URLSearchParams();
+    const cohortId = (item as any).cohortId;
+    if (cohortId) search.set('cohort', cohortId);
     const qs = search.toString() ? `?${search.toString()}` : '';
     if (mode === 'edit') {
       navigate(`/${type}/${item._id}/edit/${tab}${qs}`);
