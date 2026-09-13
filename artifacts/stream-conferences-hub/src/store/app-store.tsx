@@ -107,6 +107,7 @@ interface AppStoreValue {
   eventCohortId: string | null;
   activeCohort: CourseCohort | null;
   openCohortTab: (cohort: CourseCohort, tab: EventPageTab) => void;
+  openCohortTabEdit: (cohort: CourseCohort, tab: EventPageTab) => void;
   openEventTab: (tab: EventPageTab) => void;
 
   // Data lists
@@ -722,6 +723,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     } else {
       navigate(`/${eventPageType}/${eventPage._id}/${tab}?${search.toString()}`);
     }
+  };
+
+  const openCohortTabEdit = (cohort: CourseCohort, tab: EventPageTab) => {
+    if (!eventPage || !eventPageType) return;
+    const search = new URLSearchParams(window.location.search);
+    search.set('cohort', cohort.cohortId || cohort._id);
+    navigate(`/${eventPageType}/${eventPage._id}/edit/${tab}?${search.toString()}`);
   };
 
   const closeEventPage = () => {
@@ -2509,6 +2517,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     eventCohortId,
     activeCohort,
     openCohortTab,
+    openCohortTabEdit,
     openEventTab,
     loadingData,
     dashboardStats,

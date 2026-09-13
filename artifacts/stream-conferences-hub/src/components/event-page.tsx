@@ -4039,7 +4039,7 @@ function VenueDetailsTab() {
 }
 
 function CohortsTab() {
-  const { eventPage, eventPageType, eventCohorts, eventCohortsLoading, createCohort, setCurrentCohort, deleteCohort, assignCohortMentor, mentors, user, openCohortTab, eventPageMode } = useAppStore();
+  const { eventPage, eventPageType, eventCohorts, eventCohortsLoading, createCohort, setCurrentCohort, deleteCohort, assignCohortMentor, mentors, user, openCohortTab, openCohortTabEdit, eventPageMode } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const [showAdd, setShowAdd] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -4143,19 +4143,24 @@ function CohortsTab() {
                               <div className={`absolute right-0 w-48 bg-card border border-foreground/15 rounded-xl shadow-2xl z-50 py-1.5 focus:outline-none text-left animate-fade-in ${
                                 isLastRow ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
                               }`}>
+                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'details'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">View Details</button>
+                                <button type="button" onClick={() => {
+                                  setOpenMenuId(null);
+                                  openCohortTabEdit(c, 'details');
+                                }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Edit</button>
+                                <div className="border-t border-foreground/10 my-1" />
                                 <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'dashboard'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Dashboard</button>
                                 <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'participants'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Participants</button>
                                 <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'payments'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Payments</button>
                                 <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'abstracts'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Abstracts</button>
                                 <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'enquiries'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Enquiries</button>
-                                {isEditMode && (
-                                  <>
-                                    <div className="border-t border-foreground/10 my-1" />
-                                    <button type="button" onClick={() => { setOpenMenuId(null); handleSetCurrent(c._id); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">{c.isCurrent ? 'Unset Current' : 'Set Current'}</button>
-                                    <div className="border-t border-foreground/10 my-1" />
-                                    <button type="button" onClick={() => { setOpenMenuId(null); handleDelete(c._id); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-red-500/10 text-red-500 hover:text-red-600 transition duration-150 font-bold cursor-pointer">Delete</button>
-                                  </>
+                                <div className="border-t border-foreground/10 my-1" />
+                                {user?.role === 'admin' && (
+                                  <button type="button" onClick={() => { setOpenMenuId(null); setAssignCohort(c); setAssignUsername(c.assignedMentor || ''); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Assign Mentor</button>
                                 )}
+                                <button type="button" onClick={() => { setOpenMenuId(null); handleSetCurrent(c._id); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">{c.isCurrent ? 'Unset Current' : 'Set Current'}</button>
+                                <div className="border-t border-foreground/10 my-1" />
+                                <button type="button" onClick={() => { setOpenMenuId(null); handleDelete(c._id); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-red-500/10 text-red-500 hover:text-red-600 transition duration-150 font-bold cursor-pointer">Delete</button>
                               </div>
                             </>
                           )}
