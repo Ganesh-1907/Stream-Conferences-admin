@@ -7,18 +7,13 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { useLocation } from 'wouter';
 import { Wizard } from '@/components/wizard';
 import { EventPage } from '@/components/event-page';
-import { BlogFormModal } from '@/components/blog-form-modal';
 import { ParticipantModal } from '@/components/participant-modal';
 import { AssignMentorModal } from '@/components/assign-mentor-modal';
 import { OverviewTab } from '@/components/tabs/overview-tab';
 import { ConferencesTab } from '@/components/tabs/conferences-tab';
-import { WebinarsTab } from '@/components/tabs/webinars-tab';
 import { BlogsTab } from '@/components/tabs/blogs-tab';
 import { LiveChatTab } from '@/components/tabs/live-chat-tab';
-import { MediaPartnersTab } from '@/components/tabs/media-partners-tab';
-import { CollaboratorsTab } from '@/components/tabs/collaborators-tab';
-import { VenuesTab } from '@/components/tabs/venues-tab';
-import { MentorsTab } from '@/components/tabs/mentors-tab';
+import { UserWebsiteTab } from '@/components/tabs/user-website-tab';
 
 export default function App() {
   return (
@@ -70,7 +65,6 @@ function Root() {
         </div>
       </footer>
 
-      <BlogFormModal />
       <ParticipantModal />
       <AssignMentorModal />
     </div>
@@ -85,18 +79,16 @@ function TabPanel() {
       return <OverviewTab />;
     case 'conferences':
       return <ConferencesTab />;
-    case 'webinars':
-      return <WebinarsTab />;
     case 'blogs':
       return <BlogsTab />;
+    case 'userWebsite':
     case 'mediaPartners':
-      return <MediaPartnersTab />;
     case 'collaborators':
-      return <CollaboratorsTab />;
     case 'venues':
-      return store.user?.role === 'admin' ? <VenuesTab /> : null;
     case 'mentors':
-      return store.user?.role === 'admin' ? <MentorsTab /> : null;
+    case 'gallery':
+    case 'brochure':
+      return <UserWebsiteTab />;
     case 'liveChat':
       return store.user?.role === 'admin' || store.user?.role === 'mentor' ? <LiveChatTab /> : null;
     default:

@@ -133,7 +133,7 @@ export function OverviewTab() {
         <p className="text-sm text-muted-foreground">
           {user?.role === 'admin'
             ? 'Here is your platform-wide analytics and activity overview.'
-            : 'Here is the summary of your conferences, webinars and blogs.'}
+            : 'Here is the summary of your conferences and blogs.'}
         </p>
       </div>
 
@@ -141,9 +141,9 @@ export function OverviewTab() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={CalendarDays}
-          label="Total Events"
-          value={totalEvents}
-          sub={`${c?.conferences ?? 0} conferences · ${c?.webinars ?? 0} webinars`}
+          label="Total Conferences"
+          value={c?.conferences ?? 0}
+          sub={`${c?.confUpcoming ?? 0} upcoming · ${c?.confPast ?? 0} past`}
           color="bg-primary/10 text-primary"
         />
         <StatCard
@@ -261,7 +261,6 @@ export function OverviewTab() {
             </span>
             <div className="flex items-center gap-3 text-[10px]">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-primary/80" />Conferences</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500/80" />Webinars</span>
             </div>
           </div>
           <BarChart data={monthlyData} maxVal={maxMonthly} />
@@ -274,7 +273,6 @@ export function OverviewTab() {
             </span>
             <div className="flex items-center gap-3 text-[10px]">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-primary/80" />Conferences</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500/80" />Webinars</span>
             </div>
           </div>
           {yearData.length > 0 ? (

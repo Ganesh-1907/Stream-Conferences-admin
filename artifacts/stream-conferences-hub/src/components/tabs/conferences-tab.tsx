@@ -5,7 +5,7 @@ import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
 
 export function ConferencesTab() {
-  const { conferences, activeDropdownId, setActiveDropdownId, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor } = useAppStore();
+  const { conferences, activeDropdownId, setActiveDropdownId, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor, navigateToAddEvent } = useAppStore();
   const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(conferences);
 
   return (
@@ -15,6 +15,16 @@ export function ConferencesTab() {
           <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Conferences</h1>
           <p className="text-sm text-muted-foreground">Announce and oversee global conference schedules.</p>
         </div>
+        {user?.role === 'admin' && (
+          <button
+            type="button"
+            onClick={() => navigateToAddEvent('conference')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>New Conference</span>
+          </button>
+        )}
       </div>
 
       <div className="border border-foreground/10 rounded-xl">
@@ -81,9 +91,6 @@ export function ConferencesTab() {
                       onToggle={setActiveDropdownId}
                       onViewDetails={() => openEventPage(conf, 'conference', 'details', 'view')}
                       onEdit={() => openEventPage(conf, 'conference', 'details', 'edit')}
-                      onDashboard={() => openEventPage(conf, 'conference', 'dashboard', 'view')}
-                      onParticipants={() => openEventPage(conf, 'conference', 'participants', 'view')}
-                      onPayments={() => openEventPage(conf, 'conference', 'payments', 'view')}
                       onCohorts={() => openEventPage(conf, 'conference', 'cohorts', 'view')}
                       onDelete={() => handleDeleteItem(conf._id, 'conferences')}
                       isMentor={user?.role === 'mentor'}
@@ -111,9 +118,6 @@ function ActionDropdown({
   onToggle,
   onViewDetails,
   onEdit,
-  onDashboard,
-  onParticipants,
-  onPayments,
   onCohorts,
   onDelete,
   isMentor,
@@ -123,9 +127,6 @@ function ActionDropdown({
   onToggle: (id: string | null) => void;
   onViewDetails: () => void;
   onEdit: () => void;
-  onDashboard: () => void;
-  onParticipants: () => void;
-  onPayments: () => void;
   onCohorts: () => void;
   onDelete: () => void;
   isMentor?: boolean;
@@ -155,9 +156,6 @@ function ActionDropdown({
           <div className="absolute right-0 mt-1.5 w-48 bg-card border border-foreground/10 rounded-xl shadow-xl z-40 py-1.5 focus:outline-none text-left animate-fade-in">
             <MenuItem label="View Details" onClick={onViewDetails} />
             <MenuItem label="Edit" onClick={onEdit} />
-            <MenuItem label="Dashboard" onClick={onDashboard} />
-            <MenuItem label="Participants" onClick={onParticipants} />
-            <MenuItem label="Payments" onClick={onPayments} />
             {!isMentor && <MenuItem label="Cohorts" onClick={onCohorts} />}
             <div className="border-t border-foreground/5 my-1" />
             <button

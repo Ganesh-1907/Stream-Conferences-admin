@@ -10,8 +10,7 @@ export function MediaPartnersTab() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Media Partners</h1>
-          <p className="text-sm text-muted-foreground">Organizations that promote the event across their channels.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Media Partners</h1>
         </div>
         <button onClick={() => openPartnerForm(null)} className="cta-button">
           <Plus size={14} /> Add Media Partner

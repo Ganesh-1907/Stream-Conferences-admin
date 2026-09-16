@@ -21,6 +21,8 @@ const TAB_LABELS: Record<string, string> = {
   venues: 'Venues',
   mentors: 'Manage Mentors',
   liveChat: 'Live Chat',
+  userWebsite: 'User Website',
+  gallery: 'Gallery',
 };
 
 const EVENT_TAB_LABELS: Record<string, string> = {

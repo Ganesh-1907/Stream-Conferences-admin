@@ -49,6 +49,8 @@ import {
   Venue,
   VenueFormState,
   Webinar,
+  GalleryItem,
+  MainBrochureItem,
 } from '@/lib/types';
 
 type EditableType = 'conference' | 'webinar' | 'blog';
@@ -124,10 +126,18 @@ interface AppStoreValue {
   collaborators: Collaborator[];
   exhibitors: Exhibitor[];
   venues: Venue[];
+  galleryItems: GalleryItem[];
   profile: MentorProfile | null;
   mentors: MentorProfile[];
   refreshData: () => Promise<void>;
   loadTabData: (tab: Tab) => Promise<void>;
+  loadGalleryItems: () => Promise<void>;
+  addGalleryItem: (title: string, description: string, image: string) => Promise<boolean>;
+  deleteGalleryItem: (id: string) => Promise<boolean>;
+  mainBrochure: MainBrochureItem | null;
+  loadMainBrochure: () => Promise<void>;
+  saveMainBrochure: (fileUrlOrData: string | { title?: string; fileUrl: string; fileName?: string }, fileName?: string, title?: string) => Promise<boolean>;
+  deleteMainBrochure: () => Promise<boolean>;
 
   // Generic add/edit modal
   showForm: boolean;
@@ -450,7 +460,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Navigation — read initial tab from URL hash so refresh restores it
   const VALID_TABS: Tab[] = [
     'overview','conferences','webinars','blogs','mediaPartners','collaborators','venues',
-    'mentors','liveChat'
+    'mentors','liveChat','userWebsite','gallery','brochure'
   ];
   const getTabFromHash = (): Tab => {
     const hash = window.location.hash.replace('#', '');
@@ -471,6 +481,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [exhibitors, setExhibitors] = useState<Exhibitor[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [mainBrochure, setMainBrochure] = useState<MainBrochureItem | null>(null);
   const [profile, setProfile] = useState<MentorProfile | null>(null);
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -936,17 +948,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         case 'blogs':
           await fetchInto(`${API_BASE}/blogs`, setBlogs);
           break;
-        case 'mediaPartners':
-          await fetchInto(`${API_BASE}/media-partners`, setMediaPartners);
+        case 'gallery':
+          await fetchInto(`${API_BASE}/gallery`, setGalleryItems);
           break;
-        case 'collaborators':
-          await fetchInto(`${API_BASE}/collaborators`, setCollaborators);
-          break;
-        case 'venues':
-          await fetchInto(`${API_BASE}/venues`, setVenues);
-          break;
-        case 'mentors':
-          await fetchInto(`${API_BASE}/mentors`, setMentors);
+        case 'brochure':
+        case 'userWebsite':
+          await Promise.all([
+            fetchInto(`${API_BASE}/media-partners`, setMediaPartners),
+            fetchInto(`${API_BASE}/collaborators`, setCollaborators),
+            fetchInto(`${API_BASE}/venues`, setVenues),
+            fetchInto(`${API_BASE}/mentors`, setMentors),
+            fetchInto(`${API_BASE}/gallery`, setGalleryItems),
+            loadMainBrochure(),
+          ]);
           break;
         case 'liveChat':
           await loadChatSessions();
@@ -2349,6 +2363,137 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     refreshData();
   };
 
+  const loadGalleryItems = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/gallery`);
+      if (res.ok) {
+        setGalleryItems(await res.json());
+      }
+    } catch (e) {
+      console.error('Failed to load gallery items:', e);
+    }
+  };
+
+  const addGalleryItem = async (title: string, description: string, image: string): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const res = await fetch(`${API_BASE}/gallery`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify({ title, description, image }),
+      });
+      if (!res.ok) throw new Error('Failed to create gallery item');
+      await loadGalleryItems();
+      return true;
+    } catch (err) {
+      console.error('Add gallery item error:', err);
+      return false;
+    }
+  };
+
+  const deleteGalleryItem = async (id: string): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const res = await fetch(`${API_BASE}/gallery/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+      });
+      if (!res.ok) throw new Error('Failed to delete gallery item');
+      await loadGalleryItems();
+      return true;
+    } catch (err) {
+      console.error('Delete gallery item error:', err);
+      return false;
+    }
+  };
+
+  const loadMainBrochure = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/brochure/main`);
+      if (res.ok) {
+        const data = await res.json();
+        setMainBrochure(data);
+      } else {
+        setMainBrochure(null);
+      }
+    } catch (e) {
+      console.error('Failed to load main brochure:', e);
+      setMainBrochure(null);
+    }
+  };
+
+  const saveMainBrochure = async (
+    fileUrlOrData: string | { title?: string; fileUrl: string; fileName?: string },
+    fileName?: string,
+    title?: string
+  ): Promise<boolean> => {
+    if (!user) return false;
+    let payload: { title: string; fileUrl: string; fileName: string };
+    if (typeof fileUrlOrData === 'string') {
+      payload = {
+        fileUrl: fileUrlOrData,
+        fileName: fileName || 'brochure.pdf',
+        title: title || 'Official Conference Brochure',
+      };
+    } else {
+      payload = {
+        fileUrl: fileUrlOrData.fileUrl,
+        fileName: fileUrlOrData.fileName || fileName || 'brochure.pdf',
+        title: fileUrlOrData.title || title || 'Official Conference Brochure',
+      };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/brochure/main`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setMainBrochure(saved);
+        return true;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.error('Save main brochure failed:', res.status, errJson);
+      }
+    } catch (e) {
+      console.error('Failed to save main brochure:', e);
+    }
+    return false;
+  };
+
+  const deleteMainBrochure = async (): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const res = await fetch(`${API_BASE}/brochure/main`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+      });
+      if (res.ok) {
+        setMainBrochure(null);
+        return true;
+      }
+    } catch (e) {
+      console.error('Failed to delete main brochure:', e);
+    }
+    return false;
+  };
+
   const handleLogoUpload = (kind: LogoKind, file: File | null) => {
     if (!file || !user) return;
     const reader = new FileReader();
@@ -2532,10 +2677,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     collaborators,
     exhibitors,
     venues,
+    galleryItems,
     profile,
     mentors,
     refreshData,
     loadTabData,
+    loadGalleryItems,
+    addGalleryItem,
+    deleteGalleryItem,
+    mainBrochure,
+    loadMainBrochure,
+    saveMainBrochure,
+    deleteMainBrochure,
     showForm,
     editingItemType,
     editingItemId,

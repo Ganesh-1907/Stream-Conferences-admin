@@ -95,9 +95,6 @@ export function WebinarsTab() {
                         <div className="absolute right-0 mt-1.5 w-48 bg-card border border-foreground/10 rounded-xl shadow-xl z-40 py-1.5 focus:outline-none text-left animate-fade-in">
                           <MenuBtn label="View Details" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'details', 'view'); }} />
                           <MenuBtn label="Edit" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'details', 'edit'); }} />
-                          <MenuBtn label="Dashboard" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'dashboard', 'view'); }} />
-                          <MenuBtn label="Participants" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'participants', 'view'); }} />
-                          <MenuBtn label="Payments" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'payments', 'view'); }} />
                           {user?.role !== 'mentor' && <MenuBtn label="Cohorts" onClick={() => { setActiveDropdownId(null); openEventPage(web, 'webinar', 'cohorts', 'view'); }} />}
                           <div className="border-t border-foreground/5 my-1" />
                           <button

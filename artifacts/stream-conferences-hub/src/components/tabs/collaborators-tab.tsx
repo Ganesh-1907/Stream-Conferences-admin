@@ -10,8 +10,7 @@ export function CollaboratorsTab() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Collaborators</h1>
-          <p className="text-sm text-muted-foreground">Organizations partnering with the event.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Collaborators</h1>
         </div>
         <button onClick={() => openCollaboratorForm(null)} className="cta-button">
           <Plus size={14} /> Add Collaborator

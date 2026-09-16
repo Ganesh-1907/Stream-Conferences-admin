@@ -17,7 +17,18 @@ export type Tab =
   | 'collaborators'
   | 'venues'
   | 'mentors'
-  | 'liveChat';
+  | 'liveChat'
+  | 'userWebsite'
+  | 'gallery'
+  | 'brochure';
+
+export interface MainBrochureItem {
+  _id?: string;
+  title: string;
+  fileUrl: string;
+  fileName?: string;
+  updatedAt?: string;
+}
 
 export type EventType = 'conference' | 'webinar';
 export type EventPageTab =
@@ -460,6 +471,8 @@ export interface ChatSession {
   visitorId: string;
   visitorName: string;
   visitorEmail: string;
+  visitorPhone?: string;
+  visitorCountry?: string;
   status: 'open' | 'closed';
   assignedTo: string | null;
   lastMessageAt: string;
@@ -474,4 +487,13 @@ export interface ChatMessage {
   senderName: string;
   text: string;
   createdAt: string;
+}
+
+export interface GalleryItem {
+  _id: string;
+  title: string;
+  description?: string;
+  image: string;
+  createdBy?: string;
+  createdAt?: string;
 }

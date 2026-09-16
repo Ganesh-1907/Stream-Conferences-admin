@@ -105,10 +105,7 @@ export function MentorsTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Mentors</h1>
-          <p className="text-sm text-muted-foreground">
-            Register new mentors to the platform and monitor existing mentor accounts.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Manage Mentors</h1>
         </div>
         <button
           onClick={() => setIsDialogOpen(true)}

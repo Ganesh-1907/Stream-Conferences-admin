@@ -23,12 +23,14 @@ interface SubtabItem {
   tab: EventPageTab;
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
+  mentorHidden?: boolean;
 }
 
 interface SubtabGroup {
   title: string;
   items: SubtabItem[];
   viewOnly?: boolean;
+  mentorHidden?: boolean;
 }
 
 const SUBTAB_GROUPS: SubtabGroup[] = [
@@ -41,18 +43,6 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
       { tab: 'color-theme', label: 'Color Theme', icon: Layers },
       { tab: 'fees', label: 'Fees & Pricing', icon: CreditCard },
       { tab: 'banners', label: 'Header & Banners', icon: ImageIcon },
-    ],
-  },
-  {
-    title: 'Attendees & Submissions',
-    viewOnly: true,
-    items: [
-      { tab: 'participants', label: 'Participants', icon: Users },
-      { tab: 'payments', label: 'Payments', icon: Receipt },
-      { tab: 'abstracts', label: 'Abstracts', icon: FileCheck },
-      { tab: 'enquiries', label: 'Enquiries', icon: MessageSquare },
-      { tab: 'brochures', label: 'Brochure Leads', icon: Download },
-      { tab: 'cohorts', label: 'Cohorts', icon: GraduationCap },
     ],
   },
   {
@@ -72,6 +62,19 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
       { tab: 'venue-details', label: 'Venue & Schedule', icon: MapPin },
       { tab: 'organizer-contact', label: 'Organizer Contact', icon: Phone },
       { tab: 'organizing-committee', label: 'Organizing Committee', icon: Users2 },
+    ],
+  },
+  {
+    title: 'Attendees & Submissions',
+    viewOnly: true,
+    mentorHidden: true,
+    items: [
+      { tab: 'participants', label: 'Participants', icon: Users },
+      { tab: 'payments', label: 'Payments', icon: Receipt },
+      { tab: 'abstracts', label: 'Abstracts', icon: FileCheck },
+      { tab: 'enquiries', label: 'Enquiries', icon: MessageSquare },
+      { tab: 'brochures', label: 'Brochure Leads', icon: Download },
+      { tab: 'cohorts', label: 'Cohorts', icon: GraduationCap, mentorHidden: true },
     ],
   },
 ];
@@ -354,24 +357,26 @@ export function EventPage() {
 
           {/* Bottom Row: Edit Button + Actions Dropdown */}
           <div className="flex items-center gap-2">
-            {store.eventPageMode === 'view' ? (
-              <button
-                type="button"
-                onClick={() => store.setEventPageMode('edit')}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold transition hover:opacity-90 inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <Pencil size={13} />
-                <span>Edit</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => store.setEventPageMode('view')}
-                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-xl text-xs font-bold transition hover:opacity-90 inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <Eye size={13} />
-                <span>View Details</span>
-              </button>
+            {store.user?.role === 'admin' && (
+              store.eventPageMode === 'view' ? (
+                <button
+                  type="button"
+                  onClick={() => store.setEventPageMode('edit')}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold transition hover:opacity-90 inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Pencil size={13} />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => store.setEventPageMode('view')}
+                  className="px-4 py-2 bg-secondary text-secondary-foreground rounded-xl text-xs font-bold transition hover:opacity-90 inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Eye size={13} />
+                  <span>View Details</span>
+                </button>
+              )
             )}
 
             {/* Actions ▾ Dropdown */}
@@ -403,66 +408,70 @@ export function EventPage() {
                     <span>View Details</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionsOpen(false);
-                      store.setEventPageMode('edit');
-                      store.openEventTab('details');
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                  >
-                    <Pencil size={14} className="text-muted-foreground" />
-                    <span>Edit</span>
-                  </button>
+                  {store.user?.role === 'admin' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsOpen(false);
+                          store.setEventPageMode('edit');
+                          store.openEventTab('details');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
+                      >
+                        <Pencil size={14} className="text-muted-foreground" />
+                        <span>Edit</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionsOpen(false);
-                      store.openEventTab('dashboard');
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                  >
-                    <LayoutDashboard size={14} className="text-muted-foreground" />
-                    <span>Dashboard</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsOpen(false);
+                          store.openEventTab('dashboard');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
+                      >
+                        <LayoutDashboard size={14} className="text-muted-foreground" />
+                        <span>Dashboard</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionsOpen(false);
-                      store.openEventTab('participants');
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                  >
-                    <Users size={14} className="text-muted-foreground" />
-                    <span>Participants</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsOpen(false);
+                          store.openEventTab('participants');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
+                      >
+                        <Users size={14} className="text-muted-foreground" />
+                        <span>Participants</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionsOpen(false);
-                      store.openEventTab('payments');
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                  >
-                    <Receipt size={14} className="text-muted-foreground" />
-                    <span>Payments</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsOpen(false);
+                          store.openEventTab('payments');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
+                      >
+                        <Receipt size={14} className="text-muted-foreground" />
+                        <span>Payments</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionsOpen(false);
-                      store.openEventTab('cohorts');
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                  >
-                    <GraduationCap size={14} className="text-muted-foreground" />
-                    <span>Cohorts</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsOpen(false);
+                          store.openEventTab('cohorts');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
+                      >
+                        <GraduationCap size={14} className="text-muted-foreground" />
+                        <span>Cohorts</span>
+                      </button>
+                    </>
+                  )}
 
                   {(subdomainUrl || registerUrl) && <div className="border-t border-foreground/10 my-1" />}
 
@@ -493,22 +502,26 @@ export function EventPage() {
                     </button>
                   )}
 
-                  <div className="border-t border-foreground/10 my-1" />
+                  {store.user?.role === 'admin' && (
+                    <>
+                      <div className="border-t border-foreground/10 my-1" />
 
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setActionsOpen(false);
-                      if (window.confirm(`Are you sure you want to delete this ${eventPageType}?`)) {
-                        await store.handleDeleteItem(eventPage._id, eventPageType === 'conference' ? 'conferences' : 'webinars');
-                        store.closeEventPage();
-                      }
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 transition text-left cursor-pointer"
-                  >
-                    <Trash2 size={14} className="text-red-500" />
-                    <span>Delete</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setActionsOpen(false);
+                          if (window.confirm(`Are you sure you want to delete this ${eventPageType}?`)) {
+                            await store.handleDeleteItem(eventPage._id, eventPageType === 'conference' ? 'conferences' : 'webinars');
+                            store.closeEventPage();
+                          }
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 transition text-left cursor-pointer"
+                      >
+                        <Trash2 size={14} className="text-red-500" />
+                        <span>Delete</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -528,13 +541,13 @@ export function EventPage() {
         {/* Inner Event Sidebar - subtabs now start right at the top */}
         <aside className="w-full lg:w-72 shrink-0 bg-card border border-foreground/10 rounded-2xl p-4 shadow-sm space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto">
           <nav className="space-y-4">
-            {SUBTAB_GROUPS.filter(g => !g.viewOnly || store.eventPageMode === 'view').map((group) => (
+            {SUBTAB_GROUPS.filter(g => !g.viewOnly || store.eventPageMode === 'view').filter(g => !(g.mentorHidden && store.user?.role === 'mentor')).map((group) => (
               <div key={group.title} className="space-y-1">
                 <div className="text-xs font-black uppercase tracking-wider text-black dark:text-white px-3 py-1">
                   {group.title}
                 </div>
                 <div className="space-y-0.5">
-                  {group.items.map((item) => {
+                  {group.items.filter(item => !(item.mentorHidden && store.user?.role === 'mentor')).map((item) => {
                     const Icon = item.icon;
                     const isActive = store.eventPageTab === item.tab;
                     return (
@@ -3757,7 +3770,7 @@ function VenueDetailsTab() {
         </div>
 
         {/* Read-only details as modern cards - ONLY SHOWN ONCE A REGISTERED VENUE IS SELECTED */}
-        {Boolean(selectedVenue) && (
+        {selectedVenue && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 animate-in fade-in-50 duration-200">
             <div className="p-4 rounded-xl border border-foreground/10 bg-muted/20 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1.5">
@@ -3769,7 +3782,7 @@ function VenueDetailsTab() {
                 </span>
               </div>
               <p className="text-sm font-bold text-foreground">
-                {selectedVenue.name || formData.name}
+                {selectedVenue?.name || formData.name}
               </p>
             </div>
 
@@ -3783,7 +3796,7 @@ function VenueDetailsTab() {
                 </span>
               </div>
               <p className="text-sm font-medium text-foreground">
-                {selectedVenue.address || formData.address || <span className="text-muted-foreground font-normal italic">No address specified</span>}
+                {selectedVenue?.address || formData.address || <span className="text-muted-foreground font-normal italic">No address specified</span>}
               </p>
             </div>
 
@@ -3798,12 +3811,12 @@ function VenueDetailsTab() {
                   </span>
                 </div>
                 <p className="text-xs font-mono text-muted-foreground truncate">
-                  {selectedVenue.locationUrl || formData.locationUrl || <span className="italic font-sans">No map link assigned</span>}
+                  {selectedVenue?.locationUrl || formData.locationUrl || <span className="italic font-sans">No map link assigned</span>}
                 </p>
               </div>
-              {(selectedVenue.locationUrl || formData.locationUrl) && (
+              {(selectedVenue?.locationUrl || formData.locationUrl) && (
                 <a
-                  href={selectedVenue.locationUrl || formData.locationUrl}
+                  href={selectedVenue?.locationUrl || formData.locationUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="px-3.5 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 self-start sm:self-center"
@@ -4041,6 +4054,7 @@ function VenueDetailsTab() {
 function CohortsTab() {
   const { eventPage, eventPageType, eventCohorts, eventCohortsLoading, createCohort, setCurrentCohort, deleteCohort, assignCohortMentor, mentors, user, openCohortTab, openCohortTabEdit, eventPageMode } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
+  const canAssignMentor = !user || user.role === 'admin' || (user.role as string) === 'superadmin';
   const [showAdd, setShowAdd] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [assignCohort, setAssignCohort] = useState<CourseCohort | null>(null);
@@ -4117,7 +4131,23 @@ function CohortsTab() {
                       {c.startDate ? new Date(c.startDate).toLocaleDateString() : '—'}
                       {c.endDate && c.endDate !== c.startDate ? ` – ${new Date(c.endDate).toLocaleDateString()}` : ''}
                     </td>
-                    <td className="p-4 text-xs font-semibold text-accent">{mentorNameFor(c.assignedMentor)}</td>
+                    <td className="p-4 text-xs font-semibold">
+                      <div className="flex items-center gap-1.5">
+                        <span className={c.assignedMentor ? 'text-accent font-semibold' : 'text-muted-foreground/70 italic font-normal'}>
+                          {mentorNameFor(c.assignedMentor)}
+                        </span>
+                        {canAssignMentor && (
+                          <button
+                            type="button"
+                            onClick={() => { setAssignCohort(c); setAssignUsername(c.assignedMentor || ''); }}
+                            title="Assign / Change mentor"
+                            className="p-1 text-muted-foreground hover:text-accent hover:bg-foreground/5 rounded transition duration-150 cursor-pointer inline-flex items-center"
+                          >
+                            <UserPlus size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-4 capitalize">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${c.status === 'active' ? 'bg-green-500/10 text-green-500' : c.status === 'completed' ? 'bg-foreground/10 text-muted-foreground' : 'bg-amber-500/10 text-amber-500'}`}>{c.status || 'upcoming'}</span>
                     </td>
@@ -4128,7 +4158,7 @@ function CohortsTab() {
                             <ExternalLink size={15} />
                           </a>
                         )}
-                        {isEditMode && user?.role === 'admin' && (
+                        {canAssignMentor && (
                           <button type="button" onClick={() => { setAssignCohort(c); setAssignUsername(c.assignedMentor || ''); }} title="Assign mentor" className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 cursor-pointer inline-flex">
                             <UserPlus size={15} />
                           </button>
@@ -4144,18 +4174,8 @@ function CohortsTab() {
                                 isLastRow ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
                               }`}>
                                 <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'details'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">View Details</button>
-                                <button type="button" onClick={() => {
-                                  setOpenMenuId(null);
-                                  openCohortTabEdit(c, 'details');
-                                }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Edit</button>
-                                <div className="border-t border-foreground/10 my-1" />
-                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'dashboard'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Dashboard</button>
-                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'participants'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Participants</button>
-                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'payments'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Payments</button>
-                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'abstracts'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Abstracts</button>
-                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'enquiries'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Enquiries</button>
-                                <div className="border-t border-foreground/10 my-1" />
-                                {user?.role === 'admin' && (
+                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTabEdit(c, 'details'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Edit</button>
+                                {canAssignMentor && (
                                   <button type="button" onClick={() => { setOpenMenuId(null); setAssignCohort(c); setAssignUsername(c.assignedMentor || ''); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Assign Mentor</button>
                                 )}
                                 <button type="button" onClick={() => { setOpenMenuId(null); handleSetCurrent(c._id); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">{c.isCurrent ? 'Unset Current' : 'Set Current'}</button>
@@ -4184,6 +4204,7 @@ function CohortsTab() {
           eventPageType={eventPageType}
           nextBatchNo={nextBatchNo}
           existingYears={eventCohorts.map((c) => c.year)}
+          mentors={mentors}
           onClose={() => setShowAdd(false)}
           onSave={async (payload) => { await createCohort(payload); setShowAdd(false); }}
         />
@@ -4223,6 +4244,7 @@ function AddCohortModal({
   eventPageType,
   nextBatchNo,
   existingYears,
+  mentors,
   onClose,
   onSave,
 }: {
@@ -4230,6 +4252,7 @@ function AddCohortModal({
   eventPageType: EventType;
   nextBatchNo: number;
   existingYears: number[];
+  mentors: any[];
   onClose: () => void;
   onSave: (payload: Partial<CourseCohort>) => Promise<void>;
 }) {
@@ -4239,6 +4262,7 @@ function AddCohortModal({
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [assignedMentor, setAssignedMentor] = useState('');
   const [isCurrent, setIsCurrent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -4258,6 +4282,7 @@ function AddCohortModal({
         title: title.trim() || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        assignedMentor: assignedMentor || undefined,
         isCurrent,
       });
     } catch (err: any) {
@@ -4290,6 +4315,15 @@ function AddCohortModal({
               <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" placeholder="e.g. Spring Cohort" />
             </div>
             <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Assign Mentor (optional)</label>
+              <select value={assignedMentor} onChange={(e) => setAssignedMentor(e.target.value)} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm cursor-pointer">
+                <option value="">No mentor (unassigned)</option>
+                {mentors.map((m) => (
+                  <option key={m.username} value={m.username}>{m.fullName} ({m.username})</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Start Date</label>
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
             </div>
@@ -4297,7 +4331,7 @@ function AddCohortModal({
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">End Date</label>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end md:col-span-2">
               <label className="flex items-center gap-2 text-sm font-semibold pb-2">
                 <input type="checkbox" checked={isCurrent} onChange={(e) => setIsCurrent(e.target.checked)} className="rounded" />
                 Set as current

@@ -8,8 +8,7 @@ export function VenuesTab() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Venues</h1>
-          <p className="text-sm text-muted-foreground">Manage physical venues used when announcing offline events.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Venues</h1>
         </div>
         <button onClick={() => openVenueForm(null)} className="cta-button">
           <Plus size={14} /> Add Venue

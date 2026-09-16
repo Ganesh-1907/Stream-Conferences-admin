@@ -1,17 +1,13 @@
 import {
   Building2,
   CalendarDays,
-  Eye,
   FileText,
+  Globe,
   Handshake,
-  Layers,
   LayoutDashboard,
   MessageSquare,
-  Play,
-  Send,
   Share2,
   UserPlus,
-  Users,
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { Tab } from '@/lib/types';
@@ -26,28 +22,29 @@ interface NavItem {
 const PRIMARY_ITEMS: NavItem[] = [
   { tab: 'overview', label: 'Overview', icon: <LayoutDashboard size={18} /> },
   { tab: 'conferences', label: 'Conferences', icon: <CalendarDays size={18} /> },
-  { tab: 'webinars', label: 'Webinars', icon: <Play size={18} /> },
   { tab: 'blogs', label: 'Blog Editor', icon: <FileText size={18} /> },
   { tab: 'liveChat', label: 'Live Chat', icon: <MessageSquare size={18} /> },
-];
-
-const CONTENT_ITEMS: NavItem[] = [
-  { tab: 'mediaPartners', label: 'Media Partners', icon: <Share2 size={18} /> },
-  { tab: 'collaborators', label: 'Collaborators', icon: <Handshake size={18} /> },
-  { tab: 'venues', label: 'Venues', icon: <Building2 size={18} />, adminOnly: true },
-];
-
-const ADMIN_ITEMS: NavItem[] = [
-  { tab: 'mentors', label: 'Manage Mentors', icon: <UserPlus size={18} />, adminOnly: true },
+  { tab: 'userWebsite', label: 'User Website', icon: <Globe size={18} /> },
 ];
 
 function NavButton({ item }: { item: NavItem }) {
-  const { activeTab, goToTab, user } = useAppStore();
-  const isActive = activeTab === item.tab;
+  const { activeTab, goToTab } = useAppStore();
+
+  const isUserWebsiteGroup =
+    item.tab === 'userWebsite' &&
+    (activeTab === 'userWebsite' ||
+      activeTab === 'mediaPartners' ||
+      activeTab === 'collaborators' ||
+      activeTab === 'venues' ||
+      activeTab === 'mentors' ||
+      activeTab === 'gallery');
+
+  const isActive = activeTab === item.tab || isUserWebsiteGroup;
+
   return (
     <button
       onClick={() => goToTab(item.tab)}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition ${
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition cursor-pointer ${
         isActive
           ? 'bg-primary/10 text-primary font-bold dark:bg-primary/15 dark:text-white'
           : 'hover:bg-foreground/5 text-muted-foreground'
@@ -60,28 +57,11 @@ function NavButton({ item }: { item: NavItem }) {
 }
 
 export function Sidebar() {
-  const { user } = useAppStore();
-
   return (
     <aside className="w-64 flex flex-col gap-2 shrink-0">
       {PRIMARY_ITEMS.map((item) => (
         <NavButton key={item.tab} item={item} />
       ))}
-
-      <div className="h-px bg-foreground/10 my-2" />
-
-      {CONTENT_ITEMS.filter((i) => !i.adminOnly || user?.role === 'admin').map((item) => (
-        <NavButton key={item.tab} item={item} />
-      ))}
-
-      {user?.role === 'admin' && (
-        <>
-          <div className="h-px bg-foreground/10 my-2" />
-          {ADMIN_ITEMS.map((item) => (
-            <NavButton key={item.tab} item={item} />
-          ))}
-        </>
-      )}
     </aside>
   );
 }
