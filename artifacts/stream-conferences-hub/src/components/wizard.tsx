@@ -39,7 +39,7 @@ export function Wizard() {
       <div className="flex flex-wrap gap-2">
         {[
           'Event Info', 'Schedule & Venue', 'Fees', 'Tracks',
-          'FAQs', 'Sponsors / Exhibitors', 'Guidelines', 'Terms & Conditions', 'Contact', 'Organizing Committee',
+          'FAQs', 'Sponsors', 'Media Partners', 'Guidelines', 'Terms & Conditions', 'Contact', 'Organizing Committee',
         ].map((label, i) => {
           const stepNum = i + 1;
           const canNavigate = stepNum <= store.wizardStep || store.canGoToStep(stepNum);
@@ -528,33 +528,33 @@ export function Wizard() {
         </div>
       )}
 
-      {/* STEP 6: PARTNERS (Sponsors / Exhibitors) */}
+      {/* STEP 6: SPONSORS */}
       {store.wizardStep === 6 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold tracking-tight">Sponsors / Exhibitors</h3>
-              <p className="text-sm text-muted-foreground">Add sponsors and exhibitors to showcase on the event website.</p>
+              <h3 className="text-lg font-bold tracking-tight">Sponsors</h3>
+              <p className="text-sm text-muted-foreground">Add sponsors with their name and logo to showcase on the event website.</p>
             </div>
             <button
               type="button"
-              onClick={store.addPartner}
+              onClick={store.addSponsor}
               className="cta-button"
             >
-              <Plus size={14} /> Add Sponsor / Exhibitor
+              <Plus size={14} /> Add Sponsor
             </button>
           </div>
 
-          {(store.wizardPartners().length === 0 ? [{ title: '', order: 0 }] : store.wizardPartners()).map((partner, index) => (
+          {(store.wizardSponsors().length === 0 ? [{ name: '', logo: '' }] : store.wizardSponsors()).map((sponsor, index) => (
             <div key={index} className="border border-foreground/10 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-accent">
-                  Sponsor / Exhibitor {index + 1}
+                  Sponsor {index + 1}
                 </span>
-                {store.wizardPartners().length > 1 && (
+                {store.wizardSponsors().length > 1 && (
                   <button
                     type="button"
-                    onClick={() => store.removePartner(index)}
+                    onClick={() => store.removeSponsor(index)}
                     className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer"
                   >
                     <Trash2 size={15} />
@@ -563,30 +563,85 @@ export function Wizard() {
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                  Title
+                  Sponsor Name
                 </label>
                 <input
                   type="text"
-                  value={partner.title || (partner as any).name || ''}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (store.wizardPartners().length === 0) {
-                      store.setWizardPartners([{ title: v, order: 0 }]);
-                    } else {
-                      store.updatePartner(index, 'title', v);
-                    }
-                  }}
-                  placeholder="e.g. Gold Sponsor, Silver Exhibitor..."
+                  value={sponsor.name}
+                  onChange={(e) => store.updateSponsor(index, 'name', e.target.value)}
+                  placeholder="e.g. Gold Sponsor, Tech Corp..."
                   className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
                 />
               </div>
+              <FileUploadCard
+                title="Logo"
+                preview={sponsor.logo ? mediaUrl(sponsor.logo) : ''}
+                onSelect={(file) => store.handleSponsorLogoUpload(index, file)}
+                onClear={() => store.updateSponsor(index, 'logo', '')}
+              />
             </div>
           ))}
         </div>
       )}
 
-      {/* STEP 7: GUIDELINES */}
+      {/* STEP 7: MEDIA PARTNERS */}
       {store.wizardStep === 7 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Media Partners</h3>
+              <p className="text-sm text-muted-foreground">Add media partners with their name and logo to showcase on the event website.</p>
+            </div>
+            <button
+              type="button"
+              onClick={store.addMediaPartner}
+              className="cta-button"
+            >
+              <Plus size={14} /> Add Media Partner
+            </button>
+          </div>
+
+          {(store.wizardMediaPartners().length === 0 ? [{ name: '', logo: '' }] : store.wizardMediaPartners()).map((partner, index) => (
+            <div key={index} className="border border-foreground/10 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-accent">
+                  Media Partner {index + 1}
+                </span>
+                {store.wizardMediaPartners().length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => store.removeMediaPartner(index)}
+                    className="p-1.5 hover:bg-red-500/10 text-red-500 rounded-lg transition cursor-pointer"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                  Media Partner Name
+                </label>
+                <input
+                  type="text"
+                  value={partner.name}
+                  onChange={(e) => store.updateMediaPartner(index, 'name', e.target.value)}
+                  placeholder="e.g. News Daily, Tech Media..."
+                  className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition"
+                />
+              </div>
+              <FileUploadCard
+                title="Logo"
+                preview={partner.logo ? mediaUrl(partner.logo) : ''}
+                onSelect={(file) => store.handleMediaPartnerLogoUpload(index, file)}
+                onClear={() => store.updateMediaPartner(index, 'logo', '')}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* STEP 8: GUIDELINES */}
+      {store.wizardStep === 8 && (
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-bold tracking-tight">Guidelines</h3>
@@ -601,8 +656,8 @@ export function Wizard() {
         </div>
       )}
 
-      {/* STEP 8: TERMS & CONDITIONS */}
-      {store.wizardStep === 8 && (
+      {/* STEP 9: TERMS & CONDITIONS */}
+      {store.wizardStep === 9 && (
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-bold tracking-tight">Terms & Conditions</h3>
@@ -617,8 +672,8 @@ export function Wizard() {
         </div>
       )}
 
-      {/* STEP 9: ORGANIZER CONTACT */}
-      {store.wizardStep === 9 && (
+      {/* STEP 10: ORGANIZER CONTACT */}
+      {store.wizardStep === 10 && (
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-bold tracking-tight">Organizer Contact</h3>
@@ -677,8 +732,8 @@ export function Wizard() {
         </div>
       )}
 
-      {/* STEP 10: ORGANIZING COMMITTEE */}
-      {store.wizardStep === 10 && (
+      {/* STEP 11: ORGANIZING COMMITTEE */}
+      {store.wizardStep === 11 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>

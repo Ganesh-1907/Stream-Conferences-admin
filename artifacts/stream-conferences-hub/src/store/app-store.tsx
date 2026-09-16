@@ -33,6 +33,8 @@ import {
   EventPageTab,
   EventType,
   EventPartner,
+  EventSponsor,
+  EventMediaPartner,
   Exhibitor,
   FAQ,
   LogoKind,
@@ -269,6 +271,10 @@ interface AppStoreValue {
   setWizardFaqs: (v: SetStateAction<FAQ[]>) => void;
   wizardPartners: () => EventPartner[];
   setWizardPartners: (v: SetStateAction<EventPartner[]>) => void;
+  wizardSponsors: () => EventSponsor[];
+  setWizardSponsors: (v: SetStateAction<EventSponsor[]>) => void;
+  wizardMediaPartners: () => EventMediaPartner[];
+  setWizardMediaPartners: (v: SetStateAction<EventMediaPartner[]>) => void;
   wizardOrganizingCommittee: () => OrganizingCommitteeMember[];
   setWizardOrganizingCommittee: (v: SetStateAction<OrganizingCommitteeMember[]>) => void;
   wizardGuidelines: () => string;
@@ -287,6 +293,14 @@ interface AppStoreValue {
   addPartner: () => void;
   updatePartner: (index: number, field: keyof EventPartner, value: string) => void;
   removePartner: (index: number) => void;
+  addSponsor: () => void;
+  updateSponsor: (index: number, field: keyof EventSponsor, value: string) => void;
+  removeSponsor: (index: number) => void;
+  handleSponsorLogoUpload: (index: number, file: File | null) => Promise<void>;
+  addMediaPartner: () => void;
+  updateMediaPartner: (index: number, field: keyof EventMediaPartner, value: string) => void;
+  removeMediaPartner: (index: number) => void;
+  handleMediaPartnerLogoUpload: (index: number, file: File | null) => Promise<void>;
   addOrganizingCommitteeMember: () => void;
   updateOrganizingCommitteeMember: (index: number, field: keyof OrganizingCommitteeMember, value: string) => void;
   removeOrganizingCommitteeMember: (index: number) => void;
@@ -533,6 +547,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [confTracks, setConfTracks] = useState<Track[]>([]);
   const [confFaqs, setConfFaqs] = useState<FAQ[]>([]);
   const [confPartners, setConfPartners] = useState<EventPartner[]>([]);
+  const [confSponsors, setConfSponsors] = useState<EventSponsor[]>([]);
+  const [confMediaPartners, setConfMediaPartners] = useState<EventMediaPartner[]>([]);
   const [confOrganizingCommittee, setConfOrganizingCommittee] = useState<OrganizingCommitteeMember[]>([]);
   const [confGuidelines, setConfGuidelines] = useState('');
   const [confTerms, setConfTerms] = useState('');
@@ -557,6 +573,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [webTracks, setWebTracks] = useState<Track[]>([]);
   const [webFaqs, setWebFaqs] = useState<FAQ[]>([]);
   const [webPartners, setWebPartners] = useState<EventPartner[]>([]);
+  const [webSponsors, setWebSponsors] = useState<EventSponsor[]>([]);
+  const [webMediaPartners, setWebMediaPartners] = useState<EventMediaPartner[]>([]);
   const [webOrganizingCommittee, setWebOrganizingCommittee] = useState<OrganizingCommitteeMember[]>([]);
   const [webGuidelines, setWebGuidelines] = useState('');
   const [webTerms, setWebTerms] = useState('');
@@ -613,7 +631,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const eventPageTab: EventPageTab =
     (['dashboard', 'details', 'scientific-program', 'color-theme', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
-      'speakers', 'tracks', 'program', 'banners', 'faqs', 'partners',
+      'speakers', 'tracks', 'program', 'banners', 'faqs', 'partners', 'sponsors', 'media-partners',
       'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts'] as const).find(
       (t) => location.includes(`/${t}`),
     ) || 'details';
@@ -886,12 +904,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setConfStartTime(''); setConfEndTime(''); setConfFees([]); setConfOrg(EMPTY_ORG);
     setConfMedia(EMPTY_MEDIA); setConfTracks([]);
     setWizardMentorUsername('');
-    setConfFaqs([]); setConfPartners([]); setConfOrganizingCommittee([]); setConfGuidelines(''); setConfTerms('');
+    setConfFaqs([]); setConfPartners([]); setConfSponsors([]); setConfMediaPartners([]); setConfOrganizingCommittee([]); setConfGuidelines(''); setConfTerms('');
     setWebTitle(''); setWebDesc(''); setWebTheme(''); setWebLocation(''); setWebSpeaker('');
     setWebStartDate(''); setWebEndDate(''); setWebIsOnline(false); setWebVenue(''); setWebSubdomain(''); setWebOnlineLink('');
     setWebStartTime(''); setWebEndTime(''); setWebFees([]); setWebOrg(EMPTY_ORG);
     setWebMedia(EMPTY_MEDIA); setWebTracks([]);
-    setWebFaqs([]); setWebPartners([]); setWebOrganizingCommittee([]); setWebGuidelines(''); setWebTerms('');
+    setWebFaqs([]); setWebPartners([]); setWebSponsors([]); setWebMediaPartners([]); setWebOrganizingCommittee([]); setWebGuidelines(''); setWebTerms('');
     setBlogTitle(''); setBlogLabel(''); setBlogCopy(''); setBlogContent('');
     setBlogBannerUrl(''); setBlogBannerPreview('');
   };
@@ -1655,6 +1673,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         title: p.title || p.name || '',
         order: typeof p.order === 'number' ? p.order : idx,
       })));
+      setConfSponsors(
+        Array.isArray(item.sponsors)
+          ? item.sponsors.map((s: any) => ({ name: s.name || '', logo: s.logo || '' }))
+          : []
+      );
+      setConfMediaPartners(
+        Array.isArray(item.mediaPartners)
+          ? item.mediaPartners.map((m: any) => ({ name: m.name || '', logo: m.logo || '' }))
+          : []
+      );
       setConfOrganizingCommittee(
         Array.isArray(item.organizingCommittee)
           ? item.organizingCommittee.map((m: any) => ({
@@ -1708,6 +1736,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         title: p.title || p.name || '',
         order: typeof p.order === 'number' ? p.order : idx,
       })));
+      setWebSponsors(
+        Array.isArray(item.sponsors)
+          ? item.sponsors.map((s: any) => ({ name: s.name || '', logo: s.logo || '' }))
+          : []
+      );
+      setWebMediaPartners(
+        Array.isArray(item.mediaPartners)
+          ? item.mediaPartners.map((m: any) => ({ name: m.name || '', logo: m.logo || '' }))
+          : []
+      );
       setWebOrganizingCommittee(
         Array.isArray(item.organizingCommittee)
           ? item.organizingCommittee.map((m: any) => ({
@@ -1775,6 +1813,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const setWizardFaqs = (v: SetStateAction<FAQ[]>) => (wizardType === 'conference' ? setConfFaqs(v) : setWebFaqs(v));
   const wizardPartners = () => (wizardType === 'conference' ? confPartners : webPartners);
   const setWizardPartners = (v: SetStateAction<EventPartner[]>) => (wizardType === 'conference' ? setConfPartners(v) : setWebPartners(v));
+  const wizardSponsors = () => (wizardType === 'conference' ? confSponsors : webSponsors);
+  const setWizardSponsors = (v: SetStateAction<EventSponsor[]>) => (wizardType === 'conference' ? setConfSponsors(v) : setWebSponsors(v));
+  const wizardMediaPartners = () => (wizardType === 'conference' ? confMediaPartners : webMediaPartners);
+  const setWizardMediaPartners = (v: SetStateAction<EventMediaPartner[]>) => (wizardType === 'conference' ? setConfMediaPartners(v) : setWebMediaPartners(v));
   const wizardOrganizingCommittee = () => (wizardType === 'conference' ? confOrganizingCommittee : webOrganizingCommittee);
   const setWizardOrganizingCommittee = (v: SetStateAction<OrganizingCommitteeMember[]>) => (wizardType === 'conference' ? setConfOrganizingCommittee(v) : setWebOrganizingCommittee(v));
   const wizardGuidelines = () => (wizardType === 'conference' ? confGuidelines : webGuidelines);
@@ -1828,6 +1870,77 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardPartners(next);
   };
   const removePartner = (index: number) => setWizardPartners(wizardPartners().filter((_, i) => i !== index));
+
+  const addSponsor = () => setWizardSponsors([...wizardSponsors(), { name: '', logo: '' }]);
+  const updateSponsor = (index: number, field: keyof EventSponsor, value: string) => {
+    const next = [...wizardSponsors()];
+    next[index] = { ...next[index], [field]: value };
+    setWizardSponsors(next);
+  };
+  const removeSponsor = (index: number) => setWizardSponsors(wizardSponsors().filter((_, i) => i !== index));
+  const handleSponsorLogoUpload = async (index: number, file: File | null) => {
+    if (!file || !user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = [...wizardSponsors()];
+      // Store preview temporarily (won't be saved, just for UI feedback)
+      setWizardSponsors(next);
+    };
+    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append('file', compressed);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const next = [...wizardSponsors()];
+      next[index].logo = data.url;
+      setWizardSponsors(next);
+    } catch (err) {
+      console.error('Sponsor logo upload error:', err);
+      alert('Failed to upload sponsor logo');
+    }
+  };
+
+  const addMediaPartner = () => setWizardMediaPartners([...wizardMediaPartners(), { name: '', logo: '' }]);
+  const updateMediaPartner = (index: number, field: keyof EventMediaPartner, value: string) => {
+    const next = [...wizardMediaPartners()];
+    next[index] = { ...next[index], [field]: value };
+    setWizardMediaPartners(next);
+  };
+  const removeMediaPartner = (index: number) => setWizardMediaPartners(wizardMediaPartners().filter((_, i) => i !== index));
+  const handleMediaPartnerLogoUpload = async (index: number, file: File | null) => {
+    if (!file || !user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = [...wizardMediaPartners()];
+      setWizardMediaPartners(next);
+    };
+    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append('file', compressed);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      const next = [...wizardMediaPartners()];
+      next[index].logo = data.url;
+      setWizardMediaPartners(next);
+    } catch (err) {
+      console.error('Media partner logo upload error:', err);
+      alert('Failed to upload media partner logo');
+    }
+  };
 
   const addOrganizingCommitteeMember = () => setWizardOrganizingCommittee([...wizardOrganizingCommittee(), { name: '', image: '', imagePreview: '', degree: '', specialization: '', country: '', biography: '', researchArea: '' }]);
   const updateOrganizingCommitteeMember = (index: number, field: keyof OrganizingCommitteeMember, value: string) => {
@@ -2142,6 +2255,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         assignedMentor: wizardMentor() || null,
         faqs: wizardFaqs().filter((f) => f.question.trim()),
         partners: wizardPartners().filter((p) => p.title.trim()),
+        sponsors: wizardSponsors().filter((s) => s.name.trim()),
+        mediaPartners: wizardMediaPartners().filter((m) => m.name.trim()),
         organizingCommittee: wizardOrganizingCommittee().filter((m) => (m.name || m.degree || m.specialization || m.country || m.biography || m.researchArea || m.image)),
         guidelines: wizardGuidelines(),
         termsAndConditions: wizardTerms(),
@@ -2810,6 +2925,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setWizardFaqs,
     wizardPartners,
     setWizardPartners,
+    wizardSponsors,
+    setWizardSponsors,
+    wizardMediaPartners,
+    setWizardMediaPartners,
     wizardOrganizingCommittee,
     setWizardOrganizingCommittee,
     wizardGuidelines,
@@ -2831,6 +2950,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     addPartner,
     updatePartner,
     removePartner,
+    addSponsor,
+    updateSponsor,
+    removeSponsor,
+    handleSponsorLogoUpload,
+    addMediaPartner,
+    updateMediaPartner,
+    removeMediaPartner,
+    handleMediaPartnerLogoUpload,
     addOrganizingCommitteeMember,
     updateOrganizingCommitteeMember,
     removeOrganizingCommitteeMember,

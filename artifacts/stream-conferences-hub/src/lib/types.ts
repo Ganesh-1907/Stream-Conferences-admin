@@ -48,6 +48,8 @@ export type EventPageTab =
   | 'banners'
   | 'faqs'
   | 'partners'
+  | 'sponsors'
+  | 'media-partners'
   | 'guidelines'
   | 'organizer-contact'
   | 'organizing-committee'
@@ -114,6 +116,16 @@ export interface OrganizingCommitteeMember {
 export interface EventPartner {
   title: string;
   order?: number;
+}
+
+export interface EventSponsor {
+  name: string;
+  logo: string;
+}
+
+export interface EventMediaPartner {
+  name: string;
+  logo: string;
 }
 
 export interface CourseCohort {
@@ -203,6 +215,8 @@ export interface Conference {
   program?: ProgramDay[];
   faqs?: FAQ[];
   partners?: EventPartner[];
+  sponsors?: EventSponsor[];
+  mediaPartners?: EventMediaPartner[];
   guidelines?: string;
   termsAndConditions?: string;
   venueDetails?: VenueDetails;
@@ -250,6 +264,8 @@ export interface Webinar {
   program?: ProgramDay[];
   faqs?: FAQ[];
   partners?: EventPartner[];
+  sponsors?: EventSponsor[];
+  mediaPartners?: EventMediaPartner[];
   guidelines?: string;
   termsAndConditions?: string;
   venueDetails?: VenueDetails;

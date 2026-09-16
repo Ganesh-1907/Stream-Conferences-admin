@@ -16,7 +16,7 @@ import {
   FileCheck, MessageSquare, Download, GraduationCap,
   Mic, Layers, CalendarDays, Clock, Image as ImageIcon,
   HelpCircle, Handshake, ShieldAlert, Phone, Users2, MapPin, Building2,
-  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Video, Save, UploadCloud
+  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Video, Save, UploadCloud, Edit
 } from 'lucide-react';
 
 interface SubtabItem {
@@ -58,6 +58,8 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
     items: [
       { tab: 'faqs', label: 'FAQs', icon: HelpCircle },
       { tab: 'partners', label: 'Sponsors & Exhibitors', icon: Handshake },
+      { tab: 'sponsors', label: 'Sponsors', icon: Handshake },
+      { tab: 'media-partners', label: 'Media Partners', icon: Handshake },
       { tab: 'guidelines', label: 'Guidelines', icon: ShieldAlert },
       { tab: 'venue-details', label: 'Venue & Schedule', icon: MapPin },
       { tab: 'organizer-contact', label: 'Organizer Contact', icon: Phone },
@@ -232,6 +234,8 @@ export function EventPage() {
             {store.eventPageTab === 'banners' && <BannersTab />}
             {store.eventPageTab === 'faqs' && <FAQsTab />}
             {store.eventPageTab === 'partners' && <PartnersTab />}
+            {store.eventPageTab === 'sponsors' && <SponsorsTab />}
+            {store.eventPageTab === 'media-partners' && <MediaPartnersTab />}
             {store.eventPageTab === 'guidelines' && <GuidelinesTab />}
             {store.eventPageTab === 'organizer-contact' && <OrganizerContactTab />}
             {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
@@ -590,6 +594,8 @@ export function EventPage() {
         {store.eventPageTab === 'banners' && <BannersTab />}
         {store.eventPageTab === 'faqs' && <FAQsTab />}
         {store.eventPageTab === 'partners' && <PartnersTab />}
+        {store.eventPageTab === 'sponsors' && <SponsorsTab />}
+        {store.eventPageTab === 'media-partners' && <MediaPartnersTab />}
         {store.eventPageTab === 'guidelines' && <GuidelinesTab />}
         {store.eventPageTab === 'organizer-contact' && <OrganizerContactTab />}
         {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
@@ -2157,6 +2163,300 @@ function PartnersTab() {
           {saved ? 'Saved ✓' : 'Save'}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ============ SPONSORS TAB ============
+function SponsorsTab() {
+  const { eventPage, updateEventField, eventPageMode, user } = useAppStore();
+  const isEditMode = eventPageMode === 'edit';
+  const sponsors: { name: string; logo: string }[] = (eventPage as any)?.sponsors || [];
+  const [showForm, setShowForm] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState<{ name: string; logo: string; logoPreview: string }>({ name: '', logo: '', logoPreview: '' });
+
+  const resetForm = () => {
+    setEditingIndex(null);
+    setFormData({ name: '', logo: '', logoPreview: '' });
+    setShowForm(false);
+    setUploading(false);
+  };
+
+  const handleSave = () => {
+    const updated = [...sponsors];
+    const entry = { name: formData.name.trim(), logo: formData.logo };
+    if (editingIndex !== null) {
+      updated[editingIndex] = entry;
+    } else {
+      updated.push(entry);
+    }
+    updateEventField('sponsors', updated.filter(s => s.name));
+    resetForm();
+  };
+
+  const handleEdit = (index: number) => {
+    setEditingIndex(index);
+    setFormData({ name: sponsors[index].name, logo: sponsors[index].logo, logoPreview: mediaUrl(sponsors[index].logo) });
+    setShowForm(true);
+  };
+
+  const handleDelete = (index: number) => {
+    updateEventField('sponsors', sponsors.filter((_, i) => i !== index));
+  };
+
+  const handleLogoUpload = async (file: File | null) => {
+    if (!file || !user) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setFormData(prev => ({ ...prev, logo: data.url, logoPreview: mediaUrl(data.url) }));
+      }
+    } catch (err) {
+      console.error('Sponsor logo upload error:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!isEditMode) {
+    return (
+      <div className="space-y-6">
+        <h3 className="text-lg font-bold tracking-tight">Sponsors</h3>
+        {sponsors.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {sponsors.map((s, i) => (
+              <div key={i} className="bg-muted/10 border border-foreground/10 rounded-2xl p-4 flex flex-col items-center gap-2">
+                {s.logo && <img src={mediaUrl(s.logo)} alt={s.name} className="h-12 w-12 object-contain" />}
+                <p className="text-sm font-bold text-foreground text-center">{s.name}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No sponsors added.</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {isEditMode && showForm ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={resetForm}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+              <ArrowLeft size={16} /> Back to Sponsors
+            </button>
+            <h3 className="text-lg font-bold tracking-tight">{editingIndex !== null ? 'Edit Sponsor' : 'Add New Sponsor'}</h3>
+          </div>
+          <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Sponsor Name</label>
+              <input type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g. Gold Sponsor, Tech Corp..."
+                className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+            </div>
+            <FileUploadCard
+              title="Logo"
+              preview={formData.logoPreview}
+              onSelect={handleLogoUpload}
+              onClear={() => setFormData(prev => ({ ...prev, logo: '', logoPreview: '' }))}
+              loading={uploading}
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={handleSave} className="cta-button"><Check size={14} /> Save</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Sponsors</h3>
+              <p className="text-sm text-muted-foreground mt-1">Add sponsors with their name and logo.</p>
+            </div>
+            {isEditMode && (
+              <button type="button" onClick={() => setShowForm(true)} className="cta-button">
+                <Plus size={14} /> Add Sponsor
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {sponsors.map((s, i) => (
+              <div key={i} className="bg-background border border-foreground/10 rounded-xl p-5 flex items-start gap-4">
+                {s.logo ? <img src={mediaUrl(s.logo)} alt={s.name} className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0" /> : <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Handshake size={20} /></div>}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold">{s.name}</div>
+                </div>
+                {isEditMode && (
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEdit(i)} className="p-1.5 hover:text-secondary"><Edit size={14} /></button>
+                    <button onClick={() => handleDelete(i)} className="p-1.5 hover:text-red-500"><Trash2 size={14} /></button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {sponsors.length === 0 && <div className="col-span-full border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">No sponsors added yet.</div>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============ MEDIA PARTNERS TAB ============
+function MediaPartnersTab() {
+  const { eventPage, updateEventField, eventPageMode, user } = useAppStore();
+  const isEditMode = eventPageMode === 'edit';
+  const mediaPartners: { name: string; logo: string }[] = (eventPage as any)?.mediaPartners || [];
+  const [showForm, setShowForm] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState<{ name: string; logo: string; logoPreview: string }>({ name: '', logo: '', logoPreview: '' });
+
+  const resetForm = () => {
+    setEditingIndex(null);
+    setFormData({ name: '', logo: '', logoPreview: '' });
+    setShowForm(false);
+    setUploading(false);
+  };
+
+  const handleSave = () => {
+    const updated = [...mediaPartners];
+    const entry = { name: formData.name.trim(), logo: formData.logo };
+    if (editingIndex !== null) {
+      updated[editingIndex] = entry;
+    } else {
+      updated.push(entry);
+    }
+    updateEventField('mediaPartners', updated.filter(p => p.name));
+    resetForm();
+  };
+
+  const handleEdit = (index: number) => {
+    setEditingIndex(index);
+    setFormData({ name: mediaPartners[index].name, logo: mediaPartners[index].logo, logoPreview: mediaUrl(mediaPartners[index].logo) });
+    setShowForm(true);
+  };
+
+  const handleDelete = (index: number) => {
+    updateEventField('mediaPartners', mediaPartners.filter((_, i) => i !== index));
+  };
+
+  const handleLogoUpload = async (file: File | null) => {
+    if (!file || !user) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user.role, 'x-user-name': user.username },
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setFormData(prev => ({ ...prev, logo: data.url, logoPreview: mediaUrl(data.url) }));
+      }
+    } catch (err) {
+      console.error('Media partner logo upload error:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!isEditMode) {
+    return (
+      <div className="space-y-6">
+        <h3 className="text-lg font-bold tracking-tight">Media Partners</h3>
+        {mediaPartners.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {mediaPartners.map((p, i) => (
+              <div key={i} className="bg-muted/10 border border-foreground/10 rounded-2xl p-4 flex flex-col items-center gap-2">
+                {p.logo && <img src={mediaUrl(p.logo)} alt={p.name} className="h-12 w-12 object-contain" />}
+                <p className="text-sm font-bold text-foreground text-center">{p.name}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No media partners added.</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {isEditMode && showForm ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={resetForm}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+              <ArrowLeft size={16} /> Back to Media Partners
+            </button>
+            <h3 className="text-lg font-bold tracking-tight">{editingIndex !== null ? 'Edit Media Partner' : 'Add New Media Partner'}</h3>
+          </div>
+          <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Media Partner Name</label>
+              <input type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g. News Daily, Tech Media..."
+                className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+            </div>
+            <FileUploadCard
+              title="Logo"
+              preview={formData.logoPreview}
+              onSelect={handleLogoUpload}
+              onClear={() => setFormData(prev => ({ ...prev, logo: '', logoPreview: '' }))}
+              loading={uploading}
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={handleSave} className="cta-button"><Check size={14} /> Save</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Media Partners</h3>
+              <p className="text-sm text-muted-foreground mt-1">Add media partners with their name and logo.</p>
+            </div>
+            {isEditMode && (
+              <button type="button" onClick={() => setShowForm(true)} className="cta-button">
+                <Plus size={14} /> Add Media Partner
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {mediaPartners.map((p, i) => (
+              <div key={i} className="bg-background border border-foreground/10 rounded-xl p-5 flex items-start gap-4">
+                {p.logo ? <img src={mediaUrl(p.logo)} alt={p.name} className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0" /> : <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Handshake size={20} /></div>}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold">{p.name}</div>
+                </div>
+                {isEditMode && (
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEdit(i)} className="p-1.5 hover:text-secondary"><Edit size={14} /></button>
+                    <button onClick={() => handleDelete(i)} className="p-1.5 hover:text-red-500"><Trash2 size={14} /></button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {mediaPartners.length === 0 && <div className="col-span-full border border-foreground/10 rounded-xl p-8 text-center text-muted-foreground">No media partners added yet.</div>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
