@@ -436,6 +436,7 @@ export function Wizard() {
               <FileUploadCard
                 title="Track Image"
                 preview={track.imagePreview || ''}
+                loading={store.trackImageLoading[ti] || false}
                 onSelect={(f) => store.handleTrackImageUpload(ti, f)}
                 onClear={() => {
                   const next = [...store.wizardTracks()];

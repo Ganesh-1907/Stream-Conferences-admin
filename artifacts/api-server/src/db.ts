@@ -64,13 +64,15 @@ export const ChatMessage = mongoose.models.ChatMessage || mongoose.model('ChatMe
 const webinarSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
+  welcomeBannerTitle: { type: String },
+  welcomeBannerDescription: { type: String },
   day: { type: String, required: true },
   month: { type: String, required: true },
   location: { type: String, required: true },
   date: { type: String, required: true, enum: ['upcoming', 'past'] },
   speaker: { type: String, required: true },
   announcedBy: { type: String, required: true }
-});
+}, { strict: false });
 
 export const Webinar = mongoose.models.Webinar || mongoose.model('Webinar', webinarSchema);
 

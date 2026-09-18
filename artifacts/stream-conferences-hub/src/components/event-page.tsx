@@ -39,8 +39,7 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
     items: [
       { tab: 'dashboard', label: 'Overview', icon: LayoutDashboard },
       { tab: 'details', label: 'Details / About', icon: FileText },
-      { tab: 'scientific-program', label: 'Scientific Program', icon: FileCheck },
-      { tab: 'color-theme', label: 'Color Theme', icon: Layers },
+      { tab: 'color-theme', label: 'Color Theme', icon: Layers, mentorHidden: true },
       { tab: 'fees', label: 'Fees & Pricing', icon: CreditCard },
       { tab: 'banners', label: 'Banners', icon: ImageIcon },
       { tab: 'welcome-banner', label: 'Welcome Message Banner', icon: FileText },
@@ -51,7 +50,6 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
     items: [
       { tab: 'speakers', label: 'Speakers', icon: Mic },
       { tab: 'tracks', label: 'Tracks', icon: Layers },
-      { tab: 'program', label: 'Program Schedule', icon: CalendarDays },
     ],
   },
   {
@@ -650,7 +648,10 @@ function OverviewTab() {
       {eventPage.description && (
         <div className="bg-muted/10 border border-foreground/5 rounded-xl p-5">
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description / Summary</h4>
-          <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">{eventPage.description}</p>
+          <div
+            className="prose dark:prose-invert max-w-none text-sm text-foreground/90 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: eventPage.description }}
+          />
         </div>
       )}
     </div>
@@ -1529,8 +1530,7 @@ function SpeakersTab() {
     updateEventField('speakers', updatedSpeakers);
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleAvatarFileSelect = async (file: File | null) => {
     if (!file) return;
     setUploadingAvatar(true);
     try {
@@ -1541,12 +1541,14 @@ function SpeakersTab() {
         headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
         body: fd,
       });
+      if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
       if (data.url) {
         setFormData(prev => ({ ...prev, avatar: data.url }));
       }
     } catch (err) {
       console.error('Avatar upload error:', err);
+      alert('Failed to upload avatar image');
     } finally {
       setUploadingAvatar(false);
     }
@@ -1579,42 +1581,14 @@ function SpeakersTab() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Avatar Profile Photo Upload */}
-              <div className="md:col-span-2 p-4 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-4">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden border border-foreground/15 bg-muted flex items-center justify-center shrink-0 shadow-xs">
-                  {formData.avatar ? (
-                    <img src={mediaUrl(formData.avatar)} alt="Avatar Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-xl font-bold text-muted-foreground">
-                      {(formData.name || 'S').charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-2 flex-1 min-w-0">
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Profile Photo / Avatar
-                    </label>
-                    <span className="text-[11px] text-muted-foreground">PNG, JPG or WebP</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <label className="px-3.5 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs inline-flex items-center gap-1.5">
-                      <Upload size={13} />
-                      <span>{uploadingAvatar ? 'Uploading...' : formData.avatar ? 'Replace Photo' : 'Upload Photo'}</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
-                    </label>
-                    {formData.avatar && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, avatar: '' }))}
-                        className="px-3.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl text-xs font-bold cursor-pointer transition inline-flex items-center gap-1.5"
-                        title="Remove photo"
-                      >
-                        <Trash2 size={13} />
-                        <span>Remove</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
+              <div className="md:col-span-2">
+                <FileUploadCard
+                  title="Speaker Photo"
+                  preview={formData.avatar ? mediaUrl(formData.avatar) : ''}
+                  onSelect={handleAvatarFileSelect}
+                  onClear={() => setFormData(prev => ({ ...prev, avatar: '' }))}
+                  loading={uploadingAvatar}
+                />
               </div>
 
               <div>
@@ -2917,7 +2891,16 @@ function FeesTab() {
   const handleRowChange = (globalIdx: number, field: keyof FeeEntry, value: string | number) => {
     setLocalFees(prev => {
       const updated = [...prev];
-      updated[globalIdx] = { ...updated[globalIdx], [field]: value };
+      const row = { ...updated[globalIdx], [field]: value };
+      if (field === 'deadline' && value) {
+        const d = new Date(value as string);
+        if (!isNaN(d.getTime())) {
+          const day = d.getDate();
+          const mon = d.toLocaleString('en-US', { month: 'short' });
+          row.dateLabel = `on/before ${day} ${mon}`;
+        }
+      }
+      updated[globalIdx] = row;
       return updated;
     });
   };
@@ -2952,7 +2935,7 @@ function FeesTab() {
   };
 
   const handleAddGroup = () => {
-    const newRow: FeeEntry = { type: '', dateLabel: '', usd: 0, gbp: 0, eur: 0 };
+    const newRow: FeeEntry = { type: '', dateLabel: '', deadline: '', usd: 0, gbp: 0, eur: 0 };
     const updated = [...localFees, newRow];
     setLocalFees(updated);
     updateEventField('fees', updated);
@@ -2963,7 +2946,7 @@ function FeesTab() {
     const group = groups[groupIdx];
     const type = group.type;
     const insertAfter = getGlobalIndex(groupIdx, group.rows.length - 1);
-    const newRow: FeeEntry = { type, dateLabel: '', usd: 0, gbp: 0, eur: 0 };
+    const newRow: FeeEntry = { type, dateLabel: '', deadline: '', usd: 0, gbp: 0, eur: 0 };
     const updated = [...localFees];
     updated.splice(insertAfter + 1, 0, newRow);
     setLocalFees(updated);
@@ -3087,11 +3070,12 @@ function FeesTab() {
                     <table className="w-full text-left text-sm border-collapse table-fixed">
                       <thead>
                         <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10">
-                          <th className="p-3.5 pl-6 text-xs uppercase tracking-wider font-bold w-[34%]">HEADING</th>
-                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[20%]">USD</th>
-                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[20%]">GBP</th>
-                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[20%]">EUR</th>
-                          {isEditMode && <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[6%]">ACTIONS</th>}
+                          <th className="p-3.5 pl-6 text-xs uppercase tracking-wider font-bold w-[26%]">HEADING</th>
+                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[18%]">DEADLINE</th>
+                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[16%]">USD</th>
+                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[16%]">GBP</th>
+                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[16%]">EUR</th>
+                          {isEditMode && <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[8%]">ACTIONS</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -3110,6 +3094,19 @@ function FeesTab() {
                                   />
                                 ) : (
                                   <span className="text-sm font-medium text-foreground px-2">{entry.dateLabel || '—'}</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {isEditMode ? (
+                                  <input
+                                    type="date"
+                                    value={entry.deadline ? entry.deadline.slice(0, 10) : ''}
+                                    onChange={e => handleRowChange(gi, 'deadline', e.target.value)}
+                                    onBlur={handleSaveAll}
+                                    className="w-full px-3 py-2.5 bg-background border border-foreground/15 rounded-xl text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-xs"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-medium text-foreground px-2">{entry.deadline ? new Date(entry.deadline).toLocaleDateString() : '—'}</span>
                                 )}
                               </td>
                               {(['usd', 'gbp', 'eur'] as const).map(c => (

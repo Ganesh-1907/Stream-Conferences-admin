@@ -312,6 +312,7 @@ interface AppStoreValue {
   addReferenceLink: (trackIndex: number) => void;
   updateReferenceLink: (trackIndex: number, linkIndex: number, field: 'label' | 'url', value: string) => void;
   removeReferenceLink: (trackIndex: number, linkIndex: number) => void;
+  trackImageLoading: Record<number, boolean>;
   handleTrackImageUpload: (trackIndex: number, file: File | null) => Promise<void>;
   handleMediaUpload: (kind: 'brochure' | 'banner' | 'logo', file: File | null) => Promise<void>;
   clearMedia: (kind: 'brochure' | 'banner' | 'logo') => void;
@@ -550,6 +551,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [wizardMentorUsername, setWizardMentorUsername] = useState('');
   const [confMedia, setConfMedia] = useState<MediaAssetState>(EMPTY_MEDIA);
   const [confTracks, setConfTracks] = useState<Track[]>([]);
+  const [trackImageLoading, setTrackImageLoading] = useState<Record<number, boolean>>({});
   const [confFaqs, setConfFaqs] = useState<FAQ[]>([]);
   const [confPartners, setConfPartners] = useState<EventPartner[]>([]);
   const [confSponsors, setConfSponsors] = useState<EventSponsor[]>([]);
@@ -2015,17 +2017,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const handleTrackImageUpload = async (trackIndex: number, file: File | null) => {
     if (!file || !user) return;
+    setTrackImageLoading((prev) => ({ ...prev, [trackIndex]: true }));
     const reader = new FileReader();
     reader.onload = () => {
-      const next = [...wizardTracks()];
-      next[trackIndex].imagePreview = String(reader.result || '');
-      setWizardTracks(next);
+      const preview = String(reader.result || '');
+      setWizardTracks((cur) => {
+        const next = [...cur];
+        next[trackIndex] = { ...next[trackIndex], imagePreview: preview };
+        return next;
+      });
     };
     reader.readAsDataURL(file);
     try {
-      const compressed = await compressImage(file);
       const fd = new FormData();
-      fd.append('file', compressed);
+      fd.append('file', file);
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
         headers: { 'x-user-role': user.role, 'x-user-name': user.username },
@@ -2033,12 +2038,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
-      const next = [...wizardTracks()];
-      next[trackIndex].image = data.url;
-      setWizardTracks(next);
+      setWizardTracks((cur) => {
+        const next = [...cur];
+        next[trackIndex] = { ...next[trackIndex], image: data.url };
+        return next;
+      });
     } catch (err) {
       console.error('Track image upload error:', err);
       alert('Failed to upload track image');
+    } finally {
+      setTrackImageLoading((prev) => ({ ...prev, [trackIndex]: false }));
     }
   };
 
@@ -3057,6 +3066,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     removeOrganizingCommitteeMember,
     handleCommitteeMemberImageUpload,
     handleTrackImageUpload,
+    trackImageLoading,
     handleMediaUpload,
     clearMedia,
     handleHeaderBannerUpload,

@@ -162,7 +162,6 @@ router.post('/webinars', async (req, res) => {
 router.put('/webinars/:id', async (req, res) => {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
-  const { title, description, day, month, location, date, speaker } = req.body;
   try {
     const item = await Webinar.findById(id);
     if (!item) {
@@ -172,13 +171,7 @@ router.put('/webinars/:id', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden: Cannot edit another user\'s webinar' });
     }
 
-    item.title = title ?? item.title;
-    item.description = description ?? item.description;
-    item.day = day ?? item.day;
-    item.month = month ?? item.month;
-    item.location = location ?? item.location;
-    item.date = date ?? item.date;
-    item.speaker = speaker ?? item.speaker;
+    Object.assign(item, req.body);
 
     await item.save();
     return res.json(item);

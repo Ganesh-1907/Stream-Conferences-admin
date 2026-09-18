@@ -58,9 +58,14 @@ export function ConferencesTab() {
                 <td className="p-4 text-xs text-muted-foreground">{conf.location}</td>
                 <td className="p-4 text-xs font-semibold text-accent">{conf.mentorName || conf.assignedMentor || '—'}</td>
                 <td className="p-4 capitalize">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${conf.date === 'upcoming' ? 'bg-green-500/10 text-green-500' : 'bg-foreground/10 text-muted-foreground'}`}>
-                    {conf.date}
-                  </span>
+                  {(() => {
+                    const status = conf.date || (conf.eventDate && new Date(conf.eventDate).getTime() < Date.now() ? 'past' : 'upcoming');
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'upcoming' ? 'bg-green-500/10 text-green-500' : 'bg-foreground/10 text-muted-foreground'}`}>
+                        {status}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="p-4 text-right relative">
                   <div className="flex items-center justify-end gap-1">

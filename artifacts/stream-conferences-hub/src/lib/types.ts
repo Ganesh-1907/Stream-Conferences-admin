@@ -171,6 +171,7 @@ export interface VenueDetails {
 export interface FeeEntry {
   type: string;      // accordion header, e.g. "Student"
   dateLabel: string; // row heading, e.g. "on/before 25 Dec"
+  deadline: string;  // ISO date string, e.g. "2026-12-25" — used for auto-expiry
   usd: number;
   gbp: number;
   eur: number;
