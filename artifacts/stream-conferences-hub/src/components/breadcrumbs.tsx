@@ -23,6 +23,8 @@ const TAB_LABELS: Record<string, string> = {
   liveChat: 'Live Chat',
   userWebsite: 'User Website',
   gallery: 'Gallery',
+  brochure: 'Website Brochure',
+  abstractTemplate: 'Abstract Submission Template',
 };
 
 const EVENT_TAB_LABELS: Record<string, string> = {

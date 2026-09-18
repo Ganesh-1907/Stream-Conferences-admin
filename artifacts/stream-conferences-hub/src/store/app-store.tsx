@@ -140,6 +140,10 @@ interface AppStoreValue {
   loadMainBrochure: () => Promise<void>;
   saveMainBrochure: (fileUrlOrData: string | { title?: string; fileUrl: string; fileName?: string }, fileName?: string, title?: string) => Promise<boolean>;
   deleteMainBrochure: () => Promise<boolean>;
+  abstractTemplate: MainBrochureItem | null;
+  loadAbstractTemplate: () => Promise<void>;
+  saveAbstractTemplate: (fileUrlOrData: string | { title?: string; fileUrl: string; fileName?: string }, fileName?: string, title?: string) => Promise<boolean>;
+  deleteAbstractTemplate: () => Promise<boolean>;
 
   // Generic add/edit modal
   showForm: boolean;
@@ -497,6 +501,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [mainBrochure, setMainBrochure] = useState<MainBrochureItem | null>(null);
+  const [abstractTemplate, setAbstractTemplate] = useState<MainBrochureItem | null>(null);
   const [profile, setProfile] = useState<MentorProfile | null>(null);
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -631,8 +636,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const eventPageTab: EventPageTab =
     (['dashboard', 'details', 'scientific-program', 'color-theme', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
-      'speakers', 'tracks', 'program', 'banners', 'faqs', 'partners', 'sponsors', 'media-partners',
-      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts'] as const).find(
+      'speakers', 'tracks', 'program', 'banners', 'welcome-banner', 'faqs', 'partners', 'sponsors', 'media-partners',
+      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts', 'live-chat'] as const).find(
       (t) => location.includes(`/${t}`),
     ) || 'details';
   const eventPageType: EventType | null = location.startsWith('/conference/')
@@ -1874,6 +1879,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const addSponsor = () => setWizardSponsors([...wizardSponsors(), { name: '', logo: '' }]);
   const updateSponsor = (index: number, field: keyof EventSponsor, value: string) => {
     const next = [...wizardSponsors()];
+    if (!next[index]) next[index] = { name: '', logo: '' };
     next[index] = { ...next[index], [field]: value };
     setWizardSponsors(next);
   };
@@ -1883,7 +1889,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const reader = new FileReader();
     reader.onload = () => {
       const next = [...wizardSponsors()];
-      // Store preview temporarily (won't be saved, just for UI feedback)
+      if (!next[index]) next[index] = { name: '', logo: '' };
       setWizardSponsors(next);
     };
     reader.readAsDataURL(file);
@@ -1899,6 +1905,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
       const next = [...wizardSponsors()];
+      if (!next[index]) next[index] = { name: '', logo: '' };
       next[index].logo = data.url;
       setWizardSponsors(next);
     } catch (err) {
@@ -1910,6 +1917,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const addMediaPartner = () => setWizardMediaPartners([...wizardMediaPartners(), { name: '', logo: '' }]);
   const updateMediaPartner = (index: number, field: keyof EventMediaPartner, value: string) => {
     const next = [...wizardMediaPartners()];
+    if (!next[index]) next[index] = { name: '', logo: '' };
     next[index] = { ...next[index], [field]: value };
     setWizardMediaPartners(next);
   };
@@ -1919,6 +1927,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const reader = new FileReader();
     reader.onload = () => {
       const next = [...wizardMediaPartners()];
+      if (!next[index]) next[index] = { name: '', logo: '' };
       setWizardMediaPartners(next);
     };
     reader.readAsDataURL(file);
@@ -1934,6 +1943,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
       const next = [...wizardMediaPartners()];
+      if (!next[index]) next[index] = { name: '', logo: '' };
       next[index].logo = data.url;
       setWizardMediaPartners(next);
     } catch (err) {
@@ -2609,6 +2619,86 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const loadAbstractTemplate = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`${API_BASE}/abstract-template/main`, {
+        headers: {
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAbstractTemplate(data || null);
+      }
+    } catch (e) {
+      console.error('Failed to load abstract template:', e);
+    }
+  };
+
+  const saveAbstractTemplate = async (
+    fileUrlOrData: string | { title?: string; fileUrl: string; fileName?: string },
+    fileName?: string,
+    title?: string
+  ): Promise<boolean> => {
+    if (!user) return false;
+    let payload: { title: string; fileUrl: string; fileName: string };
+    if (typeof fileUrlOrData === 'string') {
+      payload = {
+        fileUrl: fileUrlOrData,
+        fileName: fileName || 'abstract-template.docx',
+        title: title || 'Official Abstract Submission Template',
+      };
+    } else {
+      payload = {
+        fileUrl: fileUrlOrData.fileUrl,
+        fileName: fileUrlOrData.fileName || fileName || 'abstract-template.docx',
+        title: fileUrlOrData.title || title || 'Official Abstract Submission Template',
+      };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/abstract-template/main`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setAbstractTemplate(saved);
+        return true;
+      }
+    } catch (e) {
+      console.error('Failed to save abstract template:', e);
+    }
+    return false;
+  };
+
+  const deleteAbstractTemplate = async (): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const res = await fetch(`${API_BASE}/abstract-template/main`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': user.role,
+          'x-user-name': user.username,
+        },
+      });
+      if (res.ok) {
+        setAbstractTemplate(null);
+        return true;
+      }
+    } catch (e) {
+      console.error('Failed to delete abstract template:', e);
+    }
+    return false;
+  };
+
   const handleLogoUpload = (kind: LogoKind, file: File | null) => {
     if (!file || !user) return;
     const reader = new FileReader();
@@ -2804,6 +2894,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     loadMainBrochure,
     saveMainBrochure,
     deleteMainBrochure,
+    abstractTemplate,
+    loadAbstractTemplate,
+    saveAbstractTemplate,
+    deleteAbstractTemplate,
     showForm,
     editingItemType,
     editingItemId,

@@ -27,14 +27,38 @@ export const User = mongoose.models.User || mongoose.model('User', userSchema);
 const conferenceSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
+  welcomeBannerTitle: { type: String },
+  welcomeBannerDescription: { type: String },
+  socialLinks: {
+    facebook: { type: String },
+    twitter: { type: String },
+    linkedin: { type: String },
+    instagram: { type: String },
+    youtube: { type: String },
+  },
+  country: { type: String },
   day: { type: String, required: true },
   month: { type: String, required: true },
   location: { type: String, required: true },
   date: { type: String, required: true, enum: ['upcoming', 'past'] },
   announcedBy: { type: String, required: true }
-});
+}, { strict: false });
 
 export const Conference = mongoose.models.Conference || mongoose.model('Conference', conferenceSchema);
+
+// Chat Message Schema
+const chatMessageSchema = new mongoose.Schema({
+  conferenceId: { type: String, required: true },
+  senderName: { type: String, required: true },
+  senderEmail: { type: String },
+  senderPhone: { type: String },
+  senderCountry: { type: String },
+  senderRole: { type: String, default: 'attendee' },
+  message: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+}, { strict: false });
+
+export const ChatMessage = mongoose.models.ChatMessage || mongoose.model('ChatMessage', chatMessageSchema);
 
 // Webinar Schema
 const webinarSchema = new mongoose.Schema({
@@ -86,6 +110,26 @@ const abstractSchema = new mongoose.Schema({
 });
 
 export const Abstract = mongoose.models.Abstract || mongoose.model('Abstract', abstractSchema);
+
+// Main Brochure Schema
+const mainBrochureSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  fileUrl: { type: String, required: true },
+  fileName: { type: String },
+  updatedAt: { type: Date, default: Date.now }
+}, { strict: false });
+
+export const MainBrochure = mongoose.models.MainBrochure || mongoose.model('MainBrochure', mainBrochureSchema);
+
+// Abstract Template Schema
+const abstractTemplateSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  fileUrl: { type: String, required: true },
+  fileName: { type: String },
+  updatedAt: { type: Date, default: Date.now }
+}, { strict: false });
+
+export const AbstractTemplate = mongoose.models.AbstractTemplate || mongoose.model('AbstractTemplate', abstractTemplateSchema);
 
 // Default users seeding
 async function seedUsers() {

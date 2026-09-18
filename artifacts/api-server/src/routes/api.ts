@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { User, Conference, Webinar, Blog, Registration, Abstract } from '../db';
+import { User, Conference, Webinar, Blog, Registration, Abstract, ChatMessage, MainBrochure, AbstractTemplate } from '../db';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -79,7 +79,6 @@ router.post('/conferences', async (req, res) => {
 router.put('/conferences/:id', async (req, res) => {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
-  const { title, description, day, month, location, date } = req.body;
   try {
     const item = await Conference.findById(id);
     if (!item) {
@@ -89,12 +88,7 @@ router.put('/conferences/:id', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden: Cannot edit another user\'s conference' });
     }
 
-    item.title = title ?? item.title;
-    item.description = description ?? item.description;
-    item.day = day ?? item.day;
-    item.month = month ?? item.month;
-    item.location = location ?? item.location;
-    item.date = date ?? item.date;
+    Object.assign(item, req.body);
 
     await item.save();
     return res.json(item);
@@ -359,6 +353,126 @@ router.post('/abstracts/submit', async (req, res) => {
     return res.status(201).json(item);
   } catch (error) {
     logger.error('Create abstract submission error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ----------------------------------------------------
+// LIVE CHAT MESSAGES
+// ----------------------------------------------------
+router.get('/chat-messages', async (req, res) => {
+  const { conferenceId } = req.query;
+  try {
+    const query = conferenceId ? { conferenceId } : {};
+    const messages = await ChatMessage.find(query).sort({ createdAt: 1 });
+    return res.json(messages);
+  } catch (error) {
+    logger.error('Fetch chat messages error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/chat-messages', async (req, res) => {
+  const { conferenceId, senderName, senderEmail, senderPhone, senderCountry, senderRole, message } = req.body;
+  if (!conferenceId || !message) {
+    return res.status(400).json({ error: 'Conference ID and message are required' });
+  }
+  try {
+    const item = await ChatMessage.create({
+      conferenceId,
+      senderName: senderName || 'Guest Visitor',
+      senderEmail: senderEmail || '',
+      senderPhone: senderPhone || '',
+      senderCountry: senderCountry || '',
+      senderRole: senderRole || 'attendee',
+      message
+    });
+    return res.status(201).json(item);
+  } catch (error) {
+    logger.error('Create chat message error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ----------------------------------------------------
+// WEBSITE BROCHURE & ABSTRACT TEMPLATE
+// ----------------------------------------------------
+router.get('/brochure/main', async (req, res) => {
+  try {
+    const item = await MainBrochure.findOne().sort({ updatedAt: -1 });
+    return res.json(item || null);
+  } catch (error) {
+    logger.error('Get main brochure error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/brochure/main', async (req, res) => {
+  const { title, fileUrl, fileName } = req.body;
+  try {
+    let item = await MainBrochure.findOne();
+    if (item) {
+      item.title = title || item.title;
+      item.fileUrl = fileUrl || item.fileUrl;
+      item.fileName = fileName || item.fileName;
+      item.updatedAt = new Date();
+      await item.save();
+    } else {
+      item = await MainBrochure.create({ title, fileUrl, fileName });
+    }
+    return res.json(item);
+  } catch (error) {
+    logger.error('Save main brochure error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/brochure/main', async (req, res) => {
+  try {
+    await MainBrochure.deleteMany({});
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('Delete main brochure error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/abstract-template/main', async (req, res) => {
+  try {
+    const item = await AbstractTemplate.findOne().sort({ updatedAt: -1 });
+    return res.json(item || null);
+  } catch (error) {
+    logger.error('Get abstract template error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/abstract-template/main', async (req, res) => {
+  const { title, fileUrl, fileName } = req.body;
+  try {
+    let item = await AbstractTemplate.findOne();
+    if (item) {
+      item.title = title || item.title;
+      item.fileUrl = fileUrl || item.fileUrl;
+      item.fileName = fileName || item.fileName;
+      item.updatedAt = new Date();
+      await item.save();
+    } else {
+      item = await AbstractTemplate.create({ title, fileUrl, fileName });
+    }
+    return res.json(item);
+  } catch (error) {
+    logger.error('Save abstract template error:', error as any);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/abstract-template/main', async (req, res) => {
+  try {
+    await AbstractTemplate.deleteMany({});
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('Delete abstract template error:', error as any);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -88,6 +88,7 @@ function TabPanel() {
     case 'mentors':
     case 'gallery':
     case 'brochure':
+    case 'abstractTemplate':
       return <UserWebsiteTab />;
     case 'liveChat':
       return store.user?.role === 'admin' || store.user?.role === 'mentor' ? <LiveChatTab /> : null;

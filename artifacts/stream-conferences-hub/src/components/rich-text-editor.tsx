@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import { useEffect, useMemo } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
@@ -53,7 +53,8 @@ const FontSize = Extension.create({
 });
 
 interface RichTextEditorProps {
-  value: string;
+  value?: string;
+  content?: string;
   onChange: (html: string) => void;
   placeholder?: string;
   minHeight?: number;
@@ -67,6 +68,19 @@ const FONT_FAMILIES = [
   { label: 'Mono', value: 'ui-monospace, monospace' },
   { label: 'Cursive', value: '"Brush Script MT", cursive' },
 ];
+
+function decodeHtmlEntities(raw: string): string {
+  if (!raw) return '';
+  if (raw.includes('&lt;') && raw.includes('&gt;')) {
+    try {
+      const doc = new DOMParser().parseFromString(raw, 'text/html');
+      return doc.documentElement.textContent || raw;
+    } catch {
+      return raw;
+    }
+  }
+  return raw;
+}
 
 function ToolbarButton({ onClick, active, title, children }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) {
   return (
@@ -84,10 +98,13 @@ function ToolbarButton({ onClick, active, title, children }: { onClick: () => vo
   );
 }
 
-export function RichTextEditor({ value, onChange, placeholder, minHeight = 220 }: RichTextEditorProps) {
+export function RichTextEditor({ value, content, onChange, placeholder, minHeight = 220 }: RichTextEditorProps) {
+  const incomingRaw = value !== undefined ? value : content !== undefined ? content : '';
+  const parsedContent = useMemo(() => decodeHtmlEntities(incomingRaw), [incomingRaw]);
+
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
       TextStyle,
       Color,
       FontFamily,
@@ -97,18 +114,26 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 220 }
       Image.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder: placeholder || 'Write something...' }),
     ],
-    content: value || '',
-    onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
+    content: parsedContent,
+    onUpdate: ({ editor: ed }) => {
+      onChange(ed.getHTML());
+    },
   });
 
   // Keep the editor in sync when the value changes externally (e.g. loading edit data)
-  useMemo(() => {
-    if (!editor) return;
-    if (value !== editor.getHTML()) {
-      editor.commands.setContent(value || '');
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    if (editor.isFocused) return; // Do not overwrite when user is typing
+
+    const currentHtml = editor.getHTML();
+    if (parsedContent !== currentHtml) {
+      const normInput = parsedContent.trim().replace(/\s+/g, ' ');
+      const normCurrent = currentHtml.trim().replace(/\s+/g, ' ');
+      if (normInput !== normCurrent) {
+        editor.commands.setContent(parsedContent || '', { emitUpdate: false });
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, editor]);
+  }, [parsedContent, editor]);
 
   if (!editor) return null;
 
@@ -235,17 +260,19 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 220 }
         style={{ minHeight }}
       />
       <style>{`
-        .tiptap { min-height: ${minHeight}px; padding: 12px 16px; outline: none; }
-        .tiptap p { margin: 0.25em 0; }
-        .tiptap h1 { font-size: 1.75rem; font-weight: 700; margin: 0.5em 0; }
-        .tiptap h2 { font-size: 1.4rem; font-weight: 700; margin: 0.5em 0; }
-        .tiptap h3 { font-size: 1.15rem; font-weight: 600; margin: 0.5em 0; }
-        .tiptap ul, .tiptap ol { padding-left: 1.4em; margin: 0.4em 0; }
-        .tiptap ul { list-style: disc; }
-        .tiptap ol { list-style: decimal; }
+        .tiptap { min-height: ${minHeight}px; padding: 14px 18px; outline: none; }
+        .tiptap p { margin: 0.4em 0; line-height: 1.6; }
+        .tiptap h1 { font-size: 1.8rem; font-weight: 800; margin: 0.6em 0 0.3em; line-height: 1.3; }
+        .tiptap h2 { font-size: 1.45rem; font-weight: 700; margin: 0.6em 0 0.3em; line-height: 1.35; }
+        .tiptap h3 { font-size: 1.2rem; font-weight: 700; margin: 0.5em 0 0.25em; line-height: 1.4; }
+        .tiptap ul, .tiptap ol { padding-left: 1.6em; margin: 0.5em 0; }
+        .tiptap ul { list-style-type: disc; }
+        .tiptap ol { list-style-type: decimal; }
+        .tiptap li { margin: 0.25em 0; line-height: 1.5; }
+        .tiptap li p { margin: 0; }
         .tiptap a { color: var(--secondary, #6366f1); text-decoration: underline; cursor: pointer; }
         .tiptap img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.5em 0; }
-        .tiptap blockquote { border-left: 3px solid var(--foreground, #333); padding-left: 0.8em; margin: 0.5em 0; opacity: 0.8; }
+        .tiptap blockquote { border-left: 3px solid var(--foreground, #333); padding-left: 0.8em; margin: 0.5em 0; opacity: 0.85; }
         .tiptap p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           color: var(--muted-foreground, #888);

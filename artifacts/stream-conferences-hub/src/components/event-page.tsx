@@ -42,7 +42,8 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
       { tab: 'scientific-program', label: 'Scientific Program', icon: FileCheck },
       { tab: 'color-theme', label: 'Color Theme', icon: Layers },
       { tab: 'fees', label: 'Fees & Pricing', icon: CreditCard },
-      { tab: 'banners', label: 'Header & Banners', icon: ImageIcon },
+      { tab: 'banners', label: 'Banners', icon: ImageIcon },
+      { tab: 'welcome-banner', label: 'Welcome Message Banner', icon: FileText },
     ],
   },
   {
@@ -62,19 +63,20 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
       { tab: 'media-partners', label: 'Media Partners', icon: Handshake },
       { tab: 'guidelines', label: 'Guidelines', icon: ShieldAlert },
       { tab: 'venue-details', label: 'Venue & Schedule', icon: MapPin },
-      { tab: 'organizer-contact', label: 'Organizer Contact', icon: Phone },
+      { tab: 'organizer-contact', label: 'Organizer Contact & Socials', icon: Phone },
       { tab: 'organizing-committee', label: 'Organizing Committee', icon: Users2 },
     ],
   },
   {
     title: 'Attendees & Submissions',
     viewOnly: true,
-    mentorHidden: true,
+    mentorHidden: false,
     items: [
       { tab: 'participants', label: 'Participants', icon: Users },
       { tab: 'payments', label: 'Payments', icon: Receipt },
       { tab: 'abstracts', label: 'Abstracts', icon: FileCheck },
       { tab: 'enquiries', label: 'Enquiries', icon: MessageSquare },
+      { tab: 'live-chat', label: 'Live Chat', icon: MessageSquare },
       { tab: 'brochures', label: 'Brochure Leads', icon: Download },
       { tab: 'cohorts', label: 'Cohorts', icon: GraduationCap, mentorHidden: true },
     ],
@@ -143,8 +145,9 @@ export function EventPage() {
   }, [eventPage, eventPageType]);
 
   const feeDisplay = useMemo(() => {
-    if (!eventPage?.fees || eventPage.fees.length === 0) return null;
-    const first = eventPage.fees[0];
+    const fees = (eventPage as any)?.fees;
+    if (!fees || fees.length === 0) return null;
+    const first = fees[0];
     if (first.usd) return `$${first.usd}`;
     if (first.eur) return `€${first.eur}`;
     if (first.gbp) return `£${first.gbp}`;
@@ -232,6 +235,7 @@ export function EventPage() {
             {store.eventPageTab === 'tracks' && <TracksTab />}
             {store.eventPageTab === 'program' && <ProgramTab />}
             {store.eventPageTab === 'banners' && <BannersTab />}
+            {store.eventPageTab === 'welcome-banner' && <WelcomeBannerTab />}
             {store.eventPageTab === 'faqs' && <FAQsTab />}
             {store.eventPageTab === 'partners' && <PartnersTab />}
             {store.eventPageTab === 'sponsors' && <SponsorsTab />}
@@ -240,6 +244,7 @@ export function EventPage() {
             {store.eventPageTab === 'organizer-contact' && <OrganizerContactTab />}
             {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
             {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
+            {store.eventPageTab === 'live-chat' && <LiveChatTabComponent />}
           </main>
         </div>
       </div>
@@ -592,6 +597,7 @@ export function EventPage() {
         {store.eventPageTab === 'tracks' && <TracksTab />}
         {store.eventPageTab === 'program' && <ProgramTab />}
         {store.eventPageTab === 'banners' && <BannersTab />}
+        {store.eventPageTab === 'welcome-banner' && <WelcomeBannerTab />}
         {store.eventPageTab === 'faqs' && <FAQsTab />}
         {store.eventPageTab === 'partners' && <PartnersTab />}
         {store.eventPageTab === 'sponsors' && <SponsorsTab />}
@@ -601,6 +607,7 @@ export function EventPage() {
         {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
         {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
         {store.eventPageTab === 'cohorts' && <CohortsTab />}
+        {store.eventPageTab === 'live-chat' && <LiveChatTabComponent />}
       </main>
     </div>
   </div>
@@ -674,7 +681,7 @@ function DetailsTab() {
         subdomain: eventPage.subdomain || '',
       });
     }
-  }, [eventPage]);
+  }, [eventPage?._id]);
 
   if (!eventPage || !eventPageType) return null;
 
@@ -2117,13 +2124,9 @@ function PartnersTab() {
   const handleSave = () => {
     if (!title.trim()) {
       updateEventField('partners', []);
-      updateEventField('sponsors', []);
-      updateEventField('exhibitors', []);
     } else {
       const updated = [{ title: title.trim(), order: 0 }];
       updateEventField('partners', updated);
-      updateEventField('sponsors', updated);
-      updateEventField('exhibitors', updated);
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -2541,9 +2544,83 @@ function GuidelinesTab() {
   );
 }
 
+// ============ WELCOME MESSAGE BANNER TAB ============
+function WelcomeBannerTab() {
+  const { eventPage, updateEventFields, eventPageMode } = useAppStore();
+  const isEditMode = eventPageMode === 'edit';
+
+  const [title, setTitle] = useState((eventPage as any)?.welcomeBannerTitle || '');
+  const [desc, setDesc] = useState((eventPage as any)?.welcomeBannerDescription || '');
+  const [savingWelcome, setSavingWelcome] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    setTitle((eventPage as any)?.welcomeBannerTitle || '');
+    setDesc((eventPage as any)?.welcomeBannerDescription || '');
+  }, [eventPage]);
+
+  const handleSaveWelcome = async () => {
+    setSavingWelcome(true);
+    await updateEventFields({
+      welcomeBannerTitle: title,
+      welcomeBannerDescription: desc,
+    });
+    setSavingWelcome(false);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">Welcome Message Banner</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Title and rich text content displayed on the event homepage banner.</p>
+        </div>
+        {isEditMode && (
+          <div className="flex items-center gap-3">
+            {savedSuccess && <span className="text-xs text-green-500 font-semibold flex items-center gap-1"><Check size={14} /> Saved!</span>}
+            <button
+              type="button"
+              onClick={handleSaveWelcome}
+              disabled={savingWelcome}
+              className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs disabled:opacity-50 cursor-pointer shadow-sm hover:opacity-90 transition"
+            >
+              {savingWelcome ? 'Saving...' : 'Save Welcome Banner'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4 bg-muted/20 border border-foreground/10 rounded-2xl p-6 shadow-xs">
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Banner Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Welcome to International Scientific Summit"
+            className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm"
+            readOnly={!isEditMode}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Description (Tiptap Editor)</label>
+          {isEditMode ? (
+            <RichTextEditor value={desc} onChange={setDesc} placeholder="Write welcome message description..." />
+          ) : (
+            <div className="prose dark:prose-invert max-w-none text-sm p-4 bg-background border border-foreground/10 rounded-xl" dangerouslySetInnerHTML={{ __html: desc || '<p className="text-muted-foreground italic">No welcome description provided.</p>' }} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============ BANNERS TAB ============
 function BannersTab() {
-  const { eventPage, eventPageType, uploadHeaderBannerForEvent, removeHeaderBannerForEvent, user, eventPageMode } = useAppStore();
+  const { eventPage, eventPageType, uploadHeaderBannerForEvent, removeHeaderBannerForEvent, eventPageMode } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const [uploading, setUploading] = useState(false);
   const banners: string[] = (eventPage as any)?.headerBanners || [];
@@ -3092,9 +3169,9 @@ function FeesTab() {
   );
 }
 
-// ============ ORGANIZER CONTACT TAB ============
+// ============ ORGANIZER CONTACT & SOCIALS TAB ============
 function OrganizerContactTab() {
-  const { eventPage, updateEventField, eventPageMode, mentors } = useAppStore();
+  const { eventPage, updateEventFields, eventPageMode, mentors } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const contact: any = (eventPage as any)?.organizerContact || {};
   const [selectedMentor, setSelectedMentor] = useState<string>(contact.name || '');
@@ -3102,6 +3179,14 @@ function OrganizerContactTab() {
     name: contact.name || '',
     email: contact.email || '',
     phone: contact.phone || '',
+    country: contact.country || (eventPage as any)?.country || '',
+  });
+  const [socials, setSocials] = useState({
+    facebook: (eventPage as any)?.socialLinks?.facebook || '',
+    twitter: (eventPage as any)?.socialLinks?.twitter || '',
+    linkedin: (eventPage as any)?.socialLinks?.linkedin || '',
+    instagram: (eventPage as any)?.socialLinks?.instagram || '',
+    youtube: (eventPage as any)?.socialLinks?.youtube || '',
   });
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -3112,6 +3197,14 @@ function OrganizerContactTab() {
       name: c.name || '',
       email: c.email || '',
       phone: c.phone || '',
+      country: c.country || (eventPage as any)?.country || '',
+    });
+    setSocials({
+      facebook: (eventPage as any)?.socialLinks?.facebook || '',
+      twitter: (eventPage as any)?.socialLinks?.twitter || '',
+      linkedin: (eventPage as any)?.socialLinks?.linkedin || '',
+      instagram: (eventPage as any)?.socialLinks?.instagram || '',
+      youtube: (eventPage as any)?.socialLinks?.youtube || '',
     });
     setSelectedMentor(c.name || '');
   }, [eventPage]);
@@ -3120,17 +3213,22 @@ function OrganizerContactTab() {
     setSelectedMentor(mentorName);
     const mentor = mentors.find((m: any) => m.fullName === mentorName || m.username === mentorName);
     if (mentor) {
-      setForm({
+      setForm((p) => ({
+        ...p,
         name: mentor.fullName || mentor.username || mentorName,
         email: mentor.email || '',
         phone: (mentor as any).phone || '',
-      });
+      }));
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    await updateEventField('organizerContact', form);
+    await updateEventFields({
+      organizerContact: form,
+      socialLinks: socials,
+      country: form.country,
+    });
     setSaving(false);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -3140,11 +3238,11 @@ function OrganizerContactTab() {
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-bold tracking-tight">Organizer Contact</h3>
-          <p className="text-sm text-muted-foreground mt-1">Contact information displayed on the event website.</p>
+          <h3 className="text-lg font-bold tracking-tight">Organizer Contact & Social Links</h3>
+          <p className="text-sm text-muted-foreground mt-1">Contact information and social links displayed on the microsite.</p>
         </div>
         <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-muted/20 p-4 rounded-xl border border-foreground/5">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Contact Person</span>
               <p className="text-base font-semibold">{form.name || '—'}</p>
@@ -3157,6 +3255,10 @@ function OrganizerContactTab() {
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Phone</span>
               <p className="text-base font-semibold">{form.phone || '—'}</p>
             </div>
+            <div className="bg-muted/20 p-4 rounded-xl border border-foreground/5">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Country</span>
+              <p className="text-base font-semibold">{form.country || '—'}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -3167,8 +3269,8 @@ function OrganizerContactTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold tracking-tight">Edit Organizer Contact</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Select a mentor to auto-fill contact details.</p>
+          <h3 className="text-lg font-bold tracking-tight">Edit Organizer Contact & Social Links</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Manage organizer contact info, country, and social media URLs.</p>
         </div>
         <div className="flex items-center gap-3">
           {savedSuccess && (
@@ -3182,7 +3284,7 @@ function OrganizerContactTab() {
         </div>
       </div>
 
-      <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-4">
+      <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5 space-y-5">
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Select Mentor</label>
           <select
@@ -3198,7 +3300,8 @@ function OrganizerContactTab() {
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Name</label>
             <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" readOnly={!!selectedMentor} />
@@ -3208,10 +3311,136 @@ function OrganizerContactTab() {
             <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" readOnly={!!selectedMentor} />
           </div>
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Phone</label>
-            <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" readOnly={!!selectedMentor} />
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Phone Number</label>
+            <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="+1 (555) 000-0000" className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Country</label>
+            <input value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} placeholder="e.g. United Kingdom" className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
           </div>
         </div>
+
+        {/* Social Media Links Section */}
+        <div className="pt-4 border-t border-foreground/10 space-y-3">
+          <h4 className="text-sm font-bold text-foreground">Social Media Links (Footer)</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Facebook URL</label>
+              <input value={socials.facebook} onChange={e => setSocials(p => ({ ...p, facebook: e.target.value }))} placeholder="https://facebook.com/..." className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Twitter / X URL</label>
+              <input value={socials.twitter} onChange={e => setSocials(p => ({ ...p, twitter: e.target.value }))} placeholder="https://x.com/..." className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block">LinkedIn URL</label>
+              <input value={socials.linkedin} onChange={e => setSocials(p => ({ ...p, linkedin: e.target.value }))} placeholder="https://linkedin.com/..." className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Instagram URL</label>
+              <input value={socials.instagram} onChange={e => setSocials(p => ({ ...p, instagram: e.target.value }))} placeholder="https://instagram.com/..." className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block">YouTube URL</label>
+              <input value={socials.youtube} onChange={e => setSocials(p => ({ ...p, youtube: e.target.value }))} placeholder="https://youtube.com/..." className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============ LIVE CHAT TAB ============
+function LiveChatTabComponent() {
+  const { eventPage } = useAppStore();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const fetchMessages = async () => {
+    if (!eventPage?._id) return;
+    try {
+      const res = await fetch(`${API_BASE}/chat-messages?conferenceId=${eventPage._id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    fetchMessages();
+    const timer = setInterval(fetchMessages, 4000);
+    return () => clearInterval(timer);
+  }, [eventPage?._id]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !eventPage?._id) return;
+    setLoading(true);
+    try {
+      await fetch(`${API_BASE}/chat-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conferenceId: eventPage._id,
+          senderName: 'Organizer Desk',
+          senderRole: 'admin',
+          message: newMessage.trim(),
+        }),
+      });
+      setNewMessage('');
+      fetchMessages();
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-bold tracking-tight">Conference Live Chat</h3>
+        <p className="text-sm text-muted-foreground mt-1">Real-time attendee questions and mentor/organizer messages.</p>
+      </div>
+
+      <div className="bg-card border border-foreground/15 rounded-2xl p-6 space-y-4 shadow-xs">
+        <div className="h-80 overflow-y-auto space-y-3 p-4 bg-muted/20 border border-foreground/10 rounded-xl">
+          {messages.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">No chat messages yet. Attendee messages will appear here in real-time.</p>
+          ) : (
+            messages.map((m, idx) => (
+              <div key={idx} className={`p-4 rounded-xl max-w-xl ${m.senderRole === 'admin' || m.senderRole === 'mentor' ? 'bg-primary/10 border border-primary/20 ml-auto text-right' : 'bg-card border border-foreground/10 mr-auto text-left'}`}>
+                <div className="flex flex-wrap items-center gap-2 mb-1.5 justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-foreground">{m.senderName || 'Visitor'} ({m.senderRole || 'attendee'})</span>
+                    {(m.senderEmail || m.senderPhone || m.senderCountry) && (
+                      <div className="text-[11px] text-muted-foreground mt-0.5 space-x-2">
+                        {m.senderEmail && <span>📧 {m.senderEmail}</span>}
+                        {m.senderPhone && <span>📞 {m.senderPhone}</span>}
+                        {m.senderCountry && <span>🌐 {m.senderCountry}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed font-medium mt-1">{m.message || m.text}</p>
+              </div>
+            ))
+          )}
+        </div>
+
+        <form onSubmit={handleSend} className="flex gap-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type a response to attendees..."
+            className="flex-1 px-4 py-2 bg-background border border-foreground/10 rounded-xl text-sm"
+          />
+          <button type="submit" disabled={loading || !newMessage.trim()} className="px-5 py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs disabled:opacity-50 cursor-pointer">
+            Send Reply
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -14,60 +14,74 @@ export const mediaUrl = (u: string): string =>
 // Non-image files are returned unchanged. Uses Canvas to downscale + re-encode.
 export const compressImage = async (
   file: File,
-  maxSizeBytes: number = 2 * 1024 * 1024,
+  maxSizeBytes: number = 5 * 1024 * 1024,
 ): Promise<File> => {
-  if (!file.type.startsWith('image/')) return file;
-  if (file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
-  if (file.size <= maxSizeBytes) return file;
+  if (!file) throw new Error('No file selected');
+  const FIVE_MB = 5 * 1024 * 1024;
 
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+  if (file.type.startsWith('image/') && file.type !== 'image/gif' && file.type !== 'image/svg+xml') {
+    if (file.size > 1.5 * 1024 * 1024) {
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
 
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Failed to load image'));
-    image.src = dataUrl;
-  });
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => reject(new Error('Failed to load image'));
+          image.src = dataUrl;
+        });
 
-  let width = img.naturalWidth;
-  let height = img.naturalHeight;
-  const MAX_DIM = 2048;
-  if (width > MAX_DIM || height > MAX_DIM) {
-    const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
-    width = Math.round(width * scale);
-    height = Math.round(height * scale);
+        let width = img.naturalWidth;
+        let height = img.naturalHeight;
+        const MAX_DIM = 1920;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const originalType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          let quality = 0.85;
+          let blob: Blob | null = null;
+
+          while (quality >= 0.4) {
+            blob = await new Promise<Blob | null>((resolve) =>
+              canvas.toBlob(resolve, originalType, quality),
+            );
+            if (blob && blob.size <= FIVE_MB) break;
+            quality -= 0.1;
+          }
+
+          if (blob) {
+            const ext = originalType === 'image/png' ? 'png' : 'jpg';
+            const name = file.name.replace(/\.[^.]+$/, '') || 'image';
+            const compressed = new File([blob], `${name}.${ext}`, { type: originalType });
+            if (compressed.size <= FIVE_MB) return compressed;
+          }
+        }
+      } catch (err) {
+        console.warn('Image compression skipped:', err);
+      }
+    }
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return file;
-  ctx.drawImage(img, 0, 0, width, height);
-
-  const originalType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-  let quality = 0.85;
-  let blob: Blob | null = null;
-
-  // Iteratively reduce quality until under target size (min quality 0.5).
-  while (quality >= 0.5) {
-    blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, originalType, quality),
-    );
-    if (blob && blob.size <= maxSizeBytes) break;
-    quality -= 0.1;
+  if (file.size > FIVE_MB) {
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    throw new Error(`File size (${sizeMb} MB) exceeds maximum allowed limit of 5 MB.`);
   }
 
-  if (!blob) return file;
-
-  const ext = originalType === 'image/png' ? 'png' : 'jpg';
-  const name = file.name.replace(/\.[^.]+$/, '') || 'image';
-  return new File([blob], `${name}.${ext}`, { type: originalType });
+  return file;
 };
 
 export const dateToString = (date: Date | undefined): string => {

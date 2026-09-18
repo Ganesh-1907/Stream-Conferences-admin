@@ -1,4 +1,4 @@
-import { Share2, Handshake, Building2, UserPlus, Globe, Image as ImageIcon, FileText } from 'lucide-react';
+import { Share2, Handshake, Building2, UserPlus, Globe, Image as ImageIcon, FileText, FileCheck } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { Tab } from '@/lib/types';
 import { MediaPartnersTab } from './media-partners-tab';
@@ -7,9 +7,12 @@ import { VenuesTab } from './venues-tab';
 import { MentorsTab } from './mentors-tab';
 import { GalleryTab } from './gallery-tab';
 import { BrochureTab } from './brochure-tab';
+import { AbstractTemplateTab } from './abstract-template-tab';
+
+type SubTabId = 'mediaPartners' | 'collaborators' | 'venues' | 'mentors' | 'gallery' | 'brochure' | 'abstractTemplate';
 
 interface SubNavItem {
-  id: 'mediaPartners' | 'collaborators' | 'venues' | 'mentors' | 'gallery' | 'brochure';
+  id: SubTabId;
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   adminOnly?: boolean;
@@ -37,6 +40,11 @@ const SUB_NAV_ITEMS: SubNavItem[] = [
     icon: FileText,
   },
   {
+    id: 'abstractTemplate',
+    label: 'Abstract Submission Template',
+    icon: FileCheck,
+  },
+  {
     id: 'venues',
     label: 'Venues',
     icon: Building2,
@@ -56,12 +64,12 @@ export function UserWebsiteTab() {
   const visibleItems = SUB_NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === 'admin');
 
   // Determine current active sub-tab
-  const currentSubTab: 'mediaPartners' | 'collaborators' | 'venues' | 'mentors' | 'gallery' | 'brochure' =
-    activeTab === 'collaborators' || activeTab === 'venues' || activeTab === 'mentors' || activeTab === 'gallery' || activeTab === 'brochure'
+  const currentSubTab: SubTabId =
+    activeTab === 'collaborators' || activeTab === 'venues' || activeTab === 'mentors' || activeTab === 'gallery' || activeTab === 'brochure' || activeTab === 'abstractTemplate'
       ? activeTab
       : 'mediaPartners';
 
-  const handleSelectTab = (id: 'mediaPartners' | 'collaborators' | 'venues' | 'mentors' | 'gallery' | 'brochure') => {
+  const handleSelectTab = (id: SubTabId) => {
     goToTab(id as Tab);
   };
 
@@ -110,6 +118,7 @@ export function UserWebsiteTab() {
           {currentSubTab === 'collaborators' && <CollaboratorsTab />}
           {currentSubTab === 'gallery' && <GalleryTab />}
           {currentSubTab === 'brochure' && <BrochureTab />}
+          {currentSubTab === 'abstractTemplate' && <AbstractTemplateTab />}
           {currentSubTab === 'venues' && (user?.role === 'admin' ? <VenuesTab /> : null)}
           {currentSubTab === 'mentors' && (user?.role === 'admin' ? <MentorsTab /> : null)}
         </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FileText, Maximize2, Trash2, Upload, UploadCloud, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { processFileUpload } from '@/lib/file-utils';
 
 interface FileUploadCardProps {
   title: string;
@@ -15,6 +16,18 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear, load
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const isPdf = preview.startsWith('data:application/pdf') || preview.toLowerCase().includes('.pdf');
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFile = e.target.files?.[0];
+    e.target.value = '';
+    if (!rawFile) return;
+    try {
+      const processed = await processFileUpload(rawFile, 5);
+      onSelect(processed);
+    } catch (err: any) {
+      alert(err.message || 'File processing failed');
+    }
+  };
+
   return (
     <div className="space-y-1.5">
       <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</label>
@@ -22,7 +35,7 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear, load
         <div className="min-h-[110px] border-2 border-dashed border-primary/40 bg-primary/5 rounded-2xl flex flex-col items-center justify-center text-center p-4">
           <Spinner className="size-6 text-primary" />
           <span className="text-xs font-bold text-foreground mt-2">Uploading {title}...</span>
-          <span className="text-[10px] text-muted-foreground mt-0.5">Please wait, this may take a moment</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5">Compressing & uploading, please wait</span>
         </div>
       ) : preview ? (
         <div className="p-4 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-4">
@@ -77,10 +90,7 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear, load
                   type="file"
                   accept={accept || 'image/*'}
                   className="hidden"
-                  onChange={(e) => {
-                    onSelect(e.target.files?.[0] || null);
-                    e.target.value = '';
-                  }}
+                  onChange={handleFileChange}
                 />
               </label>
 
@@ -121,15 +131,12 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear, load
         <label className="min-h-[110px] border-2 border-dashed border-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition p-4 text-center group">
           <UploadCloud size={22} className="text-muted-foreground group-hover:text-primary transition mb-1" />
           <span className="text-xs font-bold text-foreground">Upload {title}</span>
-          <span className="text-[10px] text-muted-foreground mt-0.5">Click to choose {accept?.includes('.pdf') ? 'file or document' : 'image'}</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5">Click to choose {accept?.includes('.pdf') ? 'file or document' : 'image'} (max 5MB)</span>
           <input
             type="file"
             accept={accept || 'image/*'}
             className="hidden"
-            onChange={(e) => {
-              onSelect(e.target.files?.[0] || null);
-              e.target.value = '';
-            }}
+            onChange={handleFileChange}
           />
         </label>
       )}

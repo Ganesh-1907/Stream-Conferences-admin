@@ -20,7 +20,8 @@ export type Tab =
   | 'liveChat'
   | 'userWebsite'
   | 'gallery'
-  | 'brochure';
+  | 'brochure'
+  | 'abstractTemplate';
 
 export interface MainBrochureItem {
   _id?: string;
@@ -46,6 +47,7 @@ export type EventPageTab =
   | 'tracks'
   | 'program'
   | 'banners'
+  | 'welcome-banner'
   | 'faqs'
   | 'partners'
   | 'sponsors'
@@ -54,7 +56,8 @@ export type EventPageTab =
   | 'organizer-contact'
   | 'organizing-committee'
   | 'venue-details'
-  | 'cohorts';
+  | 'cohorts'
+  | 'live-chat';
 
 export interface Track {
   title: string;
@@ -207,8 +210,17 @@ export interface Conference {
   bannerUrl?: string;
   logoUrl?: string;
   headerBanners?: string[];
-  fees?: FeeEntry[];
-  organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
+  organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string; country?: string };
+  welcomeBannerTitle?: string;
+  welcomeBannerDescription?: string;
+  socialLinks?: {
+    facebook?: string;
+    twitter?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+  };
+  country?: string;
   
   // New fields for conference website tabs
   speakers?: Speaker[];
@@ -498,10 +510,15 @@ export interface ChatSession {
 
 export interface ChatMessage {
   _id: string;
-  sessionId: string;
-  sender: 'visitor' | 'admin';
-  senderName: string;
-  text: string;
+  sessionId?: string;
+  sender?: 'visitor' | 'admin';
+  senderName?: string;
+  senderEmail?: string;
+  senderPhone?: string;
+  senderCountry?: string;
+  senderRole?: string;
+  text?: string;
+  message?: string;
   createdAt: string;
 }
 
