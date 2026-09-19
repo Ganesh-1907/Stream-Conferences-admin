@@ -57,7 +57,8 @@ export type EventPageTab =
   | 'organizing-committee'
   | 'venue-details'
   | 'cohorts'
-  | 'live-chat';
+  | 'live-chat'
+  | 'seo-config';
 
 export interface Track {
   title: string;
@@ -88,6 +89,7 @@ export interface Speaker {
   website?: string;
   topic?: string;
   isKeynote?: boolean;
+  category?: 'keynote' | 'speaker' | 'poster' | 'yrf' | 'student';
 }
 
 export interface ProgramDay {
@@ -214,6 +216,11 @@ export interface Conference {
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string; country?: string };
   welcomeBannerTitle?: string;
   welcomeBannerDescription?: string;
+  gtmCode?: string;
+  gaCode?: string;
+  mcCode?: string;
+  metaTitle?: string;
+  metaDescription?: string;
   socialLinks?: {
     facebook?: string;
     twitter?: string;
@@ -271,6 +278,13 @@ export interface Webinar {
   headerBanners?: string[];
   fees?: FeeEntry[];
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
+  welcomeBannerTitle?: string;
+  welcomeBannerDescription?: string;
+  gtmCode?: string;
+  gaCode?: string;
+  mcCode?: string;
+  metaTitle?: string;
+  metaDescription?: string;
   
   // New fields for conference website tabs
   speakers?: Speaker[];
@@ -345,6 +359,7 @@ export interface Contact {
   name: string;
   email: string;
   phone?: string;
+  country?: string;
   subject?: string;
   conference?: string;
   message: string;

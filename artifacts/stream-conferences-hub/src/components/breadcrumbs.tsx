@@ -46,9 +46,9 @@ const EVENT_TAB_LABELS: Record<string, string> = {
   partners: 'Sponsors & Exhibitors',
   guidelines: 'Guidelines',
   'organizer-contact': 'Organizer Contact',
-  'organizing-committee': 'Organizing Committee',
   'venue-details': 'Schedule & Venue',
   cohorts: 'Cohorts',
+  'seo-config': 'SEO Configuration',
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {

@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store/app-store';
-import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage } from '@/lib/utils';
+import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage, formatTime12h } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
 import { EventPageTab, Webinar, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup } from '@/lib/types';
 import { usePagination } from '@/hooks/use-pagination';
@@ -8,6 +8,7 @@ import { FileUploadCard } from '@/components/file-upload-card';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, FormEvent, useEffect, Fragment, useRef, useMemo } from 'react';
 import {
   Plus, Trash2, GripVertical, Upload, X, ChevronDown, ChevronUp,
@@ -15,7 +16,7 @@ import {
   LayoutDashboard, FileText, CreditCard, Users, Receipt,
   FileCheck, MessageSquare, Download, GraduationCap,
   Mic, Layers, CalendarDays, Clock, Image as ImageIcon,
-  HelpCircle, Handshake, ShieldAlert, Phone, Users2, MapPin, Building2,
+  HelpCircle, Handshake, ShieldAlert, Phone, Users2, MapPin, Building2, Search,
   MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Video, Save, UploadCloud, Edit
 } from 'lucide-react';
 
@@ -63,6 +64,7 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
       { tab: 'venue-details', label: 'Venue & Schedule', icon: MapPin },
       { tab: 'organizer-contact', label: 'Organizer Contact & Socials', icon: Phone },
       { tab: 'organizing-committee', label: 'Organizing Committee', icon: Users2 },
+      { tab: 'seo-config', label: 'SEO Configuration', icon: Search, mentorHidden: true },
     ],
   },
   {
@@ -124,7 +126,7 @@ export function EventPage() {
         day: 'numeric',
         year: 'numeric',
       });
-      const time = eventPage.startTime ? ` ${eventPage.startTime}` : '';
+      const time = eventPage.startTime ? ` ${formatTime12h(eventPage.startTime)}` : '';
       return `${start} to ${end}${time}`;
     }
     if (eventPage.eventDate) return eventPage.eventDate;
@@ -188,9 +190,9 @@ export function EventPage() {
           <aside className="w-full lg:w-72 shrink-0 bg-card border border-foreground/10 rounded-2xl p-4 shadow-sm space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto">
             <nav className="space-y-4">
               {SUBTAB_GROUPS.filter(g => !g.viewOnly).map((group) => {
-                const visibleItems = store.isAddMode
+                const visibleItems = (store.isAddMode
                   ? group.items.filter(i => i.tab !== 'dashboard' && i.tab !== 'cohorts' && i.tab !== 'participants' && i.tab !== 'payments' && i.tab !== 'abstracts' && i.tab !== 'enquiries' && i.tab !== 'brochures')
-                  : group.items;
+                  : group.items).filter(i => !(i.mentorHidden && store.user?.role === 'mentor'));
                 if (visibleItems.length === 0) return null;
                 return (
                   <div key={group.title} className="space-y-1">
@@ -242,6 +244,7 @@ export function EventPage() {
             {store.eventPageTab === 'organizer-contact' && <OrganizerContactTab />}
             {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
             {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
+            {store.eventPageTab === 'seo-config' && <SeoConfigTab />}
             {store.eventPageTab === 'live-chat' && <LiveChatTabComponent />}
           </main>
         </div>
@@ -605,6 +608,7 @@ export function EventPage() {
         {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
         {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
         {store.eventPageTab === 'cohorts' && <CohortsTab />}
+        {store.eventPageTab === 'seo-config' && <SeoConfigTab />}
         {store.eventPageTab === 'live-chat' && <LiveChatTabComponent />}
       </main>
     </div>
@@ -1504,16 +1508,18 @@ function SpeakersTab() {
 
   const resetForm = () => {
     setEditingIndex(null);
-    setFormData({ name: '', degree: '', designation: '', organization: '', bio: '', avatar: '', linkedin: '', twitter: '', website: '', topic: '', isKeynote: false });
+    setFormData({ name: '', degree: '', designation: '', organization: '', bio: '', avatar: '', linkedin: '', twitter: '', website: '', topic: '', isKeynote: false, category: 'speaker' });
     setShowForm(false);
   };
 
   const handleSave = () => {
+    const cat = formData.category || (formData.isKeynote ? 'keynote' : 'speaker');
+    const updatedForm = { ...formData, category: cat, isKeynote: cat === 'keynote' };
     const updatedSpeakers = [...speakers];
     if (editingIndex !== null) {
-      updatedSpeakers[editingIndex] = formData;
+      updatedSpeakers[editingIndex] = updatedForm;
     } else {
-      updatedSpeakers.push(formData);
+      updatedSpeakers.push(updatedForm);
     }
     updateEventField('speakers', updatedSpeakers);
     resetForm();
@@ -1521,7 +1527,9 @@ function SpeakersTab() {
 
   const handleEdit = (index: number) => {
     setEditingIndex(index);
-    setFormData(speakers[index]);
+    const sp = speakers[index];
+    const cat = sp.category || (sp.isKeynote ? 'keynote' : 'speaker');
+    setFormData({ ...sp, category: cat as any, isKeynote: cat === 'keynote' });
     setShowForm(true);
   };
 
@@ -1609,11 +1617,31 @@ function SpeakersTab() {
               </div>
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Topic / Presentation</label>
-                <input className="w-full mt-1 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.topic || ''} onChange={(e) => setFormData({ ...formData, topic: e.target.value })} />
+                <input className="w-full mt-1 h-10 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" value={formData.topic || ''} onChange={(e) => setFormData({ ...formData, topic: e.target.value })} />
               </div>
-              <div className="flex items-center gap-2 pt-6">
-                <input type="checkbox" id="isKeynote" checked={formData.isKeynote || false} onChange={(e) => setFormData({ ...formData, isKeynote: e.target.checked })} className="rounded w-4 h-4" />
-                <label htmlFor="isKeynote" className="text-sm font-semibold cursor-pointer">Mark as Keynote Speaker</label>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Speaker Tag / Category</label>
+                <Select
+                  value={formData.category || (formData.isKeynote ? 'keynote' : 'speaker')}
+                  onValueChange={(cat) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      category: cat as any,
+                      isKeynote: cat === 'keynote',
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="w-full mt-1 h-10 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-medium focus:ring-1 focus:ring-primary shadow-none">
+                    <SelectValue placeholder="Select Speaker Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="keynote">Keynote Speaker</SelectItem>
+                    <SelectItem value="speaker">Speaker</SelectItem>
+                    <SelectItem value="poster">Poster Presentation</SelectItem>
+                    <SelectItem value="yrf">YRF</SelectItem>
+                    <SelectItem value="student">Student</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bio</label>
@@ -1666,7 +1694,7 @@ function SpeakersTab() {
                   <th className="p-4">Name & Degree</th>
                   <th className="p-4">Designation & Org</th>
                   <th className="p-4">Topic</th>
-                  <th className="p-4">Type</th>
+                  <th className="p-4">Tag</th>
                   {isEditMode && <th className="p-4 text-right">Actions</th>}
                 </tr>
               </thead>
@@ -1698,7 +1726,21 @@ function SpeakersTab() {
                     </td>
                     <td className="p-4 text-xs text-accent">{speaker.topic || '—'}</td>
                     <td className="p-4">
-                      {speaker.isKeynote && <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded">Keynote</span>}
+                      {(() => {
+                        const cat = speaker.category || (speaker.isKeynote ? 'keynote' : 'speaker');
+                        switch (cat) {
+                          case 'keynote':
+                            return <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded-full border border-amber-500/20">Keynote Speaker</span>;
+                          case 'poster':
+                            return <span className="px-2 py-0.5 bg-purple-500/10 text-purple-500 text-[10px] font-bold rounded-full border border-purple-500/20">Poster Presentation</span>;
+                          case 'yrf':
+                            return <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded-full border border-emerald-500/20">YRF</span>;
+                          case 'student':
+                            return <span className="px-2 py-0.5 bg-sky-500/10 text-sky-500 text-[10px] font-bold rounded-full border border-sky-500/20">Student</span>;
+                          default:
+                            return <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 text-[10px] font-bold rounded-full border border-blue-500/20">Speaker</span>;
+                        }
+                      })()}
                     </td>
                     {isEditMode && (
                       <td className="p-4 text-right">
@@ -2592,6 +2634,136 @@ function WelcomeBannerTab() {
   );
 }
 
+function SeoConfigTab() {
+  const { eventPage, updateEventFields, eventPageMode, user } = useAppStore();
+  const isEditMode = eventPageMode === 'edit';
+
+  if (user?.role === 'mentor') {
+    return (
+      <div className="p-6 bg-card border border-foreground/10 rounded-2xl text-center text-sm text-muted-foreground font-medium">
+        SEO Configuration is only accessible by administrators.
+      </div>
+    );
+  }
+
+  const [gtmCode, setGtmCode] = useState((eventPage as any)?.gtmCode || '');
+  const [gaCode, setGaCode] = useState((eventPage as any)?.gaCode || '');
+  const [mcCode, setMcCode] = useState((eventPage as any)?.mcCode || '');
+  const [metaTitle, setMetaTitle] = useState((eventPage as any)?.metaTitle || '');
+  const [metaDescription, setMetaDescription] = useState((eventPage as any)?.metaDescription || '');
+  const [savingSeo, setSavingSeo] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    setGtmCode((eventPage as any)?.gtmCode || '');
+    setGaCode((eventPage as any)?.gaCode || '');
+    setMcCode((eventPage as any)?.mcCode || '');
+    setMetaTitle((eventPage as any)?.metaTitle || '');
+    setMetaDescription((eventPage as any)?.metaDescription || '');
+  }, [eventPage]);
+
+  const handleSaveSeo = async () => {
+    setSavingSeo(true);
+    await updateEventFields({
+      gtmCode,
+      gaCode,
+      mcCode,
+      metaTitle,
+      metaDescription,
+    });
+    setSavingSeo(false);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">SEO Configuration</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Configure tracking codes, analytics IDs, and meta tags for search engine optimization.</p>
+        </div>
+        {isEditMode && (
+          <div className="flex items-center gap-3">
+            {savedSuccess && <span className="text-xs text-green-500 font-semibold flex items-center gap-1"><Check size={14} /> Saved!</span>}
+            <button
+              type="button"
+              onClick={handleSaveSeo}
+              disabled={savingSeo}
+              className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs disabled:opacity-50 cursor-pointer shadow-sm hover:opacity-90 transition flex items-center gap-1.5"
+            >
+              <Save size={14} />
+              {savingSeo ? 'Saving...' : 'Save SEO Configuration'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4 bg-muted/20 border border-foreground/10 rounded-2xl p-6 shadow-xs">
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">GTM Code</label>
+          <input
+            type="text"
+            value={gtmCode}
+            onChange={(e) => setGtmCode(e.target.value)}
+            placeholder="e.g. GTM-XXXXXXX"
+            className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            readOnly={!isEditMode}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">GA Code</label>
+          <input
+            type="text"
+            value={gaCode}
+            onChange={(e) => setGaCode(e.target.value)}
+            placeholder="e.g. G-XXXXXXX or UA-XXXXXXX"
+            className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            readOnly={!isEditMode}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">MC Code</label>
+          <input
+            type="text"
+            value={mcCode}
+            onChange={(e) => setMcCode(e.target.value)}
+            placeholder="e.g. MC-XXXXXXX"
+            className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            readOnly={!isEditMode}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Meta Title</label>
+          <textarea
+            rows={2}
+            value={metaTitle}
+            onChange={(e) => setMetaTitle(e.target.value)}
+            placeholder="e.g. International Scientific Summit 2026"
+            className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y"
+            readOnly={!isEditMode}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Meta Description</label>
+          <textarea
+            rows={3}
+            value={metaDescription}
+            onChange={(e) => setMetaDescription(e.target.value)}
+            placeholder="e.g. Join leading global researchers and delegates..."
+            className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y"
+            readOnly={!isEditMode}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============ BANNERS TAB ============
 function BannersTab() {
   const { eventPage, eventPageType, uploadHeaderBannerForEvent, removeHeaderBannerForEvent, eventPageMode } = useAppStore();
@@ -2677,27 +2849,34 @@ function TracksTab() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', image: '', referenceLinks: [] as { label: string; url: string }[] });
+  const [formData, setFormData] = useState({ title: '', description: '', image: '', referenceLinks: [{ label: '', url: '' }] as { label: string; url: string }[] });
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', image: '', referenceLinks: [] });
+    setFormData({ title: '', description: '', image: '', referenceLinks: [{ label: '', url: '' }] });
     setEditingIndex(null);
     setShowForm(false);
   };
 
   const handleEdit = (index: number) => {
     const track = tracks[index];
-    setFormData({ title: track.title, description: track.description || '', image: track.image || '', referenceLinks: track.referenceLinks || [] });
+    const links = Array.isArray(track.referenceLinks) && track.referenceLinks.length > 0
+      ? track.referenceLinks
+      : [{ label: '', url: '' }];
+    setFormData({ title: track.title, description: track.description || '', image: track.image || '', referenceLinks: links });
     setEditingIndex(index);
     setShowForm(true);
   };
 
   const handleSave = () => {
+    const cleanedLinks = (formData.referenceLinks || []).filter(
+      (l) => (l.label && l.label.trim()) || (l.url && l.url.trim())
+    );
+    const updatedForm = { ...formData, referenceLinks: cleanedLinks };
     const updated = [...tracks];
     if (editingIndex !== null) {
-      updated[editingIndex] = formData;
+      updated[editingIndex] = updatedForm;
     } else {
-      updated.push(formData);
+      updated.push(updatedForm);
     }
     updateEventField('tracks', updated);
     resetForm();
@@ -2797,7 +2976,99 @@ function TracksTab() {
                 loading={uploadingImage}
               />
             </div>
-            <div className="flex gap-2">
+
+            {/* TRACK REFERENCE LINKS TABLE */}
+            <div className="space-y-3 border-t border-foreground/10 pt-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">Track Links</label>
+                <p className="text-xs text-muted-foreground mt-0.5">Add relevant links or resources for this track.</p>
+              </div>
+
+              <div className="border border-foreground/10 rounded-xl overflow-hidden bg-background">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-muted text-muted-foreground font-semibold text-xs border-b border-foreground/10">
+                      <th className="p-3 w-5/12">Title</th>
+                      <th className="p-3 w-5/12">Link (URL)</th>
+                      <th className="p-3 w-2/12 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-foreground/10">
+                    {(formData.referenceLinks || []).map((link, lIdx) => (
+                      <tr key={lIdx} className="hover:bg-foreground/[0.02]">
+                        <td className="p-2.5">
+                          <input
+                            type="text"
+                            value={link.label || (link as any).title || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => {
+                                const updated = [...(prev.referenceLinks || [])];
+                                updated[lIdx] = { ...updated[lIdx], label: val };
+                                return { ...prev, referenceLinks: updated };
+                              });
+                            }}
+                            placeholder="Title (e.g. Session Schedule)"
+                            className="w-full px-3 py-1.5 bg-background border border-foreground/10 rounded-lg text-xs focus:outline-none focus:border-primary"
+                          />
+                        </td>
+                        <td className="p-2.5">
+                          <input
+                            type="url"
+                            value={link.url || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => {
+                                const updated = [...(prev.referenceLinks || [])];
+                                updated[lIdx] = { ...updated[lIdx], url: val };
+                                return { ...prev, referenceLinks: updated };
+                              });
+                            }}
+                            placeholder="https://..."
+                            className="w-full px-3 py-1.5 bg-background border border-foreground/10 rounded-lg text-xs focus:outline-none focus:border-primary"
+                          />
+                        </td>
+                        <td className="p-2.5">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  referenceLinks: [...(prev.referenceLinks || []), { label: '', url: '' }]
+                                }));
+                              }}
+                              className="px-2.5 py-1.5 bg-primary text-primary-foreground hover:opacity-90 rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center gap-1 transition-colors"
+                              title="Add Link Row"
+                            >
+                              <Plus size={13} /> Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => {
+                                  const nextLinks = (prev.referenceLinks || []).filter((_, i) => i !== lIdx);
+                                  return {
+                                    ...prev,
+                                    referenceLinks: nextLinks.length > 0 ? nextLinks : [{ label: '', url: '' }]
+                                  };
+                                });
+                              }}
+                              className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors"
+                              title="Delete Link"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
               <button type="button" onClick={handleSave} disabled={!formData.title} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50 cursor-pointer">
                 {editingIndex !== null ? 'Update' : 'Add Track'}
               </button>
@@ -2828,6 +3099,7 @@ function TracksTab() {
                   <th className="p-4">#</th>
                   <th className="p-4">Title</th>
                   <th className="p-4">Description</th>
+                  <th className="p-4">Links</th>
                   {isEditMode && <th className="p-4 text-right">Actions</th>}
                 </tr>
               </thead>
@@ -2837,6 +3109,35 @@ function TracksTab() {
                     <td className="p-4 text-muted-foreground">{index + 1}</td>
                     <td className="p-4 font-semibold">{track.title}</td>
                     <td className="p-4 text-muted-foreground text-xs max-w-xs truncate">{track.description || '—'}</td>
+                    <td className="p-4 text-xs">
+                      {Array.isArray(track.referenceLinks) && track.referenceLinks.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {track.referenceLinks.slice(0, 2).map((l: any, i: number) => (
+                            <a
+                              key={i}
+                              href={l.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-muted-foreground hover:text-primary text-[11px] font-medium border border-foreground/10 transition-colors max-w-[130px] truncate"
+                              title={l.label || l.title || l.url}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <LinkIcon size={10} className="shrink-0" /> <span className="truncate">{l.label || l.title || l.url}</span>
+                            </a>
+                          ))}
+                          {track.referenceLinks.length > 2 && (
+                            <span
+                              className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 cursor-default"
+                              title={`${track.referenceLinks.length - 2} more link(s). Click Edit track to view all.`}
+                            >
+                              +{track.referenceLinks.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                     {isEditMode && (
                       <td className="p-4 text-right">
                         <button type="button" onClick={() => handleEdit(index)} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground mr-2 cursor-pointer">Edit</button>
@@ -2846,7 +3147,7 @@ function TracksTab() {
                   </tr>
                 ))}
                 {tracks.length === 0 && (
-                  <tr><td colSpan={isEditMode ? 4 : 3} className="p-8 text-center text-muted-foreground">No tracks added yet.</td></tr>
+                  <tr><td colSpan={isEditMode ? 5 : 4} className="p-8 text-center text-muted-foreground">No tracks added yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -3893,11 +4194,11 @@ function VenueDetailsTab() {
             </div>
             <div className="bg-muted/20 p-4 rounded-xl border border-foreground/5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Start Time</span>
-              <p className="text-base font-semibold">{formData.startTime || '—'}</p>
+              <p className="text-base font-semibold">{formatTime12h(formData.startTime) || '—'}</p>
             </div>
             <div className="bg-muted/20 p-4 rounded-xl border border-foreground/5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">End Time</span>
-              <p className="text-base font-semibold">{formData.endTime || '—'}</p>
+              <p className="text-base font-semibold">{formatTime12h(formData.endTime) || '—'}</p>
             </div>
           </div>
         </div>
@@ -4578,7 +4879,7 @@ function VenueDetailsTab() {
 }
 
 function CohortsTab() {
-  const { eventPage, eventPageType, eventCohorts, eventCohortsLoading, createCohort, setCurrentCohort, deleteCohort, assignCohortMentor, mentors, user, openCohortTab, openCohortTabEdit, eventPageMode } = useAppStore();
+  const { eventPage, eventPageType, eventCohorts, eventCohortsLoading, createCohort, setCurrentCohort, deleteCohort, assignCohortMentor, mentors, user, openCohortTab, openCohortTabEdit, eventPageMode, navigateToAddEvent } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const canAssignMentor = !user || user.role === 'admin' || (user.role as string) === 'superadmin';
   const [showAdd, setShowAdd] = useState(false);
@@ -4620,9 +4921,9 @@ function CohortsTab() {
           <h3 className="text-lg font-bold tracking-tight">Cohorts — {eventPage.title}</h3>
           <p className="text-sm text-muted-foreground mt-1">Manage yearly &amp; batch-based launches for this {eventPageType}.</p>
         </div>
-        {isEditMode && (
-          <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer">
-            <Plus size={14} /> Add Cohort
+        {(isEditMode || !user || user.role === 'admin') && (
+          <button type="button" onClick={() => navigateToAddEvent(eventPageType, eventPage)} className="px-3.5 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:opacity-90 transition">
+            <Plus size={15} /> Add Cohort
           </button>
         )}
       </div>

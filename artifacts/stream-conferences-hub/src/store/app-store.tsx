@@ -104,7 +104,7 @@ interface AppStoreValue {
   setEventPageMode: (mode: 'view' | 'edit') => void;
   openEventPage: (item: Conference | Webinar, type: EventType, tab?: EventPageTab, mode?: 'view' | 'edit') => void;
   createDraftEvent: (type: EventType) => Promise<Conference | Webinar | null>;
-  navigateToAddEvent: (type: EventType) => void;
+  navigateToAddEvent: (type: EventType, parent?: Conference | Webinar) => void;
   closeEventPage: () => void;
   updateEventField: (field: string, value: any) => void;
   updateEventFields: (fields: Record<string, any>) => Promise<boolean>;
@@ -639,7 +639,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const eventPageTab: EventPageTab =
     (['dashboard', 'details', 'scientific-program', 'color-theme', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
       'speakers', 'tracks', 'program', 'banners', 'welcome-banner', 'faqs', 'partners', 'sponsors', 'media-partners',
-      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts', 'live-chat'] as const).find(
+      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts', 'live-chat', 'seo-config'] as const).find(
       (t) => location.includes(`/${t}`),
     ) || 'details';
   const eventPageType: EventType | null = location.startsWith('/conference/')
@@ -654,9 +654,45 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const eventPageMode: 'view' | 'edit' = isAddMode ? 'edit' : (isEditPath ? 'edit' : 'view');
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const parentId = searchParams.get('parent');
+  const parentDoc = parentId
+    ? (eventPageType === 'conference' ? conferences.find((c) => c._id === parentId) : webinars.find((w) => w._id === parentId))
+    : null;
+  const initialTitle = parentDoc ? parentDoc.title : (searchParams.get('parentTitle') || '');
+  const initialSubdomain = parentDoc ? parentDoc.subdomain : (searchParams.get('parentSubdomain') || '');
+
   const baseEventPage: Conference | Webinar | null = isEventPage
     ? (isAddMode
-        ? ({ _id: '', title: '', description: '', subdomain: '', fees: [], tracks: [], faqs: [], partners: [], organizingCommittee: [], guidelines: '', termsAndConditions: '', organizerContact: {} } as any as Conference | Webinar)
+        ? ({
+            _id: '',
+            title: initialTitle,
+            subdomain: initialSubdomain,
+            description: '',
+            day: '',
+            month: '',
+            location: '',
+            eventDate: '',
+            date: 'upcoming',
+            announcedBy: user?.username || '',
+            fees: [],
+            tracks: [],
+            speakers: [],
+            program: [],
+            faqs: [],
+            partners: [],
+            sponsors: [],
+            mediaPartners: [],
+            guidelines: '',
+            organizingCommittee: [],
+            organizerContact: {},
+            socialLinks: {},
+            gtmCode: '',
+            gaCode: '',
+            mcCode: '',
+            metaTitle: '',
+            metaDescription: '',
+          } as any as Conference | Webinar)
         : (currentEvent && currentEvent._id === eventPageId
             ? currentEvent
             : (eventPageType === 'conference'
@@ -671,10 +707,56 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ? (eventCohorts.find((c) => c.cohortId === eventCohortId || c._id === eventCohortId) || null)
     : null;
 
-  // When a specific cohort is selected, its content overlays the parent event
-  // so the top tabs (fees, speakers, program, ...) show and edit that cohort.
   const eventPage: Conference | Webinar | null = baseEventPage && activeCohort
-    ? ({ ...baseEventPage, ...(activeCohort.content || {}) } as Conference | Webinar)
+    ? ({
+        ...baseEventPage,
+        title: activeCohort.title || baseEventPage.title,
+        subdomain: activeCohort.subdomain || activeCohort.content?.subdomain || '',
+        startDate: activeCohort.startDate || '',
+        endDate: activeCohort.endDate || '',
+        eventDate: activeCohort.startDate || '',
+        assignedMentor: activeCohort.assignedMentor || null,
+        description: activeCohort.content?.description ?? '',
+        location: activeCohort.content?.location ?? '',
+        venue: activeCohort.content?.venue ?? '',
+        venueAddress: activeCohort.content?.venueAddress ?? '',
+        venueMapUrl: activeCohort.content?.venueMapUrl ?? '',
+        speakers: activeCohort.content?.speakers ?? [],
+        tracks: activeCohort.content?.tracks ?? [],
+        faqs: activeCohort.content?.faqs ?? [],
+        fees: activeCohort.content?.fees ?? [],
+        sponsors: activeCohort.content?.sponsors ?? [],
+        partners: activeCohort.content?.partners ?? [],
+        mediaPartners: activeCohort.content?.mediaPartners ?? [],
+        exhibitors: activeCohort.content?.exhibitors ?? [],
+        guidelines: activeCohort.content?.guidelines ?? '',
+        organizingCommittee: activeCohort.content?.organizingCommittee ?? [],
+        venueDetails: activeCohort.content?.venueDetails ?? null,
+        program: activeCohort.content?.program ?? [],
+        headerBanners: activeCohort.content?.headerBanners ?? [],
+        welcomeBannerTitle: activeCohort.content?.welcomeBannerTitle ?? '',
+        welcomeBannerDescription: activeCohort.content?.welcomeBannerDescription ?? '',
+        themeColor: activeCohort.content?.themeColor ?? '',
+        theme: activeCohort.content?.theme ?? '',
+        organizerContact: activeCohort.content?.organizerContact ?? {},
+        socialLinks: activeCohort.content?.socialLinks ?? {},
+        brochureUrl: activeCohort.content?.brochureUrl ?? '',
+        bannerUrl: activeCohort.content?.bannerUrl ?? '',
+        logoUrl: activeCohort.content?.logoUrl ?? '',
+        scientificProgramUrl: activeCohort.content?.scientificProgramUrl ?? '',
+        termsAndConditions: activeCohort.content?.termsAndConditions ?? '',
+        about: activeCohort.content?.about ?? '',
+        terms: activeCohort.content?.terms ?? '',
+        privacy: activeCohort.content?.privacy ?? '',
+        registerSteps: activeCohort.content?.registerSteps ?? [],
+        brochure: activeCohort.content?.brochure ?? null,
+        feeLevels: activeCohort.content?.feeLevels ?? [],
+        gtmCode: activeCohort.content?.gtmCode ?? '',
+        gaCode: activeCohort.content?.gaCode ?? '',
+        mcCode: activeCohort.content?.mcCode ?? '',
+        metaTitle: activeCohort.content?.metaTitle ?? '',
+        metaDescription: activeCohort.content?.metaDescription ?? '',
+      } as Conference | Webinar)
     : baseEventPage;
 
   const setEventPageMode = (mode: 'view' | 'edit') => {
@@ -729,8 +811,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const navigateToAddEvent = (type: EventType) => {
-    navigate(`/${type}/add`);
+  const navigateToAddEvent = (type: EventType, parent?: Conference | Webinar) => {
+    if (parent) {
+      const search = new URLSearchParams();
+      if (parent._id) search.set('parent', parent._id);
+      if (parent.title) search.set('parentTitle', parent.title);
+      if (parent.subdomain) search.set('parentSubdomain', parent.subdomain);
+      navigate(`/${type}/add?${search.toString()}`);
+    } else {
+      navigate(`/${type}/add`);
+    }
   };
 
   const openEventTab = (tab: EventPageTab) => {
@@ -842,6 +932,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         });
         if (res.ok) {
           await loadCohorts();
+          return true;
         }
       } catch (error) {
         console.error('Failed to update cohort fields:', error);
@@ -850,6 +941,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
 
     const endpoint = eventPageType === 'conference' ? 'conferences' : 'webinars';
+    const search = new URLSearchParams(window.location.search);
+    const parentId = search.get('parent');
+
+    if (isAddMode && parentId) {
+      try {
+        const res = await fetch(`${API_BASE}/${endpoint}/${parentId}/cohorts`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(fields),
+        });
+        if (res.ok) {
+          await loadCohorts();
+          navigate(`/${eventPageType}/${parentId}/cohorts`);
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.error('Failed to create cohort under parent:', err);
+        return false;
+      }
+    }
+
     try {
       const isCreating = isAddMode || !eventPage._id;
       const url = isCreating
