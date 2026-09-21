@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
-import { FileText, Upload, Download, Edit3, X } from 'lucide-react';
+import { FileText, Upload, Save, Check } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { API_BASE } from '@/lib/constants';
 import { mediaUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { FileUploadCard } from '@/components/file-upload-card';
 
 export function AbstractTemplateTab() {
   const { user, abstractTemplate, loadAbstractTemplate, saveAbstractTemplate } = useAppStore();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState(abstractTemplate?.title || 'Official Abstract Submission Template');
-  const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
     loadAbstractTemplate();
@@ -23,9 +24,46 @@ export function AbstractTemplateTab() {
     }
   }, [abstractTemplate]);
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const currentPreview = file
+    ? URL.createObjectURL(file)
+    : abstractTemplate?.fileUrl
+    ? mediaUrl(abstractTemplate.fileUrl)
+    : '';
+
+  const handleFileSelect = async (selectedFile: File | null) => {
+    if (!selectedFile) return;
+    setFile(selectedFile);
+  };
+
+  const handleClearFile = async () => {
+    if (abstractTemplate) {
+      if (!window.confirm('Are you sure you want to remove the abstract submission template?')) return;
+      setUploading(true);
+      try {
+        const res = await fetch(`${API_BASE}/abstract-template/main`, {
+          method: 'DELETE',
+          headers: {
+            'x-user-role': user?.role || '',
+            'x-user-name': user?.username || '',
+          },
+        });
+        if (!res.ok) throw new Error('Failed to delete abstract template');
+        await loadAbstractTemplate();
+        setFile(null);
+        toast({ title: 'Template Removed', description: 'The abstract template file has been removed.' });
+      } catch (err: any) {
+        toast({ title: 'Remove Error', description: err.message || 'Failed to remove template', variant: 'destructive' });
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      setFile(null);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file && !abstractTemplate) {
+    if (!file && !abstractTemplate?.fileUrl) {
       toast({ title: 'Upload Required', description: 'Please select an abstract template file to upload.', variant: 'destructive' });
       return;
     }
@@ -60,12 +98,13 @@ export function AbstractTemplateTab() {
 
       const success = await saveAbstractTemplate({ title, fileUrl, fileName });
       if (!success) {
-        throw new Error('Failed to save abstract template details to backend');
+        throw new Error('Failed to save abstract template details');
       }
 
       setFile(null);
-      setIsEditing(false);
-      toast({ title: 'Template Saved', description: 'The official abstract template has been successfully updated.' });
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+      toast({ title: 'Template Saved', description: 'The official abstract template has been saved successfully.' });
     } catch (err: any) {
       console.error('Abstract template upload error:', err);
       toast({ title: 'Upload Error', description: err.message || 'Failed to save abstract template.', variant: 'destructive' });
@@ -87,125 +126,54 @@ export function AbstractTemplateTab() {
         </div>
       </div>
 
-      <div className="grid gap-6">
-        {/* If template exists and user is not editing, show card only */}
-        {abstractTemplate && !isEditing ? (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className="p-3.5 rounded-xl bg-primary/10 text-primary shrink-0">
-                  <FileText size={28} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-foreground">{abstractTemplate.title}</h3>
-                  <p className="text-xs font-mono text-muted-foreground mt-1">{abstractTemplate.fileName || 'abstract-template.docx'}</p>
-                  {abstractTemplate.updatedAt && (
-                    <p className="text-xs text-muted-foreground/80 mt-1">
-                      Updated {new Date(abstractTemplate.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </p>
-                  )}
-                </div>
-              </div>
+      <form onSubmit={handleSave} className="rounded-2xl border border-foreground/10 bg-card p-6 space-y-6 shadow-xs">
+        <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+          <Upload size={16} className="text-primary" /> Upload Abstract Submission Template
+        </h3>
 
-              <div className="flex items-center gap-3 self-start sm:self-center">
-                <a
-                  href={mediaUrl(abstractTemplate.fileUrl)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold flex items-center gap-2 transition shadow-2xs"
-                >
-                  <Download size={15} /> View / Download Template
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-2.5 rounded-xl border border-primary/30 text-primary hover:bg-primary/10 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
-                >
-                  <Edit3 size={15} /> Edit / Replace
-                </button>
-              </div>
-            </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
+              Template Title
+            </label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Official Abstract Submission Template"
+              className="w-full px-3.5 py-2.5 bg-background border border-foreground/10 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
           </div>
-        ) : (
-          /* Show upload / edit form when no template exists OR when user clicks Edit/Replace */
-          <form onSubmit={handleUpload} className="rounded-xl border border-foreground/10 bg-muted/20 p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Upload size={16} className="text-primary" />
-                {abstractTemplate ? 'Edit / Replace Abstract Submission Template' : 'Upload Abstract Submission Template'}
-              </h3>
-              {abstractTemplate && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setFile(null);
-                  }}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
-                >
-                  <X size={14} /> Cancel
-                </button>
-              )}
-            </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
-                  Template Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Official Abstract Submission Template"
-                  className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm"
-                />
-              </div>
+          <div>
+            <FileUploadCard
+              title="Template Document File (.doc, .docx, .pdf)"
+              accept=".pdf,.doc,.docx"
+              preview={currentPreview}
+              onSelect={handleFileSelect}
+              onClear={handleClearFile}
+              loading={uploading}
+            />
+          </div>
+        </div>
 
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
-                  Template Document File (.doc, .docx, .pdf)
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  className="w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
-                />
-                {abstractTemplate && !file && (
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Current file: <span className="font-mono">{abstractTemplate.fileName || 'abstract-template.docx'}</span>. Leave blank to keep existing file.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              {abstractTemplate && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setFile(null);
-                  }}
-                  className="px-4 py-2 bg-muted text-foreground text-xs font-semibold rounded-xl hover:bg-muted/80 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                type="submit"
-                disabled={uploading}
-                className="px-5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:bg-primary/90 transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-              >
-                <Upload size={14} />
-                {uploading ? 'Saving...' : 'Save Template'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+        <div className="flex items-center justify-end gap-3 pt-2">
+          {savedSuccess && (
+            <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+              <Check size={14} /> Saved successfully!
+            </span>
+          )}
+          <button
+            type="submit"
+            disabled={uploading}
+            className="px-6 py-2.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+          >
+            <Save size={14} />
+            {uploading ? 'Saving Template...' : 'Save Template'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -58,7 +58,8 @@ export type EventPageTab =
   | 'venue-details'
   | 'cohorts'
   | 'live-chat'
-  | 'seo-config';
+  | 'seo-config'
+  | 'abstract-template';
 
 export interface Track {
   title: string;

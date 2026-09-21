@@ -14,7 +14,18 @@ interface FileUploadCardProps {
 
 export function FileUploadCard({ title, accept, preview, onSelect, onClear, loading }: FileUploadCardProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const isPdf = preview.startsWith('data:application/pdf') || preview.toLowerCase().includes('.pdf');
+  const isDoc = preview.startsWith('data:application/') ||
+    preview.toLowerCase().includes('.pdf') ||
+    preview.toLowerCase().includes('.doc') ||
+    preview.toLowerCase().includes('.docx');
+
+  const docLabel = preview.toLowerCase().includes('.pdf')
+    ? 'PDF Document'
+    : (preview.toLowerCase().includes('.doc') || preview.toLowerCase().includes('.docx'))
+      ? 'DOC Document'
+      : 'Uploaded Document';
+
+  const docBadge = preview.toLowerCase().includes('.pdf') ? 'PDF' : 'DOC';
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
@@ -42,19 +53,19 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear, load
           {/* One Side: Image / File Preview */}
           <div
             onClick={() => {
-              if (isPdf) {
+              if (isDoc) {
                 window.open(preview, '_blank');
               } else {
                 setLightboxOpen(true);
               }
             }}
             className="relative w-28 h-22 sm:w-32 sm:h-24 shrink-0 rounded-xl overflow-hidden border border-foreground/15 bg-muted/10 flex items-center justify-center cursor-pointer group shadow-xs"
-            title="Click to view full preview"
+            title="Click to view file"
           >
-            {isPdf ? (
+            {isDoc ? (
               <div className="flex flex-col items-center justify-center text-red-500 hover:text-red-600 transition">
                 <FileText size={28} />
-                <span className="text-[9px] font-bold mt-1">PDF</span>
+                <span className="text-[9px] font-bold mt-1">{docBadge}</span>
               </div>
             ) : (
               <>
@@ -71,14 +82,14 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear, load
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-foreground truncate">
-                  {isPdf ? 'PDF Document' : `${title}`}
+                  {isDoc ? docLabel : `${title}`}
                 </span>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   Uploaded
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                {isPdf ? 'Click preview thumbnail to open file' : 'Click thumbnail to preview full size'}
+                {isDoc ? 'Click preview thumbnail to open file' : 'Click thumbnail to preview full size'}
               </p>
             </div>
 
@@ -106,7 +117,7 @@ export function FileUploadCard({ title, accept, preview, onSelect, onClear, load
             </div>
           </div>
 
-          {lightboxOpen && !isPdf && (
+          {lightboxOpen && !isDoc && (
             <div
               className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
               onClick={() => setLightboxOpen(false)}

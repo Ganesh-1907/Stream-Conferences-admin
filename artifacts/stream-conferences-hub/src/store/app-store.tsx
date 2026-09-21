@@ -639,7 +639,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const eventPageTab: EventPageTab =
     (['dashboard', 'details', 'scientific-program', 'color-theme', 'fees', 'participants', 'payments', 'abstracts', 'enquiries', 'brochures',
       'speakers', 'tracks', 'program', 'banners', 'welcome-banner', 'faqs', 'partners', 'sponsors', 'media-partners',
-      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts', 'live-chat', 'seo-config'] as const).find(
+      'guidelines', 'organizer-contact', 'organizing-committee', 'venue-details', 'cohorts', 'live-chat', 'seo-config', 'abstract-template'] as const).find(
       (t) => location.includes(`/${t}`),
     ) || 'details';
   const eventPageType: EventType | null = location.startsWith('/conference/')

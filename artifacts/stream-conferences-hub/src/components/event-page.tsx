@@ -1,3 +1,4 @@
+import { AbstractTemplateTab } from '@/components/tabs/abstract-template-tab';
 import { useAppStore } from '@/store/app-store';
 import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage, formatTime12h } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
@@ -57,7 +58,7 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
     title: 'Information & Setup',
     items: [
       { tab: 'faqs', label: 'FAQs', icon: HelpCircle },
-      { tab: 'partners', label: 'Sponsors & Exhibitors', icon: Handshake },
+      { tab: 'abstract-template', label: 'Abstract Template', icon: FileText },
       { tab: 'sponsors', label: 'Sponsors', icon: Handshake },
       { tab: 'media-partners', label: 'Media Partners', icon: Handshake },
       { tab: 'guidelines', label: 'Guidelines', icon: ShieldAlert },
@@ -237,7 +238,7 @@ export function EventPage() {
             {store.eventPageTab === 'banners' && <BannersTab />}
             {store.eventPageTab === 'welcome-banner' && <WelcomeBannerTab />}
             {store.eventPageTab === 'faqs' && <FAQsTab />}
-            {store.eventPageTab === 'partners' && <PartnersTab />}
+            {(store.eventPageTab === 'abstract-template' || store.eventPageTab === 'partners') && <AbstractTemplateTab />}
             {store.eventPageTab === 'sponsors' && <SponsorsTab />}
             {store.eventPageTab === 'media-partners' && <MediaPartnersTab />}
             {store.eventPageTab === 'guidelines' && <GuidelinesTab />}
@@ -600,7 +601,7 @@ export function EventPage() {
         {store.eventPageTab === 'banners' && <BannersTab />}
         {store.eventPageTab === 'welcome-banner' && <WelcomeBannerTab />}
         {store.eventPageTab === 'faqs' && <FAQsTab />}
-        {store.eventPageTab === 'partners' && <PartnersTab />}
+        {(store.eventPageTab === 'abstract-template' || store.eventPageTab === 'partners') && <AbstractTemplateTab />}
         {store.eventPageTab === 'sponsors' && <SponsorsTab />}
         {store.eventPageTab === 'media-partners' && <MediaPartnersTab />}
         {store.eventPageTab === 'guidelines' && <GuidelinesTab />}
@@ -2540,15 +2541,13 @@ function GuidelinesTab() {
         </div>
       </div>
       <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5">
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Guidelines Content (HTML supported)</label>
-        <textarea
-          className="w-full px-4 py-3 bg-background border border-foreground/10 rounded-lg text-sm font-mono"
-          rows={16}
+        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Guidelines Content</label>
+        <RichTextEditor
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Enter guidelines content here... HTML is supported."
+          onChange={setContent}
+          placeholder="Write guidelines content..."
+          minHeight={260}
         />
-        <p className="mt-2 text-xs text-muted-foreground">You can use HTML tags for formatting. Preview will be shown on the conference website.</p>
       </div>
       {content && (
         <div className="bg-muted/30 border border-foreground/10 rounded-xl p-5">
