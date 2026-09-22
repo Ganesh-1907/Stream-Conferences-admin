@@ -675,8 +675,10 @@ function DetailsTab() {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBrochure, setUploadingBrochure] = useState(false);
+  const [uploadingSubjectImage, setUploadingSubjectImage] = useState(false);
   const logoUrl = (eventPage as any)?.logoUrl || '';
   const brochureUrl = (eventPage as any)?.brochureUrl || '';
+  const subjectImageUrl = (eventPage as any)?.subjectImageUrl || '';
 
   useEffect(() => {
     if (eventPage) {
@@ -785,7 +787,7 @@ function DetailsTab() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Logo</h4>
             {(eventPage as any).logoUrl ? (
@@ -803,6 +805,14 @@ function DetailsTab() {
               </a>
             ) : (
               <p className="text-sm text-muted-foreground italic">No brochure uploaded.</p>
+            )}
+          </div>
+          <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Subject Image</h4>
+            {(eventPage as any).subjectImageUrl ? (
+              <img src={mediaUrl((eventPage as any).subjectImageUrl)} alt="Subject Image" className="h-16 w-16 rounded-xl object-cover border border-foreground/10" />
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No subject image uploaded.</p>
             )}
           </div>
         </div>
@@ -884,7 +894,7 @@ function DetailsTab() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FileUploadCard
             title="Logo"
             accept="image/*"
@@ -900,6 +910,14 @@ function DetailsTab() {
             onSelect={(f) => handleFileSelect(f, 'brochureUrl', setUploadingBrochure)}
             onClear={() => handleFileClear('brochureUrl')}
             loading={uploadingBrochure}
+          />
+          <FileUploadCard
+            title="Subject Image"
+            accept="image/*"
+            preview={subjectImageUrl ? mediaUrl(subjectImageUrl) : ''}
+            onSelect={(f) => handleFileSelect(f, 'subjectImageUrl', setUploadingSubjectImage)}
+            onClear={() => handleFileClear('subjectImageUrl')}
+            loading={uploadingSubjectImage}
           />
         </div>
 
@@ -1224,7 +1242,7 @@ function ParticipantsTab() {
             <tbody>
               {paginatedItems.map((p) => (
                 <tr key={p._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
-                  <td className="p-4 font-semibold">{p.name}</td>
+                  <td className="p-4 font-semibold">{p.title ? `${p.title} ${p.fullName || p.name}` : (p.fullName || p.name)}</td>
                   <td className="p-4 text-xs">
                     <div>{p.email}</div>
                     {p.phone && <div className="text-muted-foreground">{p.phone}</div>}
@@ -1285,7 +1303,7 @@ function PaymentsTab() {
               {eventPayments.map((o) => (
                 <tr key={o._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                   <td className="p-4 font-mono text-xs text-muted-foreground">{o.orderId}</td>
-                  <td className="p-4 font-semibold">{o.name}</td>
+                  <td className="p-4 font-semibold">{o.title ? `${o.title} ${o.fullName || o.name}` : (o.fullName || o.name)}</td>
                   <td className="p-4 text-xs font-bold text-accent">{o.category}</td>
                   <td className="p-4 font-mono font-semibold">₹{(o.amount / 100).toFixed(2)}</td>
                   <td className="p-4">
@@ -1334,7 +1352,7 @@ function AbstractsTab() {
             {eventAbstracts.map((abs) => (
               <tr key={abs._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                 <td className="p-4 font-semibold">
-                  <div>{abs.name || `${abs.firstName || ''} ${abs.lastName || ''}`.trim()}</div>
+                  <div>{abs.title ? `${abs.title} ${abs.fullName || abs.name}` : (abs.fullName || abs.name || `${abs.firstName || ''} ${abs.lastName || ''}`.trim())}</div>
                 </td>
                 <td className="p-4 text-xs text-muted-foreground">
                   <div className="font-semibold text-foreground">{abs.institution || '—'}</div>
@@ -1467,7 +1485,7 @@ function BrochureLeadsTab() {
           <tbody>
             {eventBrochureLeads.map((lead) => (
               <tr key={lead._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
-                <td className="p-4 font-semibold">{lead.firstName} {lead.lastName}</td>
+                <td className="p-4 font-semibold">{lead.title ? `${lead.title} ${lead.fullName || `${lead.firstName || ''} ${lead.lastName || ''}`.trim()}` : (lead.fullName || `${lead.firstName || ''} ${lead.lastName || ''}`.trim())}</td>
                 <td className="p-4 text-xs">{lead.email}</td>
                 <td className="p-4 text-xs text-muted-foreground">{lead.phone || '—'}</td>
                 <td className="p-4 text-xs text-muted-foreground">{lead.institution || '—'}</td>
@@ -2963,7 +2981,11 @@ function TracksTab() {
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 block">Description</label>
-              <textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm" rows={3} placeholder="Brief description" />
+              <RichTextEditor
+                value={formData.description}
+                onChange={(val) => setFormData((p) => ({ ...p, description: val }))}
+                placeholder="Write detailed track description..."
+              />
             </div>
             <div>
               <FileUploadCard
@@ -3948,8 +3970,12 @@ function OrganizingCommitteeTab() {
 
 // ============ SCHEDULE & VENUE TAB ============
 function VenueDetailsTab() {
-  const { eventPage, updateEventFields, eventPageMode, venues, user } = useAppStore();
+  const { eventPage, updateEventFields, eventPageMode, venues, ensureMentorsAndVenues, user } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
+
+  useEffect(() => {
+    ensureMentorsAndVenues(true);
+  }, []);
 
   const formatIsoDate = (d: any) => {
     if (!d) return '';

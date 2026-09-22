@@ -23,7 +23,9 @@ export function ParticipantModal() {
               <span className="text-xs text-muted-foreground">{viewingParticipant.eventTitle}</span>
             )}
           </div>
-          <h2 className="text-2xl font-bold tracking-tight">{viewingParticipant.name}</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            {viewingParticipant.title ? `${viewingParticipant.title} ${viewingParticipant.fullName || viewingParticipant.name}` : (viewingParticipant.fullName || viewingParticipant.name)}
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">{viewingParticipant.email}</p>
         </div>
 
@@ -31,9 +33,12 @@ export function ParticipantModal() {
           <div className="bg-muted/20 border border-foreground/5 rounded-xl p-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Registration Details</h4>
             <dl className="space-y-2 text-sm">
+              {viewingParticipant.title && <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Title</dt><dd className="font-semibold text-right">{viewingParticipant.title}</dd></div>}
+              {viewingParticipant.fullName && <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Full Name</dt><dd className="font-semibold text-right">{viewingParticipant.fullName}</dd></div>}
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Phone</dt><dd className="font-semibold text-right">{viewingParticipant.phone || '—'}</dd></div>
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Institution</dt><dd className="font-semibold text-right">{viewingParticipant.institution || '—'}</dd></div>
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Country</dt><dd className="font-semibold text-right">{viewingParticipant.country || '—'}</dd></div>
+              {viewingParticipant.address && <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Address</dt><dd className="font-semibold text-right max-w-[200px] break-words">{viewingParticipant.address}</dd></div>}
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Category</dt><dd className="font-semibold text-right text-accent">{viewingParticipant.category}</dd></div>
             </dl>
           </div>

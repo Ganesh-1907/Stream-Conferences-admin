@@ -424,12 +424,10 @@ export function Wizard() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description</label>
-                <textarea
+                <RichTextEditor
                   value={track.description}
-                  onChange={(e) => store.updateTrack(ti, 'description', e.target.value)}
+                  onChange={(val) => store.updateTrack(ti, 'description', val)}
                   placeholder="Short description of this track..."
-                  rows={2}
-                  className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition resize-none"
                 />
               </div>
 

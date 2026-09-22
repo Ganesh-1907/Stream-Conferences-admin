@@ -1089,6 +1089,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         case 'gallery':
           await fetchInto(`${API_BASE}/gallery`, setGalleryItems);
           break;
+        case 'mediaPartners':
+          await fetchInto(`${API_BASE}/media-partners`, setMediaPartners);
+          break;
+        case 'collaborators':
+          await fetchInto(`${API_BASE}/collaborators`, setCollaborators);
+          break;
+        case 'venues':
+          await fetchInto(`${API_BASE}/venues`, setVenues);
+          break;
+        case 'mentors':
+          await fetchInto(`${API_BASE}/mentors`, setMentors);
+          break;
         case 'brochure':
         case 'userWebsite':
           await Promise.all([
@@ -1663,7 +1675,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ensureMentorsAndVenues();
   };
 
-  const ensureMentorsAndVenues = async () => {
+  const ensureMentorsAndVenues = async (force = false) => {
     if (!user) return;
     const headers: Record<string, string> = {
       'x-user-role': user.role,
@@ -1674,15 +1686,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const needs = [];
       const mKey = 'wizard:mentors';
       const vKey = 'wizard:venues';
-      if (!(lastFetched.current[mKey] && now - lastFetched.current[mKey] < CACHE_TTL)) {
+      if (force || mentors.length === 0 || !(lastFetched.current[mKey] && now - lastFetched.current[mKey] < CACHE_TTL)) {
         needs.push(fetch(`${API_BASE}/mentors`, { headers }).then((r) => (r.ok ? r.json() : Promise.resolve(null))).then((d) => { if (d) { setMentors(d); lastFetched.current[mKey] = Date.now(); } }));
       }
-      if (!(lastFetched.current[vKey] && now - lastFetched.current[vKey] < CACHE_TTL)) {
+      if (force || venues.length === 0 || !(lastFetched.current[vKey] && now - lastFetched.current[vKey] < CACHE_TTL)) {
         needs.push(fetch(`${API_BASE}/venues`, { headers }).then((r) => (r.ok ? r.json() : Promise.resolve(null))).then((d) => { if (d) { setVenues(d); lastFetched.current[vKey] = Date.now(); } }));
       }
       await Promise.all(needs);
     } catch (err) {
-      console.error('Load mentors/venues for wizard error:', err);
+      console.error('Load mentors/venues error:', err);
     }
   };
 
@@ -2596,10 +2608,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const method = venueForm.editingId ? 'PUT' : 'POST';
     try {
       const res = await fetch(url, { method, headers, body: JSON.stringify({ name: venueForm.name, address: venueForm.address, locationUrl: venueForm.locationUrl }) });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed to save');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Failed to save venue (${res.status})`);
+      }
+      const saved = await res.json();
       setVenueForm(EMPTY_VENUE_FORM);
+      delete lastFetched.current['tab:venues'];
+      delete lastFetched.current['wizard:venues'];
+      if (venueForm.editingId) {
+        setVenues(prev => prev.map(v => v._id === saved._id ? saved : v));
+      } else {
+        setVenues(prev => [...prev, saved]);
+      }
+      await ensureMentorsAndVenues(true);
       refreshData();
     } catch (err: any) {
+      console.error('Save venue error:', err);
       alert(err.message || 'Failed to save venue');
     }
   };
@@ -2607,6 +2632,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const deleteVenue = async (id: string) => {
     if (!user || !confirm('Delete this venue?')) return;
     await fetch(`${API_BASE}/venues/${id}`, { method: 'DELETE', headers: { 'x-user-role': user.role, 'x-user-name': user.username } });
+    delete lastFetched.current['tab:venues'];
+    delete lastFetched.current['wizard:venues'];
+    setVenues(prev => prev.filter(v => v._id !== id));
+    await ensureMentorsAndVenues(true);
     refreshData();
   };
 
@@ -3007,6 +3036,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     galleryItems,
     profile,
     mentors,
+    ensureMentorsAndVenues,
     refreshData,
     loadTabData,
     loadGalleryItems,

@@ -213,6 +213,7 @@ export interface Conference {
   brochureUrl?: string;
   bannerUrl?: string;
   logoUrl?: string;
+  subjectImageUrl?: string;
   headerBanners?: string[];
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string; country?: string };
   welcomeBannerTitle?: string;
@@ -276,6 +277,7 @@ export interface Webinar {
   brochureUrl?: string;
   bannerUrl?: string;
   logoUrl?: string;
+  subjectImageUrl?: string;
   headerBanners?: string[];
   fees?: FeeEntry[];
   organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
@@ -317,10 +319,13 @@ export interface Blog {
 
 export interface Registration {
   _id: string;
+  title?: string;
+  fullName?: string;
   name: string;
   email: string;
   phone?: string;
   institution: string;
+  address?: string;
   country: string;
   category: string;
   presentingAbstract: string;
@@ -336,12 +341,15 @@ export interface Registration {
 
 export interface Abstract {
   _id: string;
+  title?: string;
+  fullName?: string;
   firstName?: string;
   lastName?: string;
   name?: string;
   email: string;
   phone?: string;
   institution?: string;
+  address?: string;
   country?: string;
   abstractFile?: string;
   track?: string;
@@ -369,11 +377,15 @@ export interface Contact {
 
 export interface BrochureLead {
   _id: string;
+  title?: string;
+  fullName?: string;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
   institution?: string;
+  designation?: string;
+  address?: string;
   country?: string;
   eventId?: string;
   eventType?: string;
@@ -386,9 +398,12 @@ export interface Order {
   _id: string;
   orderId: string;
   paymentId?: string;
+  title?: string;
+  fullName?: string;
   name: string;
   email: string;
   phone?: string;
+  address?: string;
   category: string;
   amount: number;
   currency: string;
