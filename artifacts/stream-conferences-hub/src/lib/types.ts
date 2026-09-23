@@ -171,6 +171,31 @@ export interface VenueDetails {
   moreInfo?: string;
 }
 
+export interface FeeSubItem {
+  id?: string;
+  name: string;
+  prices: {
+    USD?: number;
+    GBP?: number;
+    EUR?: number;
+    [key: string]: number | undefined;
+  };
+}
+
+export interface FeeCategory {
+  id?: string;
+  name: string;
+  items: FeeSubItem[];
+}
+
+export interface DeadlineTier {
+  id?: string;
+  title: string;
+  dateText?: string;
+  deadlineDate?: string;
+  categories: FeeCategory[];
+}
+
 export interface FeeEntry {
   type: string;      // accordion header, e.g. "Student"
   dateLabel: string; // row heading, e.g. "on/before 25 Dec"
@@ -184,6 +209,7 @@ export type FeeGroup = {
   type: string;
   rows: FeeEntry[];
 };
+
 
 export interface Conference {
   _id: string;

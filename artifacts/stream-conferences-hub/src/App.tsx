@@ -42,7 +42,7 @@ function Root() {
       <Header />
       <Breadcrumbs />
 
-      <div className="flex-1 w-full px-6 py-6">
+      <div className={`flex-1 w-full px-6 ${!store.eventPage && store.activeTab === 'liveChat' ? 'py-3' : 'py-6'}`}>
         {store.wizardOpen && store.wizardType && (
           <main className="w-full bg-card border border-foreground/10 rounded-2xl p-8 shadow-sm">
             <Wizard />
@@ -52,7 +52,7 @@ function Root() {
           <EventPage />
         )}
         {!store.wizardOpen && !store.eventPage && (
-          <main className="w-full bg-card border border-foreground/10 rounded-2xl p-8 shadow-sm">
+          <main className={`w-full bg-card border border-foreground/10 rounded-2xl shadow-sm ${store.activeTab === 'liveChat' ? 'p-4' : 'p-8'}`}>
             <TabPanel />
           </main>
         )}

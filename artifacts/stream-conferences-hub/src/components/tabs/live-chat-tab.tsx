@@ -56,11 +56,11 @@ export function LiveChatTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-foreground/10">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-0.5">Live Chat & Support</h1>
+          <h1 className="text-xl font-bold tracking-tight mb-0.5">Live Chat & Support</h1>
           <p className="text-xs text-muted-foreground">
             Interact with visitors in real time. View detailed visitor leads (Name, Email, Phone, Country) and manage conversations.
           </p>
@@ -85,11 +85,11 @@ export function LiveChatTab() {
       </div>
 
       {/* Main WhatsApp-Style Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-0 border border-foreground/15 rounded-2xl overflow-hidden min-h-[600px] max-h-[calc(100vh-14rem)] bg-card shadow-lg">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-0 border border-foreground/15 rounded-2xl overflow-hidden h-[calc(100vh-16.5rem)] min-h-[420px] bg-card shadow-lg">
         {/* Left Sidebar: Conversations List */}
-        <div className="border-r border-foreground/10 bg-muted/20 flex flex-col h-full">
+        <div className="border-r border-foreground/10 bg-muted/20 flex flex-col h-full min-h-0 overflow-hidden">
           {/* Search Header */}
-          <div className="p-3 border-b border-foreground/10 space-y-2 bg-card/50">
+          <div className="p-3 border-b border-foreground/10 space-y-2 bg-card/50 shrink-0">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -107,7 +107,7 @@ export function LiveChatTab() {
           </div>
 
           {/* Conversations List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-foreground/5">
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-foreground/5">
             {filteredSessions.length === 0 && (
               <div className="p-8 text-center text-xs text-muted-foreground">
                 <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
@@ -171,7 +171,7 @@ export function LiveChatTab() {
         </div>
 
         {/* Right Active Chat Window */}
-        <div className="flex flex-col h-full bg-background/50">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background/50">
           {!activeSession ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
               <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 border border-primary/20">
@@ -238,7 +238,7 @@ export function LiveChatTab() {
               </div>
 
               {/* Chat Thread Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-muted/10">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3.5 bg-muted/10">
                 {chatLoading && (
                   <div className="text-center text-xs text-muted-foreground py-4">Loading messages…</div>
                 )}

@@ -37,7 +37,9 @@ function NavButton({ item }: { item: NavItem }) {
       activeTab === 'collaborators' ||
       activeTab === 'venues' ||
       activeTab === 'mentors' ||
-      activeTab === 'gallery');
+      activeTab === 'gallery' ||
+      activeTab === 'brochure' ||
+      activeTab === 'abstractTemplate');
 
   const isActive = activeTab === item.tab || isUserWebsiteGroup;
 

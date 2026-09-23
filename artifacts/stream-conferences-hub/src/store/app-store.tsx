@@ -479,7 +479,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Navigation — read initial tab from URL hash so refresh restores it
   const VALID_TABS: Tab[] = [
     'overview','conferences','webinars','blogs','mediaPartners','collaborators','venues',
-    'mentors','liveChat','userWebsite','gallery','brochure'
+    'mentors','liveChat','userWebsite','gallery','brochure','abstractTemplate'
   ];
   const getTabFromHash = (): Tab => {
     const hash = window.location.hash.replace('#', '');
@@ -1102,6 +1102,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           await fetchInto(`${API_BASE}/mentors`, setMentors);
           break;
         case 'brochure':
+        case 'abstractTemplate':
         case 'userWebsite':
           await Promise.all([
             fetchInto(`${API_BASE}/media-partners`, setMediaPartners),
@@ -1110,6 +1111,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             fetchInto(`${API_BASE}/mentors`, setMentors),
             fetchInto(`${API_BASE}/gallery`, setGalleryItems),
             loadMainBrochure(),
+            loadAbstractTemplate(),
           ]);
           break;
         case 'liveChat':

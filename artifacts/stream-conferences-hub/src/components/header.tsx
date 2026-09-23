@@ -77,7 +77,9 @@ export function Header() {
       activeTab === 'collaborators' ||
       activeTab === 'venues' ||
       activeTab === 'mentors' ||
-      activeTab === 'gallery');
+      activeTab === 'gallery' ||
+      activeTab === 'brochure' ||
+      activeTab === 'abstractTemplate');
 
   const initials = (user?.username ? user.username.slice(0, 2) : 'SC').toUpperCase();
   const userEmail = user?.email || (user?.username ? `${user.username}@streamconferences.com` : 'user@streamconferences.com');

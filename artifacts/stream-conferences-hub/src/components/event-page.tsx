@@ -1,8 +1,9 @@
 import { AbstractTemplateTab } from '@/components/tabs/abstract-template-tab';
+import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { useAppStore } from '@/store/app-store';
 import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage, formatTime12h } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
-import { EventPageTab, Webinar, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup } from '@/lib/types';
+import { EventPageTab, Webinar, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem } from '@/lib/types';
 import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
 import { FileUploadCard } from '@/components/file-upload-card';
@@ -246,7 +247,7 @@ export function EventPage() {
             {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
             {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
             {store.eventPageTab === 'seo-config' && <SeoConfigTab />}
-            {store.eventPageTab === 'live-chat' && <LiveChatTabComponent />}
+            {store.eventPageTab === 'live-chat' && <LiveChatTab />}
           </main>
         </div>
       </div>
@@ -610,7 +611,7 @@ export function EventPage() {
         {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
         {store.eventPageTab === 'cohorts' && <CohortsTab />}
         {store.eventPageTab === 'seo-config' && <SeoConfigTab />}
-        {store.eventPageTab === 'live-chat' && <LiveChatTabComponent />}
+        {store.eventPageTab === 'live-chat' && <LiveChatTab />}
       </main>
     </div>
   </div>
@@ -3183,66 +3184,85 @@ function TracksTab() {
 function FeesTab() {
   const { eventPage, updateEventField, eventPageMode, setEventPageMode } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
-  const fees: FeeEntry[] = (eventPage as any)?.fees || [];
-  const [localFees, setLocalFees] = useState<FeeEntry[]>(fees);
-  const [activeGroupIndex, setActiveGroupIndex] = useState<number | null>(0);
+  const rawFees = (eventPage as any)?.fees;
+
+  // Normalize initial raw fee state to DeadlineTier array
+  const initialDeadlines = useMemo<DeadlineTier[]>(() => {
+    if (!rawFees || !Array.isArray(rawFees) || rawFees.length === 0) {
+      return [
+        {
+          id: 'd1',
+          title: 'on/before 25 aug',
+          dateText: 'Aug 25, 2026',
+          deadlineDate: '2026-08-25',
+          categories: [
+            {
+              id: 'c1',
+              name: 'Student',
+              items: [
+                { id: 'i1', name: 'Student (on/before 25 aug)', prices: { USD: 255, GBP: 277, EUR: 299 } }
+              ]
+            },
+            {
+              id: 'c2',
+              name: 'Academic',
+              items: [
+                { id: 'i2', name: 'Academic (on/before 25 aug)', prices: { USD: 355, GBP: 377, EUR: 399 } }
+              ]
+            }
+          ]
+        }
+      ];
+    }
+
+    // Check if rawFees is already new DeadlineTier format
+    if (rawFees[0] && (rawFees[0].categories || rawFees[0].title)) {
+      return rawFees as DeadlineTier[];
+    }
+
+    // Convert legacy flat FeeEntry array -> DeadlineTier format
+    const dateMap = new Map<string, DeadlineTier>();
+    (rawFees as FeeEntry[]).forEach((fee, idx) => {
+      const label = fee.dateLabel || fee.type || `Deadline ${idx + 1}`;
+      if (!dateMap.has(label)) {
+        dateMap.set(label, {
+          id: `d_${idx}`,
+          title: label,
+          dateText: fee.dateLabel || '',
+          deadlineDate: fee.deadline ? fee.deadline.slice(0, 10) : '',
+          categories: []
+        });
+      }
+      const tier = dateMap.get(label)!;
+      let cat = tier.categories.find(c => c.name === (fee.type || 'General'));
+      if (!cat) {
+        cat = { id: `c_${tier.categories.length}`, name: fee.type || 'General', items: [] };
+        tier.categories.push(cat);
+      }
+      cat.items.push({
+        id: `i_${cat.items.length}`,
+        name: fee.dateLabel ? `${fee.type || 'Registration'} (${fee.dateLabel})` : fee.type || 'Registration',
+        prices: { USD: fee.usd || 0, GBP: fee.gbp || 0, EUR: fee.eur || 0 }
+      });
+    });
+
+    return Array.from(dateMap.values());
+  }, [rawFees]);
+
+  const [deadlines, setDeadlines] = useState<DeadlineTier[]>(initialDeadlines);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
-    setLocalFees(fees);
-  }, [eventPage]);
-
-  // Group by type
-  const groups: FeeGroup[] = [];
-  localFees.forEach(entry => {
-    const last = groups[groups.length - 1];
-    if (last && last.type === entry.type) {
-      last.rows.push(entry);
-    } else {
-      groups.push({ type: entry.type, rows: [entry] });
-    }
-  });
-
-  const getGlobalIndex = (groupIdx: number, rowIdx: number) => {
-    let count = 0;
-    for (let i = 0; i < groupIdx; i++) count += groups[i].rows.length;
-    return count + rowIdx;
-  };
-
-  const handleRowChange = (globalIdx: number, field: keyof FeeEntry, value: string | number) => {
-    setLocalFees(prev => {
-      const updated = [...prev];
-      const row = { ...updated[globalIdx], [field]: value };
-      if (field === 'deadline' && value) {
-        const d = new Date(value as string);
-        if (!isNaN(d.getTime())) {
-          const day = d.getDate();
-          const mon = d.toLocaleString('en-US', { month: 'short' });
-          row.dateLabel = `on/before ${day} ${mon}`;
-        }
-      }
-      updated[globalIdx] = row;
-      return updated;
-    });
-  };
-
-  const handleGroupTypeChange = (groupIdx: number, newType: string) => {
-    setLocalFees(prev => {
-      const updated = [...prev];
-      const start = getGlobalIndex(groupIdx, 0);
-      for (let i = start; i < start + groups[groupIdx].rows.length; i++) {
-        updated[i] = { ...updated[i], type: newType };
-      }
-      return updated;
-    });
-  };
+    setDeadlines(initialDeadlines);
+  }, [initialDeadlines]);
 
   const handleSaveFees = async () => {
     setSaving(true);
     setSavedSuccess(false);
     try {
-      await updateEventField('fees', localFees);
+      await updateEventField('fees', deadlines);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err) {
@@ -3252,73 +3272,230 @@ function FeesTab() {
     }
   };
 
-  const handleSaveAll = () => {
-    updateEventField('fees', localFees);
+  const addDeadlineBlock = () => {
+    const num = deadlines.length + 1;
+    let newCats: FeeCategory[] = [
+      {
+        id: 'c1',
+        name: 'Academic',
+        items: [
+          { id: 'i1', name: 'Speaker Registration', prices: { USD: 0, GBP: 0, EUR: 0 } },
+          { id: 'i2', name: 'Delegate Registration', prices: { USD: 0, GBP: 0, EUR: 0 } }
+        ]
+      },
+      {
+        id: 'c2',
+        name: 'Business',
+        items: [
+          { id: 'i3', name: 'Speaker Registration', prices: { USD: 0, GBP: 0, EUR: 0 } }
+        ]
+      }
+    ];
+
+    if (deadlines.length > 0) {
+      newCats = JSON.parse(JSON.stringify(deadlines[0].categories));
+      newCats.forEach(c => c.items.forEach(i => i.prices = { USD: 0, GBP: 0, EUR: 0 }));
+    }
+
+    setDeadlines(prev => [
+      ...prev,
+      {
+        id: `d_${Date.now()}`,
+        title: `Deadline ${num} Registration`,
+        dateText: '',
+        deadlineDate: '',
+        categories: newCats
+      }
+    ]);
   };
 
-  const handleAddGroup = () => {
-    const newRow: FeeEntry = { type: '', dateLabel: '', deadline: '', usd: 0, gbp: 0, eur: 0 };
-    const updated = [...localFees, newRow];
-    setLocalFees(updated);
-    updateEventField('fees', updated);
-    setActiveGroupIndex(groups.length);
+  const deleteDeadline = (dIdx: number) => {
+    setDeadlines(prev => prev.filter((_, i) => i !== dIdx));
   };
 
-  const handleAddRow = (groupIdx: number) => {
-    const group = groups[groupIdx];
-    const type = group.type;
-    const insertAfter = getGlobalIndex(groupIdx, group.rows.length - 1);
-    const newRow: FeeEntry = { type, dateLabel: '', deadline: '', usd: 0, gbp: 0, eur: 0 };
-    const updated = [...localFees];
-    updated.splice(insertAfter + 1, 0, newRow);
-    setLocalFees(updated);
-    updateEventField('fees', updated);
+  const updateDeadlineTitle = (dIdx: number, val: string) => {
+    setDeadlines(prev => {
+      const updated = [...prev];
+      updated[dIdx] = { ...updated[dIdx], title: val };
+      return updated;
+    });
   };
 
-  const handleRemoveRow = (globalIdx: number) => {
-    const updated = localFees.filter((_, i) => i !== globalIdx);
-    setLocalFees(updated);
-    updateEventField('fees', updated);
+  const updateDeadlineDate = (dIdx: number, val: string) => {
+    setDeadlines(prev => {
+      const updated = [...prev];
+      let dateText = val;
+      if (val) {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+          dateText = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+      }
+      updated[dIdx] = { ...updated[dIdx], deadlineDate: val, dateText };
+      return updated;
+    });
   };
 
-  const handleRemoveGroup = (groupIdx: number) => {
-    const group = groups[groupIdx];
-    const startIdx = getGlobalIndex(groupIdx, 0);
-    const updated = localFees.filter((_, i) => i < startIdx || i >= startIdx + group.rows.length);
-    setLocalFees(updated);
-    updateEventField('fees', updated);
-    if (activeGroupIndex === groupIdx) {
-      setActiveGroupIndex(null);
-    } else if (activeGroupIndex !== null && activeGroupIndex > groupIdx) {
-      setActiveGroupIndex(activeGroupIndex - 1);
+  const addCategory = (dIdx: number) => {
+    const catName = prompt('Enter sub title / Category name:', 'Student');
+    if (catName) {
+      setDeadlines(prev => {
+        const updated = [...prev];
+        const d = { ...updated[dIdx] };
+        d.categories = [
+          ...d.categories,
+          {
+            id: `c_${Date.now()}`,
+            name: catName,
+            items: [
+              { id: `i_${Date.now()}`, name: 'Speaker Registration', prices: { USD: 0, GBP: 0, EUR: 0 } }
+            ]
+          }
+        ];
+        updated[dIdx] = d;
+        return updated;
+      });
     }
   };
 
-  const toggleGroup = (gIdx: number) => {
-    setActiveGroupIndex(prev => (prev === gIdx ? null : gIdx));
+  const deleteCategory = (dIdx: number, cIdx: number) => {
+    setDeadlines(prev => {
+      const updated = [...prev];
+      const d = { ...updated[dIdx] };
+      d.categories = d.categories.filter((_, i) => i !== cIdx);
+      updated[dIdx] = d;
+      return updated;
+    });
   };
+
+  const updateCategoryName = (dIdx: number, cIdx: number, val: string) => {
+    setDeadlines(prev => {
+      const updated = [...prev];
+      const d = { ...updated[dIdx] };
+      d.categories = [...d.categories];
+      d.categories[cIdx] = { ...d.categories[cIdx], name: val };
+      updated[dIdx] = d;
+      return updated;
+    });
+  };
+
+  const addItem = (dIdx: number, cIdx: number) => {
+    const itemName = prompt('Enter sub item title:', 'Poster Presentation');
+    if (itemName) {
+      setDeadlines(prev => {
+        const updated = [...prev];
+        const d = { ...updated[dIdx] };
+        d.categories = [...d.categories];
+        const cat = { ...d.categories[cIdx] };
+        cat.items = [
+          ...cat.items,
+          { id: `i_${Date.now()}`, name: itemName, prices: { USD: 0, GBP: 0, EUR: 0 } }
+        ];
+        d.categories[cIdx] = cat;
+        updated[dIdx] = d;
+        return updated;
+      });
+    }
+  };
+
+  const deleteItem = (dIdx: number, cIdx: number, iIdx: number) => {
+    setDeadlines(prev => {
+      const updated = [...prev];
+      const d = { ...updated[dIdx] };
+      d.categories = [...d.categories];
+      const cat = { ...d.categories[cIdx] };
+      cat.items = cat.items.filter((_, i) => i !== iIdx);
+      d.categories[cIdx] = cat;
+      updated[dIdx] = d;
+      return updated;
+    });
+  };
+
+  const updateItemName = (dIdx: number, cIdx: number, iIdx: number, val: string) => {
+    setDeadlines(prev => {
+      const updated = [...prev];
+      const d = { ...updated[dIdx] };
+      d.categories = [...d.categories];
+      const cat = { ...d.categories[cIdx] };
+      cat.items = [...cat.items];
+      cat.items[iIdx] = { ...cat.items[iIdx], name: val };
+      d.categories[cIdx] = cat;
+      updated[dIdx] = d;
+      return updated;
+    });
+  };
+
+  const updateItemPrice = (dIdx: number, cIdx: number, iIdx: number, currency: string, val: number) => {
+    setDeadlines(prev => {
+      const updated = [...prev];
+      const d = { ...updated[dIdx] };
+      d.categories = [...d.categories];
+      const cat = { ...d.categories[cIdx] };
+      cat.items = [...cat.items];
+      const item = { ...cat.items[iIdx] };
+      item.prices = { ...item.prices, [currency]: val };
+      cat.items[iIdx] = item;
+      d.categories[cIdx] = cat;
+      updated[dIdx] = d;
+      return updated;
+    });
+  };
+
+  // Matrix table view categories/items aggregation
+  const catMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    deadlines.forEach(d => {
+      d.categories.forEach(c => {
+        if (!map.has(c.name)) map.set(c.name, new Set());
+        c.items.forEach(i => map.get(c.name)!.add(i.name));
+      });
+    });
+    return map;
+  }, [deadlines]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header & Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card border border-foreground/10 rounded-2xl p-5 shadow-xs">
         <div>
-          <h3 className="text-lg font-bold tracking-tight">Registration Fees</h3>
-          <p className="text-sm text-muted-foreground mt-1">Create fee categories with installment rows.</p>
+          <h3 className="text-xl font-bold tracking-tight text-foreground">Registration Fees & Pricing</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Configure deadline boxes (Early Bird, Normal, Final), sub-titles (Academic, Business), and sub-item prices.
+          </p>
         </div>
+
         <div className="flex items-center gap-2.5 flex-wrap">
           {savedSuccess && (
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-in fade-in">
               <Check size={14} className="stroke-[2.5]" /> Saved Successfully!
             </span>
           )}
+
+          <div className="flex items-center bg-muted/60 p-1 rounded-xl text-xs font-semibold border border-foreground/10">
+            <button
+              type="button"
+              onClick={() => setViewMode('card')}
+              className={`px-3 py-1.5 rounded-lg transition ${viewMode === 'card' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Card View
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-lg transition ${viewMode === 'table' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Matrix Grid
+            </button>
+          </div>
+
           {isEditMode ? (
             <>
               <button
                 type="button"
-                onClick={handleAddGroup}
+                onClick={addDeadlineBlock}
                 className="px-4 py-2 bg-secondary text-secondary-foreground border border-foreground/15 rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1.5 shadow-xs hover:bg-secondary/80 transition"
               >
-                <Plus size={14} /> Add Fee Type
+                <Plus size={14} /> Add Deadline Tier
               </button>
               <button
                 type="button"
@@ -3341,147 +3518,265 @@ function FeesTab() {
         </div>
       </div>
 
-      {groups.length === 0 ? (
-        <div className="border-2 border-dashed border-foreground/20 rounded-2xl p-8 text-center text-sm text-muted-foreground">
-          {isEditMode ? 'No fees yet. Click "Add Fee Type" to start.' : 'No fee information available for this event yet.'}
+      {deadlines.length === 0 ? (
+        <div className="border-2 border-dashed border-foreground/20 rounded-2xl p-10 text-center text-sm text-muted-foreground space-y-3">
+          <p>No registration deadlines added yet.</p>
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={addDeadlineBlock}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus size={14} /> Add First Deadline Block
+            </button>
+          )}
         </div>
-      ) : (
-        <div className="space-y-4">
-          {groups.map((group, gIdx) => {
-            const isOpen = activeGroupIndex === gIdx;
-            return (
-              <div key={gIdx} className="border border-foreground/10 rounded-2xl overflow-hidden bg-card shadow-xs">
-                {/* Accordion / Category Header */}
-                <div className="flex items-center justify-between px-6 py-3.5 bg-muted/20 border-b border-foreground/10">
-                  <div
-                    onClick={() => toggleGroup(gIdx)}
-                    className="flex items-center gap-3 cursor-pointer select-none flex-1"
-                  >
-                    <ChevronDown
-                      size={18}
-                      className={`text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                    />
+      ) : viewMode === 'card' ? (
+        /* CARD VIEW - Full Width Deadline Blocks */
+        <div className="space-y-6">
+          {deadlines.map((d, dIdx) => (
+            <div key={d.id || dIdx} className="bg-card border border-foreground/10 rounded-2xl shadow-xs overflow-hidden">
+              {/* Deadline Top Header */}
+              <div className="bg-slate-900 text-slate-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-wrap flex-1">
+                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-lg">
+                    Deadline Tier #{dIdx + 1}
+                  </span>
+
+                  <div className="flex-1 min-w-[240px]">
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">
+                      Deadline Title (e.g. Early Bird / on/before 25 Aug)
+                    </label>
                     {isEditMode ? (
                       <input
-                        value={group.type}
-                        onChange={e => handleGroupTypeChange(gIdx, e.target.value)}
-                        onBlur={handleSaveAll}
-                        onClick={e => e.stopPropagation()}
-                        className="px-3.5 py-1.5 bg-background border border-foreground/15 rounded-xl text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[240px]"
-                        placeholder="Fee type name"
+                        type="text"
+                        value={d.title}
+                        onChange={e => updateDeadlineTitle(dIdx, e.target.value)}
+                        className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-blue-400 transition"
+                        placeholder="e.g. Early Bird Registration"
                       />
                     ) : (
-                      <span className="text-base font-bold text-foreground">{group.type || 'Untitled Fee Type'}</span>
+                      <div className="text-sm font-bold text-white">{d.title || 'Untitled Tier'}</div>
                     )}
                   </div>
-                  {isEditMode && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveGroup(gIdx)}
-                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 rounded-xl cursor-pointer transition-colors"
-                      title="Delete fee type"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+
+                  <div className="w-48">
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">
+                      Deadline Date
+                    </label>
+                    {isEditMode ? (
+                      <input
+                        type="date"
+                        value={d.deadlineDate || ''}
+                        onChange={e => updateDeadlineDate(dIdx, e.target.value)}
+                        className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-400 transition"
+                      />
+                    ) : (
+                      <div className="text-xs text-slate-300 font-medium">{d.dateText || d.deadlineDate || 'No date set'}</div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Table with Equal Column Widths */}
-                {isOpen && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm border-collapse table-fixed">
-                      <thead>
-                        <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10">
-                          <th className="p-3.5 pl-6 text-xs uppercase tracking-wider font-bold w-[26%]">HEADING</th>
-                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[18%]">DEADLINE</th>
-                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[16%]">USD</th>
-                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[16%]">GBP</th>
-                          <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[16%]">EUR</th>
-                          {isEditMode && <th className="p-3.5 text-xs uppercase tracking-wider font-bold text-center w-[8%]">ACTIONS</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.rows.map((entry, rIdx) => {
-                          const gi = getGlobalIndex(gIdx, rIdx);
-                          return (
-                            <tr key={gi} className="border-b border-foreground/5 last:border-0 hover:bg-foreground/[0.015] transition-colors">
-                              <td className="p-3 pl-6">
+                {isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => deleteDeadline(dIdx)}
+                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition cursor-pointer self-end sm:self-center"
+                    title="Delete Deadline Block"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
+
+              {/* Categories Container */}
+              <div className="p-5 space-y-6 bg-card">
+                {d.categories.map((cat, cIdx) => (
+                  <div key={cat.id || cIdx} className="border border-foreground/10 rounded-xl bg-muted/15 p-4 space-y-4">
+                    {/* Category Header */}
+                    <div className="flex items-center justify-between border-b border-foreground/10 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category Sub-Title:</span>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={cat.name}
+                            onChange={e => updateCategoryName(dIdx, cIdx, e.target.value)}
+                            className="bg-primary text-primary-foreground font-bold text-xs px-3 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[200px]"
+                            placeholder="e.g. Academic / Student / Business"
+                          />
+                        ) : (
+                          <span className="bg-primary text-primary-foreground font-bold text-xs px-3 py-1 rounded-lg">
+                            {cat.name}
+                          </span>
+                        )}
+                      </div>
+
+                      {isEditMode && (
+                        <button
+                          type="button"
+                          onClick={() => deleteCategory(dIdx, cIdx)}
+                          className="text-muted-foreground hover:text-red-500 transition p-1.5 hover:bg-red-500/10 rounded-lg"
+                          title="Delete Category"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Table of Sub Items */}
+                    <div className="overflow-x-auto border border-foreground/10 rounded-xl bg-background">
+                      <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-muted/40 text-muted-foreground font-semibold border-b border-foreground/10 text-xs">
+                            <th className="p-3 pl-4 font-bold uppercase tracking-wider">Heading / Item Name</th>
+                            <th className="p-3 text-center font-bold uppercase tracking-wider w-[18%]">USD ($)</th>
+                            <th className="p-3 text-center font-bold uppercase tracking-wider w-[18%]">GBP (£)</th>
+                            <th className="p-3 text-center font-bold uppercase tracking-wider w-[18%]">EUR (€)</th>
+                            {isEditMode && <th className="p-3 text-center font-bold uppercase tracking-wider w-[12%]">Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cat.items.map((item, iIdx) => (
+                            <tr key={item.id || iIdx} className="border-b border-foreground/5 last:border-0 hover:bg-foreground/[0.015] transition">
+                              <td className="p-2.5 pl-4">
                                 {isEditMode ? (
                                   <input
-                                    value={entry.dateLabel}
-                                    onChange={e => handleRowChange(gi, 'dateLabel', e.target.value)}
-                                    onBlur={handleSaveAll}
-                                    className="w-full px-4 py-2.5 bg-background border border-foreground/15 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-xs"
-                                    placeholder="e.g. on/before 25 Dec"
+                                    type="text"
+                                    value={item.name}
+                                    onChange={e => updateItemName(dIdx, cIdx, iIdx, e.target.value)}
+                                    className="w-full px-3 py-1.5 bg-background border border-foreground/15 rounded-lg text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    placeholder="e.g. Speaker Registration"
                                   />
                                 ) : (
-                                  <span className="text-sm font-medium text-foreground px-2">{entry.dateLabel || '—'}</span>
+                                  <span className="text-xs font-semibold text-foreground">{item.name}</span>
                                 )}
                               </td>
-                              <td className="p-3 text-center">
-                                {isEditMode ? (
-                                  <input
-                                    type="date"
-                                    value={entry.deadline ? entry.deadline.slice(0, 10) : ''}
-                                    onChange={e => handleRowChange(gi, 'deadline', e.target.value)}
-                                    onBlur={handleSaveAll}
-                                    className="w-full px-3 py-2.5 bg-background border border-foreground/15 rounded-xl text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-xs"
-                                  />
-                                ) : (
-                                  <span className="text-sm font-medium text-foreground px-2">{entry.deadline ? new Date(entry.deadline).toLocaleDateString() : '—'}</span>
-                                )}
-                              </td>
-                              {(['usd', 'gbp', 'eur'] as const).map(c => (
-                                <td key={c} className="p-3 text-center">
+
+                              {(['USD', 'GBP', 'EUR'] as const).map(curr => (
+                                <td key={curr} className="p-2.5 text-center">
                                   {isEditMode ? (
                                     <input
                                       type="number"
                                       min={0}
-                                      value={entry[c] ?? ''}
-                                      onChange={e => handleRowChange(gi, c, e.target.value === '' ? 0 : Number(e.target.value))}
-                                      onBlur={handleSaveAll}
-                                      className="w-full px-4 py-2.5 bg-background border border-foreground/15 rounded-xl text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-xs"
-                                      placeholder="0"
+                                      value={item.prices[curr] ?? 0}
+                                      onChange={e => updateItemPrice(dIdx, cIdx, iIdx, curr, parseFloat(e.target.value) || 0)}
+                                      className="w-full px-3 py-1.5 bg-background border border-foreground/15 rounded-lg text-xs text-center font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                                     />
                                   ) : (
-                                    <span className="text-sm font-mono font-semibold text-foreground">
-                                      {c === 'usd' ? '$' : c === 'gbp' ? '£' : '€'}{entry[c] ?? 0}
+                                    <span className="text-xs font-mono font-semibold text-foreground">
+                                      {curr === 'USD' ? '$' : curr === 'GBP' ? '£' : '€'}{item.prices[curr] ?? 0}
                                     </span>
                                   )}
                                 </td>
                               ))}
+
                               {isEditMode && (
-                                <td className="p-3 text-center">
+                                <td className="p-2.5 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button
                                       type="button"
-                                      onClick={() => handleAddRow(gIdx)}
-                                      title="Add row"
-                                      className="w-8 h-8 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center font-bold text-sm cursor-pointer transition-colors"
+                                      onClick={() => addItem(dIdx, cIdx)}
+                                      title="Add Item Row"
+                                      className="w-7 h-7 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center font-bold text-xs transition"
                                     >
-                                      <Plus size={15} strokeWidth={2.5} />
+                                      <Plus size={14} />
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleRemoveRow(gi)}
-                                      title="Delete row"
-                                      className="w-8 h-8 rounded-xl text-red-500 hover:bg-red-500/10 flex items-center justify-center cursor-pointer transition-colors"
+                                      onClick={() => deleteItem(dIdx, cIdx, iIdx)}
+                                      title="Delete Item Row"
+                                      className="w-7 h-7 rounded-lg text-red-500 hover:bg-red-500/10 flex items-center justify-center transition"
                                     >
-                                      <Trash2 size={15} />
+                                      <Trash2 size={14} />
                                     </button>
                                   </div>
                                 </td>
                               )}
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={() => addItem(dIdx, cIdx)}
+                        className="py-2 px-4 border border-dashed border-foreground/20 hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-primary rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                      >
+                        <Plus size={14} /> Add Item Row under {cat.name}
+                      </button>
+                    )}
                   </div>
+                ))}
+
+                {isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => addCategory(dIdx)}
+                    className="w-full py-2.5 bg-muted/60 hover:bg-muted text-foreground rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-foreground/10 transition"
+                  >
+                    <Plus size={15} /> Add Sub Title / Category (e.g. Academic, Business, Student)
+                  </button>
                 )}
               </div>
-            );
-          })}
+            </div>
+          ))}
+        </div>
+
+      ) : (
+        /* MATRIX GRID VIEW */
+        <div className="bg-card border border-foreground/10 rounded-2xl p-5 shadow-xs overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-muted/40 border-b border-foreground/10 text-xs font-bold text-muted-foreground uppercase">
+                <th className="p-3">Category / Fee Item</th>
+                {deadlines.map((d, dIdx) => (
+                  <th key={d.id || dIdx} className="p-3 text-center border-l border-foreground/10 min-w-[180px]">
+                    <div className="font-bold text-foreground">{d.title || `Deadline #${dIdx + 1}`}</div>
+                    <div className="text-[10px] text-muted-foreground font-normal">{d.dateText || d.deadlineDate || 'No date'}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from(catMap.entries()).map(([catName, itemsSet]) => (
+                <Fragment key={catName}>
+                  <tr className="bg-muted/20 border-b border-foreground/10 font-bold text-xs text-primary">
+                    <td colSpan={deadlines.length + 1} className="p-2.5 px-3">
+                      📁 {catName}
+                    </td>
+                  </tr>
+                  {Array.from(itemsSet).map(itemName => (
+                    <tr key={itemName} className="border-b border-foreground/5 hover:bg-muted/10 text-xs">
+                      <td className="p-3 font-semibold text-foreground pl-6">{itemName}</td>
+                      {deadlines.map((d, dIdx) => {
+                        const cat = d.categories.find(c => c.name === catName);
+                        const item = cat ? cat.items.find(i => i.name === itemName) : null;
+                        const prices = item ? item.prices : { USD: 0, GBP: 0, EUR: 0 };
+                        return (
+                          <td key={d.id || dIdx} className="p-2 border-l border-foreground/10 text-center">
+                            {item ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-[10px] text-muted-foreground font-bold">${prices.USD || 0}</span>
+                                <span className="text-[10px] text-muted-foreground font-bold">£{prices.GBP || 0}</span>
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                  €{prices.EUR || 0}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-[10px]">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -3676,6 +3971,7 @@ function LiveChatTabComponent() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = async () => {
     if (!eventPage?._id) return;
@@ -3693,6 +3989,10 @@ function LiveChatTabComponent() {
     const timer = setInterval(fetchMessages, 4000);
     return () => clearInterval(timer);
   }, [eventPage?._id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3746,6 +4046,7 @@ function LiveChatTabComponent() {
               </div>
             ))
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         <form onSubmit={handleSend} className="flex gap-2">
