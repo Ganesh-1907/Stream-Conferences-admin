@@ -2,13 +2,20 @@ import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { MessageSquare, Send, Mail, Phone, Globe, Search, User, CheckCheck, Clock, ShieldCheck } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 
-export function LiveChatTab() {
+interface LiveChatTabProps {
+  conferenceId?: string | null;
+  conferenceTitle?: string;
+  eventId?: string;
+}
+
+export function LiveChatTab({ conferenceId, conferenceTitle, eventId }: LiveChatTabProps = {}) {
   const {
     user,
     chatSessions,
     activeChatId,
     activeChatMessages,
     chatLoading,
+    loadChatSessions,
     setActiveChatId,
     sendChatReply,
     setChatStatus
@@ -19,9 +26,29 @@ export function LiveChatTab() {
   const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('all');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Load chat sessions on mount and on interval
+  useEffect(() => {
+    loadChatSessions(conferenceId || null, conferenceId ? undefined : 'main', eventId || null);
+    const interval = setInterval(() => {
+      loadChatSessions(conferenceId || null, conferenceId ? undefined : 'main', eventId || null);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [conferenceId, eventId]);
+
   const activeSession = chatSessions.find((s) => s._id === activeChatId);
 
   const filteredSessions = chatSessions.filter((s) => {
+    // Conference / scope isolation
+    if (conferenceId || eventId) {
+      const match =
+        (conferenceId && (s.conferenceId === conferenceId || s.eventId === conferenceId)) ||
+        (eventId && (s.eventId === eventId || s.conferenceId === eventId)) ||
+        (conferenceTitle && s.conferenceTitle && s.conferenceTitle.trim().toLowerCase() === conferenceTitle.trim().toLowerCase());
+      if (!match) return false;
+    } else {
+      if (s.conferenceId && s.scope !== 'main') return false;
+    }
+
     const matchesFilter = filter === 'all' ? true : s.status === filter;
     const q = searchQuery.toLowerCase().trim();
     if (!q) return matchesFilter;
@@ -30,7 +57,9 @@ export function LiveChatTab() {
       (s.visitorName && s.visitorName.toLowerCase().includes(q)) ||
       (s.visitorEmail && s.visitorEmail.toLowerCase().includes(q)) ||
       (s.visitorPhone && s.visitorPhone.toLowerCase().includes(q)) ||
-      (s.visitorCountry && s.visitorCountry.toLowerCase().includes(q));
+      (s.visitorCountry && s.visitorCountry.toLowerCase().includes(q)) ||
+      (s.conferenceTitle && s.conferenceTitle.toLowerCase().includes(q)) ||
+      (s.eventId && s.eventId.toLowerCase().includes(q));
 
     return matchesFilter && matchesSearch;
   });
@@ -60,9 +89,18 @@ export function LiveChatTab() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-foreground/10">
         <div>
-          <h1 className="text-xl font-bold tracking-tight mb-0.5">Live Chat & Support</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight mb-0.5">
+              {conferenceId ? `Live Chat • ${conferenceTitle || eventId || 'Conference'}` : 'Main Website Live Chat'}
+            </h1>
+            <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20">
+              {conferenceId ? (eventId || 'Microsite') : 'Main Portal'}
+            </span>
+          </div>
           <p className="text-xs text-muted-foreground">
-            Interact with visitors in real time. View detailed visitor leads (Name, Email, Phone, Country) and manage conversations.
+            {conferenceId
+              ? `Interact with attendees and prospective visitors of "${conferenceTitle || eventId || 'this conference'}" in real time.`
+              : 'Interact with general visitors from the main Stream Conferences website in real time.'}
           </p>
         </div>
 
@@ -111,7 +149,7 @@ export function LiveChatTab() {
             {filteredSessions.length === 0 && (
               <div className="p-8 text-center text-xs text-muted-foreground">
                 <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
-                No conversations found.
+                No conversations found for {conferenceId ? 'this conference' : 'the main website'}.
               </div>
             )}
             {filteredSessions.map((s) => {
@@ -147,18 +185,23 @@ export function LiveChatTab() {
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                         <span className={`w-2 h-2 rounded-full ${s.status === 'open' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
                         <span className="text-[10px] text-muted-foreground capitalize font-semibold">{s.status}</span>
                         {s.visitorCountry && (
-                          <span className="text-[10px] bg-foreground/5 border border-foreground/10 px-1.5 py-0.5 rounded text-foreground/80 font-medium truncate max-w-[100px]">
+                          <span className="text-[10px] bg-foreground/5 border border-foreground/10 px-1.5 py-0.5 rounded text-foreground/80 font-medium truncate max-w-[80px]">
                             {s.visitorCountry}
+                          </span>
+                        )}
+                        {s.eventId && !conferenceId && (
+                          <span className="text-[10px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded truncate max-w-[80px]">
+                            {s.eventId}
                           </span>
                         )}
                       </div>
 
                       {s.unreadByAdmin > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-xs">
+                        <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-xs shrink-0">
                           {s.unreadByAdmin}
                         </span>
                       )}

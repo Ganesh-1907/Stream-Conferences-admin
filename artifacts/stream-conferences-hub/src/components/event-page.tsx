@@ -248,7 +248,7 @@ export function EventPage() {
             {store.eventPageTab === 'organizing-committee' && <OrganizingCommitteeTab />}
             {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
             {store.eventPageTab === 'seo-config' && <SeoConfigTab />}
-            {store.eventPageTab === 'live-chat' && <LiveChatTab />}
+            {store.eventPageTab === 'live-chat' && <LiveChatTab conferenceId={eventPage?._id} conferenceTitle={eventPage?.title} eventId={eventPage?.eventId} />}
           </main>
         </div>
       </div>
@@ -523,10 +523,8 @@ export function EventPage() {
                         type="button"
                         onClick={async () => {
                           setActionsOpen(false);
-                          if (window.confirm(`Are you sure you want to delete this ${eventPageType}?`)) {
-                            await store.handleDeleteItem(eventPage._id, eventPageType === 'conference' ? 'conferences' : 'webinars');
-                            store.closeEventPage();
-                          }
+                          await store.handleDeleteItem(eventPage._id, eventPageType === 'conference' ? 'conferences' : 'webinars');
+                          store.closeEventPage();
                         }}
                         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 transition text-left cursor-pointer"
                       >
@@ -612,7 +610,7 @@ export function EventPage() {
         {store.eventPageTab === 'venue-details' && <VenueDetailsTab />}
         {store.eventPageTab === 'cohorts' && <CohortsTab />}
         {store.eventPageTab === 'seo-config' && <SeoConfigTab />}
-        {store.eventPageTab === 'live-chat' && <LiveChatTab />}
+        {store.eventPageTab === 'live-chat' && <LiveChatTab conferenceId={eventPage?._id} conferenceTitle={eventPage?.title} eventId={eventPage?.eventId} />}
       </main>
     </div>
   </div>
@@ -972,8 +970,15 @@ function ScientificProgramTab() {
     setUploading(false);
   };
 
-  const handleRemove = () => {
-    if (window.confirm('Are you sure you want to remove the scientific program file?')) {
+  const handleRemove = async () => {
+    const ok = await store.confirmModal({
+      title: 'Remove Scientific Program',
+      message: 'Are you sure you want to remove the scientific program file?',
+      type: 'danger',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+    });
+    if (ok) {
       setUrl('');
       updateEventField('scientificProgramUrl', '');
     }
@@ -1842,8 +1847,15 @@ function ProgramTab() {
     resetSessionForm();
   };
 
-  const handleDeleteDay = (index: number) => {
-    if (confirm('Delete this day and all its sessions?')) {
+  const handleDeleteDay = async (index: number) => {
+    const ok = await store.confirmModal({
+      title: 'Delete Program Day',
+      message: 'Are you sure you want to delete this day and all its sessions?',
+      type: 'danger',
+      confirmText: 'Delete Day',
+      cancelText: 'Cancel',
+    });
+    if (ok) {
       const updated = program.filter((_, i) => i !== index);
       updateEventField('program', updated);
     }
@@ -3200,30 +3212,7 @@ function FeesTab() {
   // Normalize initial raw fee state to DeadlineTier array
   const initialDeadlines = useMemo<DeadlineTier[]>(() => {
     if (!rawFees || !Array.isArray(rawFees) || rawFees.length === 0) {
-      return [
-        {
-          id: 'd1',
-          title: 'on/before 25 aug',
-          dateText: 'Aug 25, 2026',
-          deadlineDate: '2026-08-25',
-          categories: [
-            {
-              id: 'c1',
-              name: 'Student',
-              items: [
-                { id: 'i1', name: 'Student (on/before 25 aug)', prices: { USD: 255, GBP: 277, EUR: 299 } }
-              ]
-            },
-            {
-              id: 'c2',
-              name: 'Academic',
-              items: [
-                { id: 'i2', name: 'Academic (on/before 25 aug)', prices: { USD: 355, GBP: 377, EUR: 399 } }
-              ]
-            }
-          ]
-        }
-      ];
+      return [];
     }
 
     // Check if rawFees is already new DeadlineTier format
@@ -3284,38 +3273,22 @@ function FeesTab() {
   };
 
   const addDeadlineBlock = () => {
-    const num = deadlines.length + 1;
-    let newCats: FeeCategory[] = [
-      {
-        id: 'c1',
-        name: 'Academic',
-        items: [
-          { id: 'i1', name: 'Speaker Registration', prices: { USD: 0, GBP: 0, EUR: 0 } },
-          { id: 'i2', name: 'Delegate Registration', prices: { USD: 0, GBP: 0, EUR: 0 } }
-        ]
-      },
-      {
-        id: 'c2',
-        name: 'Business',
-        items: [
-          { id: 'i3', name: 'Speaker Registration', prices: { USD: 0, GBP: 0, EUR: 0 } }
-        ]
-      }
-    ];
-
-    if (deadlines.length > 0) {
-      newCats = JSON.parse(JSON.stringify(deadlines[0].categories));
-      newCats.forEach(c => c.items.forEach(i => i.prices = { USD: 0, GBP: 0, EUR: 0 }));
-    }
-
     setDeadlines(prev => [
       ...prev,
       {
-        id: `d_${Date.now()}`,
-        title: `Deadline ${num} Registration`,
+        id: `d_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: '',
         dateText: '',
         deadlineDate: '',
-        categories: newCats
+        categories: [
+          {
+            id: `c_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name: '',
+            items: [
+              { id: `i_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, name: '', prices: { USD: 0, GBP: 0, EUR: 0 } }
+            ]
+          }
+        ]
       }
     ]);
   };
@@ -3348,25 +3321,22 @@ function FeesTab() {
   };
 
   const addCategory = (dIdx: number) => {
-    const catName = prompt('Enter sub title / Category name:', 'Student');
-    if (catName) {
-      setDeadlines(prev => {
-        const updated = [...prev];
-        const d = { ...updated[dIdx] };
-        d.categories = [
-          ...d.categories,
-          {
-            id: `c_${Date.now()}`,
-            name: catName,
-            items: [
-              { id: `i_${Date.now()}`, name: 'Speaker Registration', prices: { USD: 0, GBP: 0, EUR: 0 } }
-            ]
-          }
-        ];
-        updated[dIdx] = d;
-        return updated;
-      });
-    }
+    setDeadlines(prev => {
+      const updated = [...prev];
+      const d = { ...updated[dIdx] };
+      d.categories = [
+        ...d.categories,
+        {
+          id: `c_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: '',
+          items: [
+            { id: `i_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, name: '', prices: { USD: 0, GBP: 0, EUR: 0 } }
+          ]
+        }
+      ];
+      updated[dIdx] = d;
+      return updated;
+    });
   };
 
   const deleteCategory = (dIdx: number, cIdx: number) => {
@@ -3391,22 +3361,19 @@ function FeesTab() {
   };
 
   const addItem = (dIdx: number, cIdx: number) => {
-    const itemName = prompt('Enter sub item title:', 'Poster Presentation');
-    if (itemName) {
-      setDeadlines(prev => {
-        const updated = [...prev];
-        const d = { ...updated[dIdx] };
-        d.categories = [...d.categories];
-        const cat = { ...d.categories[cIdx] };
-        cat.items = [
-          ...cat.items,
-          { id: `i_${Date.now()}`, name: itemName, prices: { USD: 0, GBP: 0, EUR: 0 } }
-        ];
-        d.categories[cIdx] = cat;
-        updated[dIdx] = d;
-        return updated;
-      });
-    }
+    setDeadlines(prev => {
+      const updated = [...prev];
+      const d = { ...updated[dIdx] };
+      d.categories = [...d.categories];
+      const cat = { ...d.categories[cIdx] };
+      cat.items = [
+        ...cat.items,
+        { id: `i_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, name: '', prices: { USD: 0, GBP: 0, EUR: 0 } }
+      ];
+      d.categories[cIdx] = cat;
+      updated[dIdx] = d;
+      return updated;
+    });
   };
 
   const deleteItem = (dIdx: number, cIdx: number, iIdx: number) => {
@@ -3530,13 +3497,13 @@ function FeesTab() {
       </div>
 
       {deadlines.length === 0 ? (
-        <div className="border-2 border-dashed border-foreground/20 rounded-2xl p-10 text-center text-sm text-muted-foreground space-y-3">
-          <p>No registration deadlines added yet.</p>
+        <div className="border-2 border-dashed border-foreground/20 rounded-2xl p-10 text-center text-sm text-muted-foreground space-y-3 bg-card">
+          <p className="font-medium">No registration deadlines added yet.</p>
           {isEditMode && (
             <button
               type="button"
               onClick={addDeadlineBlock}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm hover:bg-primary/90 transition cursor-pointer"
             >
               <Plus size={14} /> Add First Deadline Block
             </button>
@@ -3571,19 +3538,40 @@ function FeesTab() {
                     )}
                   </div>
 
-                  <div className="w-48">
+                  <div className="w-52">
                     <label className="block text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">
                       Deadline Date
                     </label>
                     {isEditMode ? (
-                      <input
-                        type="date"
-                        value={d.deadlineDate || ''}
-                        onChange={e => updateDeadlineDate(dIdx, e.target.value)}
-                        className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-400 transition"
-                      />
+                      <div
+                        className="relative flex items-center cursor-pointer"
+                        onClick={(e) => {
+                          const input = (e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement);
+                          if (input) {
+                            try { input.showPicker?.(); } catch {}
+                            input.focus();
+                          }
+                        }}
+                      >
+                        <input
+                          type="date"
+                          value={d.deadlineDate || ''}
+                          onChange={e => updateDeadlineDate(dIdx, e.target.value)}
+                          onClick={e => {
+                            try { (e.target as any).showPicker?.(); } catch {}
+                          }}
+                          className="w-full bg-slate-950/80 border border-slate-700 hover:border-slate-500 focus:border-blue-400 rounded-xl pl-3 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none transition cursor-pointer [color-scheme:dark]"
+                        />
+                        <CalendarDays
+                          size={14}
+                          className="absolute right-2.5 text-slate-400 pointer-events-none"
+                        />
+                      </div>
                     ) : (
-                      <div className="text-xs text-slate-300 font-medium">{d.dateText || d.deadlineDate || 'No date set'}</div>
+                      <div className="text-xs text-slate-300 font-medium flex items-center gap-1.5 py-1.5">
+                        <CalendarDays size={14} className="text-slate-400 shrink-0" />
+                        {d.dateText || d.deadlineDate || 'No date set'}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -3606,19 +3594,19 @@ function FeesTab() {
                   <div key={cat.id || cIdx} className="border border-foreground/10 rounded-xl bg-muted/15 p-4 space-y-4">
                     {/* Category Header */}
                     <div className="flex items-center justify-between border-b border-foreground/10 pb-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category Sub-Title:</span>
                         {isEditMode ? (
                           <input
                             type="text"
                             value={cat.name}
                             onChange={e => updateCategoryName(dIdx, cIdx, e.target.value)}
-                            className="bg-primary text-primary-foreground font-bold text-xs px-3 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[200px]"
-                            placeholder="e.g. Academic / Student / Business"
+                            className="bg-background border border-foreground/20 text-foreground font-semibold text-xs px-3.5 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[220px]"
+                            placeholder="e.g. Student / Academic / Business"
                           />
                         ) : (
-                          <span className="bg-primary text-primary-foreground font-bold text-xs px-3 py-1 rounded-lg">
-                            {cat.name}
+                          <span className="bg-primary/10 text-primary border border-primary/20 font-bold text-xs px-3 py-1 rounded-lg">
+                            {cat.name || 'Untitled Category'}
                           </span>
                         )}
                       </div>
@@ -3627,7 +3615,7 @@ function FeesTab() {
                         <button
                           type="button"
                           onClick={() => deleteCategory(dIdx, cIdx)}
-                          className="text-muted-foreground hover:text-red-500 transition p-1.5 hover:bg-red-500/10 rounded-lg"
+                          className="text-muted-foreground hover:text-red-500 transition p-1.5 hover:bg-red-500/10 rounded-lg cursor-pointer"
                           title="Delete Category"
                         >
                           <Trash2 size={15} />
@@ -3660,7 +3648,7 @@ function FeesTab() {
                                     placeholder="e.g. Speaker Registration"
                                   />
                                 ) : (
-                                  <span className="text-xs font-semibold text-foreground">{item.name}</span>
+                                  <span className="text-xs font-semibold text-foreground">{item.name || 'Untitled Item'}</span>
                                 )}
                               </td>
 
@@ -3670,8 +3658,9 @@ function FeesTab() {
                                     <input
                                       type="number"
                                       min={0}
-                                      value={item.prices[curr] ?? 0}
+                                      value={item.prices[curr] === 0 && !item.name ? '' : (item.prices[curr] || '')}
                                       onChange={e => updateItemPrice(dIdx, cIdx, iIdx, curr, parseFloat(e.target.value) || 0)}
+                                      placeholder="0"
                                       className="w-full px-3 py-1.5 bg-background border border-foreground/15 rounded-lg text-xs text-center font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                                     />
                                   ) : (
@@ -3689,7 +3678,7 @@ function FeesTab() {
                                       type="button"
                                       onClick={() => addItem(dIdx, cIdx)}
                                       title="Add Item Row"
-                                      className="w-7 h-7 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center font-bold text-xs transition"
+                                      className="w-7 h-7 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center font-bold text-xs transition cursor-pointer"
                                     >
                                       <Plus size={14} />
                                     </button>
@@ -3697,7 +3686,7 @@ function FeesTab() {
                                       type="button"
                                       onClick={() => deleteItem(dIdx, cIdx, iIdx)}
                                       title="Delete Item Row"
-                                      className="w-7 h-7 rounded-lg text-red-500 hover:bg-red-500/10 flex items-center justify-center transition"
+                                      className="w-7 h-7 rounded-lg text-red-500 hover:bg-red-500/10 flex items-center justify-center transition cursor-pointer"
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -3714,9 +3703,9 @@ function FeesTab() {
                       <button
                         type="button"
                         onClick={() => addItem(dIdx, cIdx)}
-                        className="py-2 px-4 border border-dashed border-foreground/20 hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-primary rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                        className="py-2 px-4 border border-dashed border-foreground/20 hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-primary rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                       >
-                        <Plus size={14} /> Add Item Row under {cat.name}
+                        <Plus size={14} /> Add Item Row under {cat.name || 'Category'}
                       </button>
                     )}
                   </div>
@@ -3726,7 +3715,7 @@ function FeesTab() {
                   <button
                     type="button"
                     onClick={() => addCategory(dIdx)}
-                    className="w-full py-2.5 bg-muted/60 hover:bg-muted text-foreground rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-foreground/10 transition"
+                    className="w-full py-2.5 bg-muted/60 hover:bg-muted text-foreground rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-foreground/10 transition cursor-pointer"
                   >
                     <Plus size={15} /> Add Sub Title / Category (e.g. Academic, Business, Student)
                   </button>
@@ -5235,16 +5224,35 @@ function CohortsTab() {
   };
 
   const handleSetCurrent = async (id: string) => {
-    try { await setCurrentCohort(id); } catch (err: any) { alert(err.message || 'Failed to set current cohort'); }
+    try { 
+      await setCurrentCohort(id); 
+    } catch (err: any) { 
+      store.alertModal({ title: 'Error', message: err.message || 'Failed to set current cohort', type: 'danger' }); 
+    }
   };
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this cohort?')) return;
-    try { await deleteCohort(id); } catch (err: any) { alert(err.message || 'Failed to delete cohort'); }
+    const ok = await store.confirmModal({
+      title: 'Delete Cohort',
+      message: 'Are you sure you want to delete this cohort?',
+      type: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
+    try { 
+      await deleteCohort(id); 
+    } catch (err: any) { 
+      store.alertModal({ title: 'Error', message: err.message || 'Failed to delete cohort', type: 'danger' }); 
+    }
   };
   const submitAssign = async () => {
     if (!assignCohort) return;
-    try { await assignCohortMentor(assignCohort._id, assignUsername || null); setAssignCohort(null); }
-    catch (err: any) { alert(err.message || 'Failed to assign mentor'); }
+    try { 
+      await assignCohortMentor(assignCohort._id, assignUsername || null); 
+      setAssignCohort(null); 
+    } catch (err: any) { 
+      store.alertModal({ title: 'Error', message: err.message || 'Failed to assign mentor', type: 'danger' }); 
+    }
   };
 
   return (

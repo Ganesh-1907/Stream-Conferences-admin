@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FileUploadCard } from '@/components/file-upload-card';
 
 export function AbstractTemplateTab() {
-  const { user, abstractTemplate, loadAbstractTemplate, saveAbstractTemplate } = useAppStore();
+  const { user, abstractTemplate, loadAbstractTemplate, saveAbstractTemplate, confirmModal } = useAppStore();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState(abstractTemplate?.title || 'Official Abstract Submission Template');
@@ -37,7 +37,14 @@ export function AbstractTemplateTab() {
 
   const handleClearFile = async () => {
     if (abstractTemplate) {
-      if (!window.confirm('Are you sure you want to remove the abstract submission template?')) return;
+      const ok = await confirmModal({
+        title: 'Remove Template',
+        message: 'Are you sure you want to remove the abstract submission template?',
+        type: 'danger',
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+      });
+      if (!ok) return;
       setUploading(true);
       try {
         const res = await fetch(`${API_BASE}/abstract-template/main`, {

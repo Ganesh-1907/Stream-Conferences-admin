@@ -1,20 +1,21 @@
 import { useState } from 'react';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { FileUploadCard } from '@/components/file-upload-card';
 import { useAppStore } from '@/store/app-store';
 
 export function ProfileTab() {
-  const { profileForm, setProfileForm, saveProfile, handleProfileAvatarUpload, changePassword } = useAppStore();
+  const { profileForm, setProfileForm, saveProfile, handleProfileAvatarUpload, changePassword, alertModal } = useAppStore();
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
   const handleChangePassword = async () => {
     if (!newPassword) {
-      alert('Please enter a new password');
+      alertModal({ title: 'Validation Error', message: 'Please enter a new password', type: 'danger' });
       return;
     }
     if (newPassword.length < 6) {
-      alert('Password must be at least 6 characters long');
+      alertModal({ title: 'Validation Error', message: 'Password must be at least 6 characters long', type: 'danger' });
       return;
     }
     setChangingPassword(true);
@@ -149,13 +150,23 @@ export function ProfileTab() {
           <div className="max-w-xs space-y-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">New Password</label>
-              <input 
-                type="password" 
-                value={newPassword} 
-                onChange={(e) => setNewPassword(e.target.value)} 
-                placeholder="••••••••" 
-                className="w-full px-4 py-3 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" 
-              />
+              <div className="relative">
+                <input 
+                  type={showNewPassword ? 'text' : 'password'} 
+                  value={newPassword} 
+                  onChange={(e) => setNewPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="w-full px-4 py-3 pr-11 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition p-1 cursor-pointer"
+                  aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <button 
               type="button" 

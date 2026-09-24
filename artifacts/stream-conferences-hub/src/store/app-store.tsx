@@ -53,6 +53,8 @@ import {
   Webinar,
   GalleryItem,
   MainBrochureItem,
+  ModalOptions,
+  ModalState,
 } from '@/lib/types';
 
 type EditableType = 'conference' | 'webinar' | 'blog';
@@ -407,10 +409,17 @@ interface AppStoreValue {
   activeChatId: string | null;
   activeChatMessages: ChatMessage[];
   chatLoading: boolean;
+  loadChatSessions: (conferenceId?: string | null, scope?: 'main' | 'conference', eventId?: string | null) => Promise<void>;
   setActiveChatId: (id: string | null) => void;
   sendChatReply: (text: string) => Promise<void>;
   markChatRead: (sessionId: string) => Promise<void>;
   setChatStatus: (sessionId: string, status: 'open' | 'closed') => Promise<void>;
+
+  // Global Centered Modal Dialogs
+  modalState: ModalState;
+  confirmModal: (options: ModalOptions) => Promise<boolean>;
+  alertModal: (options: ModalOptions | string) => Promise<void>;
+  closeModal: (result: boolean) => void;
 }
 
 const AppStoreContext = createContext<AppStoreValue | null>(null);
@@ -510,6 +519,63 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Cache: track when each tab's data was last fetched (skip re-fetch within 30s)
   const lastFetched = useRef<Record<string, number>>({});
   const CACHE_TTL = 30_000;
+
+  // Global Modal Dialog state
+  const [modalState, setModalState] = useState<ModalState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+  });
+
+  const confirmModal = useCallback((options: ModalOptions): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      setModalState({
+        isOpen: true,
+        type: options.type || 'confirm',
+        title: options.title || 'Please Confirm',
+        message: options.message,
+        confirmText: options.confirmText || 'Confirm',
+        cancelText: options.cancelText || 'Cancel',
+        resolve,
+      });
+    });
+  }, []);
+
+  const alertModal = useCallback((options: ModalOptions | string): Promise<void> => {
+    return new Promise<void>((resolve) => {
+      if (typeof options === 'string') {
+        setModalState({
+          isOpen: true,
+          type: 'info',
+          title: 'Notice',
+          message: options,
+          confirmText: 'OK',
+          resolve: () => resolve(),
+        });
+      } else {
+        setModalState({
+          isOpen: true,
+          type: options.type || 'info',
+          title: options.title || 'Notice',
+          message: options.message,
+          confirmText: options.confirmText || 'OK',
+          resolve: () => resolve(),
+        });
+      }
+    });
+  }, []);
+
+  const closeModal = useCallback((result: boolean) => {
+    setModalState((prev) => {
+      if (prev.resolve) {
+        prev.resolve(result);
+      }
+      return { ...prev, isOpen: false, resolve: undefined };
+    });
+  }, []);
 
   // Modal / form state
   const [showForm, setShowForm] = useState(false);
@@ -1395,14 +1461,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loadChatSessions = async () => {
+  const loadChatSessions = async (conferenceId?: string | null, scope?: 'main' | 'conference', eventId?: string | null) => {
     if (!user) return;
     const headers: Record<string, string> = {
       'x-user-role': user.role,
       'x-user-name': user.username,
     };
     try {
-      const res = await fetch(`${API_BASE}/chat/sessions`, { headers });
+      const params = new URLSearchParams();
+      if (conferenceId) params.set('conferenceId', conferenceId);
+      if (eventId) params.set('eventId', eventId);
+      if (scope) params.set('scope', scope);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`${API_BASE}/chat/sessions${query}`, { headers });
       if (res.ok) setChatSessions(await res.json());
     } catch (err) {
       console.error('Load chat sessions error:', err);
@@ -2477,17 +2548,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         refreshData();
       } else {
         const err = await res.json();
-        alert(err.error || 'Failed to save item');
+        alertModal({ title: 'Error', message: err.error || 'Failed to save item', type: 'danger' });
       }
     } catch (err) {
       console.error(err);
-      alert('Network error while saving item');
+      alertModal({ title: 'Error', message: 'Network error while saving item', type: 'danger' });
     }
   };
 
   const handleDeleteItem = async (id: string, type: DeleteType) => {
     if (!user) return;
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    const ok = await confirmModal({
+      title: 'Delete Item',
+      message: 'Are you sure you want to delete this item? This action cannot be undone.',
+      type: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!ok) return;
 
     const headers: Record<string, string> = {
       'x-user-role': user.role,
@@ -2500,11 +2577,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         refreshData();
       } else {
         const err = await res.json();
-        alert(err.error || 'Failed to delete item');
+        alertModal({ title: 'Error', message: err.error || 'Failed to delete item', type: 'danger' });
       }
     } catch (err) {
       console.error(err);
-      alert('Network error while deleting item');
+      alertModal({ title: 'Error', message: 'Network error while deleting item', type: 'danger' });
     }
   };
 
@@ -2527,12 +2604,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setPartnerForm(EMPTY_PARTNER_FORM);
       refreshData();
     } catch (err: any) {
-      alert(err.message || 'Failed to save media partner');
+      alertModal({ title: 'Error', message: err.message || 'Failed to save media partner', type: 'danger' });
     }
   };
 
   const deletePartner = async (id: string) => {
-    if (!user || !confirm('Delete this media partner?')) return;
+    if (!user) return;
+    const ok = await confirmModal({
+      title: 'Delete Media Partner',
+      message: 'Are you sure you want to delete this media partner?',
+      type: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!ok) return;
     await fetch(`${API_BASE}/media-partners/${id}`, { method: 'DELETE', headers: { 'x-user-role': user.role, 'x-user-name': user.username } });
     refreshData();
   };
@@ -2556,12 +2640,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setCollaboratorForm(EMPTY_PARTNER_FORM);
       refreshData();
     } catch (err: any) {
-      alert(err.message || 'Failed to save collaborator');
+      alertModal({ title: 'Error', message: err.message || 'Failed to save collaborator', type: 'danger' });
     }
   };
 
   const deleteCollaborator = async (id: string) => {
-    if (!user || !confirm('Delete this collaborator?')) return;
+    if (!user) return;
+    const ok = await confirmModal({
+      title: 'Delete Collaborator',
+      message: 'Are you sure you want to delete this collaborator?',
+      type: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!ok) return;
     await fetch(`${API_BASE}/collaborators/${id}`, { method: 'DELETE', headers: { 'x-user-role': user.role, 'x-user-name': user.username } });
     refreshData();
   };
@@ -2585,12 +2676,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setExhibitorForm(EMPTY_PARTNER_FORM);
       refreshData();
     } catch (err: any) {
-      alert(err.message || 'Failed to save exhibitor');
+      alertModal({ title: 'Error', message: err.message || 'Failed to save exhibitor', type: 'danger' });
     }
   };
 
   const deleteExhibitor = async (id: string) => {
-    if (!user || !confirm('Delete this exhibitor?')) return;
+    if (!user) return;
+    const ok = await confirmModal({
+      title: 'Delete Exhibitor',
+      message: 'Are you sure you want to delete this exhibitor?',
+      type: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!ok) return;
     await fetch(`${API_BASE}/exhibitors/${id}`, { method: 'DELETE', headers: { 'x-user-role': user.role, 'x-user-name': user.username } });
     refreshData();
   };
@@ -2627,12 +2725,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       refreshData();
     } catch (err: any) {
       console.error('Save venue error:', err);
-      alert(err.message || 'Failed to save venue');
+      alertModal({ title: 'Error', message: err.message || 'Failed to save venue', type: 'danger' });
     }
   };
 
   const deleteVenue = async (id: string) => {
-    if (!user || !confirm('Delete this venue?')) return;
+    if (!user) return;
+    const ok = await confirmModal({
+      title: 'Delete Venue',
+      message: 'Are you sure you want to delete this venue?',
+      type: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!ok) return;
     await fetch(`${API_BASE}/venues/${id}`, { method: 'DELETE', headers: { 'x-user-role': user.role, 'x-user-name': user.username } });
     delete lastFetched.current['tab:venues'];
     delete lastFetched.current['wizard:venues'];
@@ -2904,10 +3009,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to save profile');
-      alert('Profile saved successfully');
+      alertModal({ title: 'Profile Updated', message: 'Your profile has been saved successfully.', type: 'success' });
       refreshData();
     } catch (err: any) {
-      alert(err.message || 'Failed to save profile');
+      alertModal({ title: 'Error', message: err.message || 'Failed to save profile', type: 'danger' });
     }
   };
 
@@ -2925,7 +3030,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       setProfileForm((cur) => ({ ...cur, avatar: data.url }));
     } catch (err) {
-      alert('Failed to upload avatar');
+      alertModal({ title: 'Upload Failed', message: 'Failed to upload avatar image', type: 'danger' });
     }
   };
 
@@ -2939,13 +3044,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ newPassword }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to change password');
-      alert('Password changed successfully');
+      alertModal({ title: 'Success', message: 'Password changed successfully', type: 'success' });
       
       const updated = { ...user, isTempPassword: false };
       setUser(updated);
       localStorage.setItem('stream-admin-user', JSON.stringify(updated));
     } catch (err: any) {
-      alert(err.message || 'Failed to change password');
+      alertModal({ title: 'Error', message: err.message || 'Failed to change password', type: 'danger' });
       throw err;
     }
   };
@@ -3291,10 +3396,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     activeChatId,
     activeChatMessages,
     chatLoading,
+    loadChatSessions,
     setActiveChatId: selectChat,
     sendChatReply,
     markChatRead,
     setChatStatus,
+    modalState,
+    confirmModal,
+    alertModal,
+    closeModal,
   };
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

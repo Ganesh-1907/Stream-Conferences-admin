@@ -6,7 +6,7 @@ import { compressImage, mediaUrl } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
 
 export function GalleryTab() {
-  const { user, galleryItems, addGalleryItem, deleteGalleryItem } = useAppStore();
+  const { user, galleryItems, addGalleryItem, deleteGalleryItem, confirmModal, alertModal } = useAppStore();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -51,11 +51,11 @@ export function GalleryTab() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      alert('Title is required');
+      alertModal({ title: 'Validation Error', message: 'Title is required', type: 'danger' });
       return;
     }
     if (!image) {
-      alert('Image is required');
+      alertModal({ title: 'Validation Error', message: 'Image is required', type: 'danger' });
       return;
     }
     setSubmitting(true);
@@ -68,12 +68,19 @@ export function GalleryTab() {
       setImagePreview('');
       setShowForm(false);
     } else {
-      alert('Failed to save gallery item');
+      alertModal({ title: 'Error', message: 'Failed to save gallery item', type: 'danger' });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this gallery item?')) {
+    const ok = await confirmModal({
+      title: 'Delete Gallery Image',
+      message: 'Are you sure you want to delete this gallery item? This action cannot be undone.',
+      type: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    });
+    if (ok) {
       await deleteGalleryItem(id);
     }
   };

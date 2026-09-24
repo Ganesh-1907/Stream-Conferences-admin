@@ -8,6 +8,21 @@ export interface User {
   isTempPassword?: boolean;
 }
 
+export type ModalType = 'confirm' | 'danger' | 'success' | 'info' | 'alert';
+
+export interface ModalOptions {
+  type?: ModalType;
+  title?: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+}
+
+export interface ModalState extends ModalOptions {
+  isOpen: boolean;
+  resolve?: (value: boolean) => void;
+}
+
 export type Tab =
   | 'overview'
   | 'conferences'
@@ -555,6 +570,10 @@ export interface VenueFormState {
 export interface ChatSession {
   _id: string;
   visitorId: string;
+  conferenceId?: string | null;
+  eventId?: string | null;
+  conferenceTitle?: string;
+  scope?: 'main' | 'conference';
   visitorName: string;
   visitorEmail: string;
   visitorPhone?: string;

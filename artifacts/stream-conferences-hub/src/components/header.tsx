@@ -92,13 +92,14 @@ export function Header() {
           onClick={() => handleNavClick('overview')}
           className="flex items-center gap-3 cursor-pointer select-none shrink-0 mr-2 sm:mr-6"
         >
-          <span className="brand-mark">SC</span>
-          <div className="hidden sm:block">
-            <span className="brand-word text-base font-bold block leading-tight">Stream Conferences</span>
-            <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-semibold">
-              Admin Console
-            </span>
-          </div>
+          <img
+            src="/logo.jpg"
+            alt="Stream Conferences"
+            className="h-9 w-9 rounded-lg object-contain bg-white p-0.5 border border-foreground/10 shadow-xs"
+          />
+          <span className="brand-word text-base font-bold hidden sm:block">
+            Stream Conferences
+          </span>
         </div>
 
         {/* Top Navigation Links with Underline Indicator */}

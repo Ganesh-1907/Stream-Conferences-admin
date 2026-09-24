@@ -1,4 +1,5 @@
 import { AppStoreProvider, useAppStore } from '@/store/app-store';
+import { GlobalModal } from '@/components/global-modal';
 import { LoginPanel } from '@/components/login-panel';
 import { ResetPasswordPanel } from '@/components/reset-password-panel';
 import { ForceChangePasswordPanel } from '@/components/force-change-password-panel';
@@ -19,6 +20,7 @@ export default function App() {
   return (
     <AppStoreProvider>
       <Root />
+      <GlobalModal />
     </AppStoreProvider>
   );
 }
