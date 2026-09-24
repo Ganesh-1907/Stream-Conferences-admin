@@ -53,6 +53,7 @@ const SUBTAB_GROUPS: SubtabGroup[] = [
     items: [
       { tab: 'speakers', label: 'Speakers', icon: Mic },
       { tab: 'tracks', label: 'Tracks', icon: Layers },
+      { tab: 'scientific-program', label: 'Scientific Program', icon: FileText },
     ],
   },
   {
@@ -945,34 +946,12 @@ function ScientificProgramTab() {
     setUrl((eventPage as any)?.scientificProgramUrl || '');
   }, [eventPage]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await fetch(`${API_BASE}/uploads/upload`, {
-        method: 'POST',
-        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
-        body: fd,
-      });
-      const data = await res.json();
-      if (data.url) {
-        setUrl(data.url);
-        updateEventField('scientificProgramUrl', data.url);
-      }
-    } catch (err) {
-      console.error('Upload failed', err);
-    }
-    setUploading(false);
-  };
-
   const handleFileSelect = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
     const fd = new FormData();
-    fd.append('file', await compressImage(file));
+    const processedFile = file.type.startsWith('image/') ? await compressImage(file) : file;
+    fd.append('file', processedFile);
     try {
       const res = await fetch(`${API_BASE}/uploads/upload`, {
         method: 'POST',
@@ -994,19 +973,31 @@ function ScientificProgramTab() {
   };
 
   const handleRemove = () => {
-    setUrl('');
-    updateEventField('scientificProgramUrl', '');
+    if (window.confirm('Are you sure you want to remove the scientific program file?')) {
+      setUrl('');
+      updateEventField('scientificProgramUrl', '');
+    }
   };
 
   if (!isEditMode) {
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-bold tracking-tight">Scientific Program</h3>
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">Scientific Program</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Uploaded scientific program schedule available for attendees to download on the microsite navbar under Info.</p>
+        </div>
         {url ? (
-          <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
-            <a href={`${API_BASE}${url}`} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-semibold">
-              <Download size={16} /> Download Scientific Program
+          <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText className="text-primary" size={24} />
+              <div>
+                <p className="text-sm font-bold text-foreground">Scientific Program Document</p>
+                <p className="text-xs text-muted-foreground font-mono">{url.split('/').pop() || 'scientific-program.pdf'}</p>
+              </div>
+            </div>
+            <a href={mediaUrl(url)} target="_blank" rel="noopener noreferrer" download
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition shadow-xs">
+              <Download size={15} /> Download Document
             </a>
           </div>
         ) : (
@@ -1020,18 +1011,38 @@ function ScientificProgramTab() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-bold tracking-tight">Scientific Program</h3>
-        <p className="text-sm text-muted-foreground mt-1">Upload a PDF or document file for the scientific program.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Upload a PDF or document file for the scientific program. This file will be directly downloadable on the microsite navbar under "Info".</p>
       </div>
 
-      <div className="max-w-lg">
+      <div className="max-w-lg space-y-4">
         <FileUploadCard
-          title="Scientific Program"
+          title="Scientific Program File (.pdf, .doc, .docx)"
           accept=".pdf,.doc,.docx"
-          preview={url ? `${API_BASE}${url}` : ''}
+          preview={url ? mediaUrl(url) : ''}
           onSelect={handleFileSelect}
           onClear={handleRemove}
           loading={uploading}
         />
+
+        {url && (
+          <div className="p-4 bg-muted/20 border border-foreground/10 rounded-2xl flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <FileText className="text-primary shrink-0" size={18} />
+              <span className="text-xs font-bold text-foreground truncate max-w-[240px]">
+                {url.split('/').pop() || 'scientific-program.pdf'}
+              </span>
+            </div>
+            <a
+              href={mediaUrl(url)}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+            >
+              <Download size={14} /> Download File
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
