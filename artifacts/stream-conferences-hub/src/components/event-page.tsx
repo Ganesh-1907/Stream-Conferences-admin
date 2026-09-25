@@ -3,7 +3,7 @@ import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { useAppStore } from '@/store/app-store';
 import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage, formatTime12h } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
-import { EventPageTab, Webinar, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem } from '@/lib/types';
+import { EventPageTab, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem } from '@/lib/types';
 import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
 import { FileUploadCard } from '@/components/file-upload-card';
@@ -19,7 +19,7 @@ import {
   FileCheck, MessageSquare, Download, GraduationCap,
   Mic, Layers, CalendarDays, Clock, Image as ImageIcon,
   HelpCircle, Handshake, ShieldAlert, Phone, Users2, MapPin, Building2, Search,
-  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Video, Save, UploadCloud, Edit
+  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Save, UploadCloud, Edit
 } from 'lucide-react';
 
 interface SubtabItem {
@@ -141,9 +141,6 @@ export function EventPage() {
 
   const locationDisplay = useMemo(() => {
     if (!eventPage) return '—';
-    if (eventPageType === 'webinar') {
-      return 'Online Webinar';
-    }
     return eventPage.location || eventPage.venue || 'Venue TBA';
   }, [eventPage, eventPageType]);
 
@@ -181,7 +178,7 @@ export function EventPage() {
           </button>
           <div className="flex items-center gap-3">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-              Add {eventPageType === 'conference' ? 'Conference' : 'Webinar'}
+              Add Conference
             </h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
               New
@@ -265,7 +262,7 @@ export function EventPage() {
             <button
               type="button"
               onClick={store.closeEventPage}
-              title={`Back to ${eventPageType === 'conference' ? 'Conferences' : 'Webinars'}`}
+              title="Back to Conferences"
               className="mt-0.5 p-2 bg-muted hover:bg-muted/80 text-foreground rounded-xl border border-foreground/10 transition duration-150 cursor-pointer shrink-0"
             >
               <ArrowLeft size={17} />
@@ -298,7 +295,7 @@ export function EventPage() {
             {/* Subtitle / Theme / Tagline */}
             {(eventPage.theme || eventPage.description) && (
               <p className="text-xs text-muted-foreground line-clamp-1">
-                {eventPage.theme || (eventPageType === 'conference' ? 'International Conference' : 'Interactive Online Webinar')}
+                {eventPage.theme || 'International Conference'}
               </p>
             )}
 
@@ -323,13 +320,9 @@ export function EventPage() {
                 <span className="text-muted-foreground/60 text-[11px]">Attendees</span>
               </div>
 
-              {/* Location or Webinar Mode */}
+              {/* Location */}
               <div className="flex items-center gap-1.5">
-                {eventPageType === 'webinar' ? (
-                  <Video size={14} className="text-primary/70 shrink-0" />
-                ) : (
-                  <MapPin size={14} className="text-primary/70 shrink-0" />
-                )}
+                <MapPin size={14} className="text-primary/70 shrink-0" />
                 <span>{locationDisplay}</span>
               </div>
 
@@ -523,7 +516,7 @@ export function EventPage() {
                         type="button"
                         onClick={async () => {
                           setActionsOpen(false);
-                          await store.handleDeleteItem(eventPage._id, eventPageType === 'conference' ? 'conferences' : 'webinars');
+                          await store.handleDeleteItem(eventPage._id, 'conferences');
                           store.closeEventPage();
                         }}
                         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 transition text-left cursor-pointer"
@@ -644,9 +637,6 @@ function OverviewTab() {
         <div className="bg-muted/20 border border-foreground/5 rounded-xl p-5">
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Location Details</h4>
           <p className="text-sm font-medium">{eventPage.location}</p>
-          {eventPageType === 'webinar' && (eventPage as Webinar).speaker && (
-            <p className="text-sm text-muted-foreground mt-1">Speaker: <strong>{(eventPage as Webinar).speaker}</strong></p>
-          )}
         </div>
       </div>
 
@@ -5420,7 +5410,7 @@ function AddCohortModal({
   onClose,
   onSave,
 }: {
-  eventPage: Conference | Webinar;
+  eventPage: Conference;
   eventPageType: EventType;
   nextBatchNo: number;
   existingYears: number[];

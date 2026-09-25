@@ -26,7 +26,6 @@ export interface ModalState extends ModalOptions {
 export type Tab =
   | 'overview'
   | 'conferences'
-  | 'webinars'
   | 'blogs'
   | 'mediaPartners'
   | 'collaborators'
@@ -46,7 +45,7 @@ export interface MainBrochureItem {
   updatedAt?: string;
 }
 
-export type EventType = 'conference' | 'webinar';
+export type EventType = 'conference';
 export type EventPageTab =
   | 'dashboard'
   | 'details'
@@ -151,7 +150,7 @@ export interface EventMediaPartner {
 
 export interface CourseCohort {
   _id: string;
-  courseType?: 'conference' | 'webinar';
+  courseType?: 'conference';
   courseId?: string;
   cohortId?: string;
   year: number;
@@ -272,63 +271,6 @@ export interface Conference {
     youtube?: string;
   };
   country?: string;
-  
-  // New fields for conference website tabs
-  speakers?: Speaker[];
-  program?: ProgramDay[];
-  faqs?: FAQ[];
-  partners?: EventPartner[];
-  sponsors?: EventSponsor[];
-  mediaPartners?: EventMediaPartner[];
-  guidelines?: string;
-  termsAndConditions?: string;
-  venueDetails?: VenueDetails;
-  organizingCommittee?: OrganizingCommitteeMember[];
-  currentCohortId?: string;
-  currentCohort?: CourseCohort | null;
-  cohorts?: CourseCohort[];
-}
-
-export interface Webinar {
-  _id: string;
-  eventId?: string;
-  title: string;
-  slug?: string;
-  description: string;
-  theme?: string;
-  day: string;
-  month: string;
-  location: string;
-  eventDate: string;
-  date: 'upcoming' | 'past';
-  speaker: string;
-  announcedBy: string;
-  registrationLink?: string;
-  tracks?: Track[];
-  startTime?: string;
-  endTime?: string;
-  startDate?: string;
-  endDate?: string;
-  subdomain?: string;
-  assignedMentor?: string | null;
-  mentorName?: string | null;
-  venue?: string;
-  venueAddress?: string;
-  venueMapUrl?: string;
-  brochureUrl?: string;
-  bannerUrl?: string;
-  logoUrl?: string;
-  subjectImageUrl?: string;
-  headerBanners?: string[];
-  fees?: FeeEntry[];
-  organizerContact?: { name: string; email: string; phone: string; website?: string; address?: string };
-  welcomeBannerTitle?: string;
-  welcomeBannerDescription?: string;
-  gtmCode?: string;
-  gaCode?: string;
-  mcCode?: string;
-  metaTitle?: string;
-  metaDescription?: string;
   
   // New fields for conference website tabs
   speakers?: Speaker[];

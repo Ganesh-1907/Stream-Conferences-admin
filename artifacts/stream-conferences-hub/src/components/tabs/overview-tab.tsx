@@ -3,26 +3,21 @@ import { CalendarDays, Users, TrendingUp, FileText, CheckCircle2, Clock, XCircle
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function BarChart({ data, maxVal }: { data: { label: string; conf: number; web: number }[]; maxVal: number }) {
+function BarChart({ data, maxVal }: { data: { label: string; conf: number }[]; maxVal: number }) {
   const scale = maxVal > 0 ? 100 / maxVal : 0;
   return (
     <div className="flex items-end gap-1.5 h-32 pt-2">
       {data.map((d, i) => {
         const confH = Math.max(d.conf * scale, d.conf > 0 ? 4 : 0);
-        const webH = Math.max(d.web * scale, d.web > 0 ? 4 : 0);
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
             <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 bg-foreground text-background text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap shadow-lg">
-              {d.conf} conf · {d.web} web
+              {d.conf} conf
             </div>
             <div className="w-full flex gap-0.5 items-end justify-center" style={{ height: '120px' }}>
               <div
                 className="w-[40%] rounded-t-sm bg-primary/80 transition-all"
                 style={{ height: `${confH}%` }}
-              />
-              <div
-                className="w-[40%] rounded-t-sm bg-emerald-500/80 transition-all"
-                style={{ height: `${webH}%` }}
               />
             </div>
             <span className="text-[9px] text-muted-foreground font-medium mt-1">{d.label}</span>
@@ -33,27 +28,22 @@ function BarChart({ data, maxVal }: { data: { label: string; conf: number; web: 
   );
 }
 
-function YearChart({ data }: { data: { year: number; conf: number; web: number }[] }) {
-  const maxVal = Math.max(...data.map((d) => d.conf + d.web), 1);
+function YearChart({ data }: { data: { year: number; conf: number }[] }) {
+  const maxVal = Math.max(...data.map((d) => d.conf), 1);
   const scale = 100 / maxVal;
   return (
     <div className="flex items-end gap-3 h-32 pt-2">
       {data.map((d, i) => {
-        const total = d.conf + d.web;
-        const h = Math.max(total * scale, total > 0 ? 4 : 0);
+        const h = Math.max(d.conf * scale, d.conf > 0 ? 4 : 0);
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
             <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 bg-foreground text-background text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap shadow-lg">
-              {d.conf} conf · {d.web} web
+              {d.conf} conf
             </div>
             <div className="w-full flex gap-0.5 items-end justify-center" style={{ height: '120px' }}>
               <div
                 className="w-[40%] rounded-t-sm bg-primary/80 transition-all"
-                style={{ height: `${Math.max(d.conf * scale, d.conf > 0 ? 4 : 0)}%` }}
-              />
-              <div
-                className="w-[40%] rounded-t-sm bg-emerald-500/80 transition-all"
-                style={{ height: `${Math.max(d.web * scale, d.web > 0 ? 4 : 0)}%` }}
+                style={{ height: `${h}%` }}
               />
             </div>
             <span className="text-[9px] text-muted-foreground font-medium mt-1">{d.year}</span>
@@ -92,35 +82,25 @@ export function OverviewTab() {
     return <div className="p-8 text-muted-foreground">Loading dashboard...</div>;
   }
 
-  const totalEvents = (c?.conferences ?? 0) + (c?.webinars ?? 0);
-  const totalUpcoming = (c?.confUpcoming ?? 0) + (c?.webUpcoming ?? 0);
-  const totalCompleted = (c?.confPast ?? 0) + (c?.webPast ?? 0);
+  const totalEvents = (c?.conferences ?? 0);
+  const totalUpcoming = (c?.confUpcoming ?? 0);
+  const totalCompleted = (c?.confPast ?? 0);
 
   // Build monthly chart data
   const currentYear = new Date().getFullYear();
   const confMap = new Map<number, number>();
-  const webMap = new Map<number, number>();
   (monthly?.conferences || []).forEach((m: any) => confMap.set(m._id, m.count));
-  (monthly?.webinars || []).forEach((m: any) => webMap.set(m._id, m.count));
   const monthlyData = MONTHS.map((label, i) => ({
     label,
     conf: confMap.get(i + 1) || 0,
-    web: webMap.get(i + 1) || 0,
   }));
-  const maxMonthly = Math.max(...monthlyData.map((d) => Math.max(d.conf, d.web)), 1);
+  const maxMonthly = Math.max(...monthlyData.map((d) => d.conf), 1);
 
   // Build yearly chart data
   const yearData = (yearly?.conferences || []).map((y: any) => ({
     year: y._id,
     conf: y.count,
-    web: (yearly?.webinars || []).find((w: any) => w._id === y._id)?.count || 0,
   }));
-  // Add years from webinars that may not have conferences
-  (yearly?.webinars || []).forEach((w: any) => {
-    if (!yearData.find((y) => y.year === w._id)) {
-      yearData.push({ year: w._id, conf: 0, web: w.count });
-    }
-  });
   yearData.sort((a, b) => a.year - b.year);
 
   return (

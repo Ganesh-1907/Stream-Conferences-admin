@@ -14,7 +14,6 @@ import { Home } from 'lucide-react';
 const TAB_LABELS: Record<string, string> = {
   overview: 'Overview',
   conferences: 'Conferences',
-  webinars: 'Webinars',
   blogs: 'Blog Editor',
   mediaPartners: 'Media Partners',
   collaborators: 'Collaborators',
@@ -53,7 +52,6 @@ const EVENT_TAB_LABELS: Record<string, string> = {
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   conference: 'Conferences',
-  webinar: 'Webinars',
 };
 
 export function Breadcrumbs() {
@@ -72,13 +70,13 @@ export function Breadcrumbs() {
       },
     });
 
-    // Event detail pages: /conference/:id/:tab or /webinar/:id/:tab
+    // Event detail pages: /conference/:id/:tab
     if (eventPageType && eventPage && eventPageTab) {
-      // Parent type (Conferences / Webinars)
+      // Parent type (Conferences)
       const typeLabel = EVENT_TYPE_LABELS[eventPageType] || eventPageType;
       crumbs.push({
         label: typeLabel,
-        onClick: () => goToTab(eventPageType === 'conference' ? 'conferences' : 'webinars'),
+        onClick: () => goToTab('conferences'),
       });
 
       if (eventPageMode === 'edit') {

@@ -1,7 +1,7 @@
 import { twMerge } from 'tailwind-merge';
 import { clsx, type ClassValue } from 'clsx';
 import { SERVER_ORIGIN, ROOT_DOMAIN } from './constants';
-import { Conference, Webinar } from './types';
+import { Conference } from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -110,7 +110,7 @@ export const formatDisplayDate = (str: string): string => {
   return `${parts[1]}/${parts[2]}/${parts[0]}`;
 };
 
-export const subdomainUrlFor = (item: Conference | Webinar): string | null => {
+export const subdomainUrlFor = (item: Conference): string | null => {
   if (!item.subdomain) return null;
   const protocol = ROOT_DOMAIN === 'localhost' ? 'http' : 'https';
   return `${protocol}://${item.subdomain}.${ROOT_DOMAIN}`;
@@ -135,7 +135,7 @@ export const cohortSiteUrlFor = (
   return `${base}/${cohort.year}/${cohort.batchNo}`;
 };
 
-export const registerLinkFor = (item: Conference | Webinar): string =>
+export const registerLinkFor = (item: Conference): string =>
   subdomainUrlFor(item) ||
   item.registrationLink ||
   `${window.location.origin}/register?event=${item.eventId || item.slug || item._id}`;

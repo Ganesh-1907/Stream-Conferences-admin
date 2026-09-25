@@ -75,7 +75,7 @@ export function Wizard() {
               type="text"
               value={store.wizardTitle()}
               onChange={(e) => store.setWizardTitle(e.target.value)}
-              placeholder={store.wizardType === 'conference' ? 'e.g. International Conference on Medical Sciences' : 'e.g. Precision systems: turning data into better decisions'}
+              placeholder="e.g. International Conference on Medical Sciences"
               className="w-full px-6 py-4 bg-muted/20 border border-foreground/10 rounded-2xl text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition duration-200"
             />
           </div>
@@ -99,20 +99,6 @@ export function Wizard() {
               })()}
             </p>
           </div>
-
-          {store.wizardType === 'webinar' && (
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Speaker <span className="text-red-500">*</span></label>
-              <input
-                required
-                type="text"
-                value={store.webSpeaker}
-                onChange={(e) => store.setWebSpeaker(e.target.value)}
-                placeholder="e.g. Dr. Amina Rao"
-                className="w-full px-6 py-4 bg-muted/20 border border-foreground/10 rounded-2xl text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition duration-200"
-              />
-            </div>
-          )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description</label>
