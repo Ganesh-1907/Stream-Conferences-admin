@@ -93,13 +93,15 @@ export function Header() {
           className="flex items-center gap-3 cursor-pointer select-none shrink-0 mr-2 sm:mr-6"
         >
           <img
-            src="/logo.jpg"
+            src="/logo-dark.png"
             alt="Stream Conferences"
-            className="h-9 w-9 rounded-lg object-contain bg-white p-0.5 border border-foreground/10 shadow-xs"
+            className="h-9 w-auto object-contain block dark:hidden"
           />
-          <span className="brand-word text-base font-bold hidden sm:block">
-            Stream Conferences
-          </span>
+          <img
+            src="/logo.png"
+            alt="Stream Conferences"
+            className="h-9 w-auto object-contain hidden dark:block"
+          />
         </div>
 
         {/* Top Navigation Links with Underline Indicator */}

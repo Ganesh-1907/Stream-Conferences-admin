@@ -323,6 +323,8 @@ interface AppStoreValue {
   openVenueForm: (item: Venue | null) => void;
   saveVenue: () => Promise<void>;
   deleteVenue: (id: string) => Promise<void>;
+  toggleVenueStatus: (id: string, currentStatus?: boolean) => Promise<void>;
+  ensureMentorsAndVenues: (force?: boolean) => Promise<void>;
   handleLogoUpload: (kind: LogoKind, file: File | null) => void;
 
   // Profile
@@ -2292,8 +2294,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const { day, month } = computeDayAndMonth(wizardStartDate(), wizardEndDate());
       const location = wizardIsOnline()
-        ? `Online · ${wizardOnlineLink() || 'TBD'}`
-        : wizardVenue() || 'TBD';
+        ? (wizardOnlineLink() ? `Online · ${wizardOnlineLink()}` : 'Online')
+        : (wizardVenue() || '');
 
       const bodyData: any = {
         title: wizardTitle(),
@@ -2595,6 +2597,37 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setVenues(prev => prev.filter(v => v._id !== id));
     await ensureMentorsAndVenues(true);
     refreshData();
+  };
+
+  const toggleVenueStatus = async (id: string, currentStatus?: boolean) => {
+    if (!user) return;
+    const nextStatus = currentStatus === false ? true : false;
+    const ok = await confirmModal({
+      title: nextStatus ? 'Enable Venue' : 'Disable Venue',
+      message: nextStatus
+        ? 'Are you sure you want to enable this venue? It will become selectable for new conferences.'
+        : 'Are you sure you want to disable this venue? It will no longer be selectable for new conferences, but existing conferences using it will remain intact.',
+      type: nextStatus ? 'info' : 'danger',
+      confirmText: nextStatus ? 'Enable' : 'Disable',
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`${API_BASE}/venues/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-user-role': user.role, 'x-user-name': user.username },
+        body: JSON.stringify({ isActive: nextStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update venue status');
+      const updated = await res.json();
+      delete lastFetched.current['tab:venues'];
+      delete lastFetched.current['wizard:venues'];
+      setVenues(prev => prev.map(v => v._id === updated._id ? updated : v));
+      await ensureMentorsAndVenues(true);
+      refreshData();
+    } catch (err: any) {
+      console.error('Toggle venue status error:', err);
+      alertModal({ title: 'Error', message: err.message || 'Failed to update venue status', type: 'danger' });
+    }
   };
 
   const loadGalleryItems = async () => {
@@ -3174,6 +3207,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     openVenueForm,
     saveVenue,
     deleteVenue,
+    toggleVenueStatus,
     handleLogoUpload,
     profileForm,
     setProfileForm,

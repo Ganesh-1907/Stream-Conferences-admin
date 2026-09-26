@@ -224,9 +224,18 @@ export function Wizard() {
                   className="w-full px-6 py-4 bg-muted/20 border border-foreground/10 rounded-2xl text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition duration-200 cursor-pointer"
                 >
                   <option value="" disabled>Select a venue</option>
-                  {store.venues.map((v) => (
-                    <option key={v._id} value={v.name}>{v.name}</option>
-                  ))}
+                  {store.venues
+                    .filter((v) => {
+                      if (!store.wizardEditId) {
+                        return v.isActive !== false;
+                      }
+                      return v.isActive !== false || v.name === store.wizardVenue();
+                    })
+                    .map((v) => (
+                      <option key={v._id} value={v.name}>
+                        {v.name} {v.isActive === false ? '(Disabled)' : ''}
+                      </option>
+                    ))}
                   {store.wizardVenue() && !store.venues.some((v) => v.name === store.wizardVenue()) && (
                     <option value={store.wizardVenue()}>{store.wizardVenue()}</option>
                   )}

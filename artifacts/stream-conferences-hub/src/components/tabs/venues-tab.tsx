@@ -1,14 +1,15 @@
-import { Check, Edit, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { Check, Edit, ExternalLink, Plus, Power } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 
 export function VenuesTab() {
-  const { venues, venueForm, setVenueForm, openVenueForm, saveVenue, deleteVenue } = useAppStore();
+  const { venues, venueForm, setVenueForm, openVenueForm, saveVenue, toggleVenueStatus } = useAppStore();
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Venues</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Manage event venues. Disabled venues cannot be selected for new conferences.</p>
         </div>
         <button onClick={() => openVenueForm(null)} className="cta-button">
           <Plus size={14} /> Add Venue
@@ -23,7 +24,7 @@ export function VenuesTab() {
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Venue Name</label>
-            <input type="text" value={venueForm.name} onChange={(e) => setVenueForm({ ...venueForm, name: e.target.value })} placeholder="e.g. Grand Convention Center" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
+            <input type="text" value={venueForm.name} onChange={(e) => setVenueForm({ ...venueForm, name: e.target.value })} placeholder="Enter venue name" className="w-full px-4 py-2.5 bg-muted/20 border border-foreground/10 rounded-lg text-sm focus:outline-none focus:border-secondary transition" />
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Venue Address</label>
@@ -47,6 +48,7 @@ export function VenuesTab() {
                 <th className="p-4">Name</th>
                 <th className="p-4">Address</th>
                 <th className="p-4">Location URL</th>
+                <th className="p-4">Status</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -56,14 +58,30 @@ export function VenuesTab() {
                   <td className="p-4 font-semibold">{v.name}</td>
                   <td className="p-4 text-xs text-muted-foreground">{v.address || '—'}</td>
                   <td className="p-4 text-xs">{v.locationUrl ? <a href={v.locationUrl} target="_blank" rel="noreferrer" className="text-secondary inline-flex items-center gap-1"><ExternalLink size={12} /> View</a> : '—'}</td>
+                  <td className="p-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${v.isActive !== false ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'}`}>
+                      {v.isActive !== false ? 'Active' : 'Disabled'}
+                    </span>
+                  </td>
                   <td className="p-4 text-right space-x-2">
-                    <button onClick={() => openVenueForm(v)} className="p-1 hover:text-secondary inline-block"><Edit size={14} /></button>
-                    <button onClick={() => deleteVenue(v._id)} className="p-1 hover:text-red-500 inline-block"><Trash2 size={14} /></button>
+                    <button onClick={() => openVenueForm(v)} title="Edit Venue" className="p-1.5 hover:text-secondary hover:bg-muted rounded-lg transition inline-block"><Edit size={14} /></button>
+                    <button
+                      onClick={() => toggleVenueStatus(v._id, v.isActive !== false)}
+                      title={v.isActive !== false ? 'Disable Venue' : 'Enable Venue'}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition inline-flex items-center gap-1.5 cursor-pointer ${
+                        v.isActive !== false
+                          ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                          : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      }`}
+                    >
+                      <Power size={12} />
+                      {v.isActive !== false ? 'Disable' : 'Enable'}
+                    </button>
                   </td>
                 </tr>
               ))}
               {venues.length === 0 && (
-                <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No venues added yet.</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No venues added yet.</td></tr>
               )}
             </tbody>
           </table>

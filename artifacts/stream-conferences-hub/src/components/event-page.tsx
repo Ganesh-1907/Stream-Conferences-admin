@@ -118,7 +118,7 @@ export function EventPage() {
   }, [eventPage]);
 
   const dateDisplay = useMemo(() => {
-    if (!eventPage) return 'Date TBA';
+    if (!eventPage) return '—';
     if (eventPage.startDate && eventPage.endDate) {
       const start = new Date(eventPage.startDate).toLocaleDateString('en-US', {
         month: 'short',
@@ -134,14 +134,14 @@ export function EventPage() {
     }
     if (eventPage.eventDate) return eventPage.eventDate;
     if (eventPage.day && eventPage.month) return `${eventPage.day} ${eventPage.month}`;
-    return 'Date TBA';
+    return '—';
   }, [eventPage]);
 
   const attendeesCount = eventParticipants?.length ?? 0;
 
   const locationDisplay = useMemo(() => {
     if (!eventPage) return '—';
-    return eventPage.location || eventPage.venue || 'Venue TBA';
+    return eventPage.location || eventPage.venue || '—';
   }, [eventPage, eventPageType]);
 
   const feeDisplay = useMemo(() => {
@@ -924,7 +924,7 @@ function DetailsTab() {
 }
 
 function ScientificProgramTab() {
-  const { eventPage, updateEventField, eventPageMode, user } = useAppStore();
+  const { eventPage, updateEventField, eventPageMode, user, confirmModal } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const scientificProgramUrl = (eventPage as any)?.scientificProgramUrl || '';
   const [uploading, setUploading] = useState(false);
@@ -961,7 +961,7 @@ function ScientificProgramTab() {
   };
 
   const handleRemove = async () => {
-    const ok = await store.confirmModal({
+    const ok = await confirmModal({
       title: 'Remove Scientific Program',
       message: 'Are you sure you want to remove the scientific program file?',
       type: 'danger',
@@ -4296,6 +4296,11 @@ function VenueDetailsTab() {
       (vd.subImages && vd.subImages[1]) || (vd.images && vd.images[2]) || '',
       (vd.subImages && vd.subImages[2]) || (vd.images && vd.images[3]) || '',
     ],
+    cityHighlights: [
+      (vd.cityHighlights && vd.cityHighlights[0]) || '',
+      (vd.cityHighlights && vd.cityHighlights[1]) || '',
+      (vd.cityHighlights && vd.cityHighlights[2]) || '',
+    ],
     description: vd.description || '',
   });
 
@@ -4303,6 +4308,7 @@ function VenueDetailsTab() {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [uploadingMain, setUploadingMain] = useState(false);
   const [uploadingSubIndex, setUploadingSubIndex] = useState<number | null>(null);
+  const [uploadingCityHighlightIndex, setUploadingCityHighlightIndex] = useState<number | null>(null);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
 
@@ -4330,6 +4336,11 @@ function VenueDetailsTab() {
         (curVd.subImages && curVd.subImages[0]) || (curVd.images && curVd.images[1]) || '',
         (curVd.subImages && curVd.subImages[1]) || (curVd.images && curVd.images[2]) || '',
         (curVd.subImages && curVd.subImages[2]) || (curVd.images && curVd.images[3]) || '',
+      ],
+      cityHighlights: [
+        (curVd.cityHighlights && curVd.cityHighlights[0]) || '',
+        (curVd.cityHighlights && curVd.cityHighlights[1]) || '',
+        (curVd.cityHighlights && curVd.cityHighlights[2]) || '',
       ],
       description: curVd.description || '',
     });
@@ -4428,6 +4439,34 @@ function VenueDetailsTab() {
     e.target.value = '';
   };
 
+  const handleCityHighlightUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCityHighlightIndex(index);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setFormData(prev => {
+          const nextCity = [...(prev.cityHighlights || ['', '', ''])];
+          nextCity[index] = data.url;
+          return { ...prev, cityHighlights: nextCity };
+        });
+      }
+    } catch (err) {
+      console.error('City highlight upload error:', err);
+    } finally {
+      setUploadingCityHighlightIndex(null);
+    }
+    e.target.value = '';
+  };
+
   const handleRemoveMainImage = () => {
     setFormData(prev => ({ ...prev, mainImage: '' }));
   };
@@ -4437,6 +4476,14 @@ function VenueDetailsTab() {
       const nextSubs = [...prev.subImages];
       nextSubs[index] = '';
       return { ...prev, subImages: nextSubs };
+    });
+  };
+
+  const handleRemoveCityHighlight = (index: number) => {
+    setFormData(prev => {
+      const nextCity = [...(prev.cityHighlights || ['', '', ''])];
+      nextCity[index] = '';
+      return { ...prev, cityHighlights: nextCity };
     });
   };
 
@@ -4456,6 +4503,7 @@ function VenueDetailsTab() {
         endTime: formData.endTime || '',
         mainImage: formData.mainImage || '',
         subImages: formData.subImages,
+        cityHighlights: formData.cityHighlights,
         description: formData.description || '',
         images: [formData.mainImage, ...formData.subImages].filter(Boolean),
       };
@@ -4623,6 +4671,33 @@ function VenueDetailsTab() {
               </div>
             ) : (
               <div className="text-xs text-muted-foreground italic">No sub images uploaded.</div>
+            )}
+          </div>
+
+          {/* City Highlights */}
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">City Highlights</span>
+            {formData.cityHighlights?.some(Boolean) ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {formData.cityHighlights.map((url, idx) => (
+                  <div key={idx} className="bg-muted/20 rounded-2xl p-2.5 border border-foreground/5">
+                    <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">City Highlight {idx + 1}</span>
+                    {url ? (
+                      <img
+                        src={mediaUrl(url)}
+                        alt={`City Highlight ${idx + 1}`}
+                        className="w-full h-40 object-cover rounded-xl border border-foreground/10 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-full h-40 flex items-center justify-center bg-muted/30 rounded-xl text-xs text-muted-foreground border border-dashed border-foreground/10">
+                        Empty slot
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground italic">No city highlights uploaded.</div>
             )}
           </div>
 
@@ -4902,11 +4977,18 @@ function VenueDetailsTab() {
               className="w-full bg-transparent text-sm font-semibold text-foreground focus:outline-none cursor-pointer pr-8"
             >
               <option value="">— Select a venue —</option>
-              {venues.map((v: any) => (
-                <option key={v._id} value={v._id}>
-                  {v.name} {v.address ? `• ${v.address}` : ''}
-                </option>
-              ))}
+              {venues
+                .filter((v: any) => {
+                  if (store.isAddMode) {
+                    return v.isActive !== false;
+                  }
+                  return v.isActive !== false || v._id === formData.venueId || (formData.name && v.name?.trim().toLowerCase() === formData.name?.trim().toLowerCase());
+                })
+                .map((v: any) => (
+                  <option key={v._id} value={v._id}>
+                    {v.name} {v.isActive === false ? '(Disabled)' : ''} {v.address ? `• ${v.address}` : ''}
+                  </option>
+                ))}
             </select>
             <ChevronDown size={15} className="absolute right-3.5 text-muted-foreground pointer-events-none" />
           </div>
@@ -5164,6 +5246,100 @@ function VenueDetailsTab() {
                         accept="image/*"
                         className="hidden"
                         onChange={(e) => handleSubImageUpload(e, idx)}
+                        disabled={isUploadingThis}
+                      />
+                    </label>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Three City Highlights */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+              City Highlights
+            </label>
+            <span className="text-[11px] text-muted-foreground">3 photo slots</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[0, 1, 2].map((idx) => {
+              const url = formData.cityHighlights?.[idx];
+              const isUploadingThis = uploadingCityHighlightIndex === idx;
+
+              return (
+                <div key={idx} className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-muted-foreground block">
+                    City Highlight {idx + 1}
+                  </span>
+                  {url ? (
+                    <div className="p-3.5 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-3.5 min-h-[120px]">
+                      {/* One Side: Image */}
+                      <div className="w-28 h-22 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs">
+                        <img
+                          src={mediaUrl(url)}
+                          alt={`City Highlight ${idx + 1}`}
+                          className="max-w-full max-h-full object-contain rounded-lg"
+                        />
+                        <span className="absolute bottom-1 left-1 text-[8px] font-bold text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded">
+                          Slot {idx + 1}
+                        </span>
+                      </div>
+
+                      {/* Beside: Info & Replace / Remove */}
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div>
+                          <span className="text-xs font-bold text-foreground block truncate">
+                            City Highlight {idx + 1}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground block">City attraction photo</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <label className="px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs flex items-center gap-1">
+                            <Upload size={12} />
+                            <span>{isUploadingThis ? '...' : 'Replace'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleCityHighlightUpload(e, idx)}
+                              disabled={isUploadingThis}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCityHighlight(idx)}
+                            className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-1"
+                            title="Remove image"
+                          >
+                            <Trash2 size={12} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="min-h-[120px] border-2 border-dashed border-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition p-4 text-center group">
+                      {isUploadingThis ? (
+                        <span className="text-xs text-muted-foreground font-medium">Uploading...</span>
+                      ) : (
+                        <>
+                          <div className="w-8 h-8 rounded-xl bg-muted/40 group-hover:bg-primary/10 text-muted-foreground group-hover:text-primary flex items-center justify-center mb-1 transition">
+                            <Plus size={16} />
+                          </div>
+                          <span className="text-xs font-bold text-foreground">Upload Slot {idx + 1}</span>
+                          <span className="text-[10px] text-muted-foreground">Click to choose photo</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleCityHighlightUpload(e, idx)}
                         disabled={isUploadingThis}
                       />
                     </label>

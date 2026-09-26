@@ -180,6 +180,7 @@ export interface VenueDetails {
   endTime?: string;
   mainImage?: string;
   subImages?: string[];
+  cityHighlights?: string[];
   description?: string;
   images?: string[];
   moreInfo?: string;
@@ -286,6 +287,16 @@ export interface Conference {
   currentCohortId?: string;
   currentCohort?: CourseCohort | null;
   cohorts?: CourseCohort[];
+  fees?: any;
+  exhibitors?: any[];
+  themeColor?: string;
+  scientificProgramUrl?: string;
+  about?: string;
+  terms?: string;
+  privacy?: string;
+  registerSteps?: any[];
+  brochure?: any;
+  feeLevels?: any[];
 }
 
 export interface Blog {
@@ -400,6 +411,7 @@ export interface Venue {
   name: string;
   address: string;
   locationUrl: string;
+  isActive?: boolean;
   createdBy: string;
   createdAt: string;
 }
