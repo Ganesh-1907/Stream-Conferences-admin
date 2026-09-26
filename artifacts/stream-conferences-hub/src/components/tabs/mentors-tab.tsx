@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog';
 
 export function MentorsTab() {
-  const { mentors, refreshData, user, confirmModal, alertModal } = useAppStore();
+  const { mentors, refreshData, user, confirmModal, alertModal, openImagePreview } = useAppStore();
   const [editingMentor, setEditingMentor] = useState<any | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -259,7 +259,9 @@ export function MentorsTab() {
                       <img
                         src={m.avatar.startsWith('http') ? m.avatar : `${SERVER_ORIGIN}${m.avatar}`}
                         alt={m.fullName}
-                        className="w-8 h-8 rounded-full object-cover border border-foreground/10"
+                        onClick={() => openImagePreview(m.avatar, `${m.fullName || m.username} - Photo`)}
+                        className="w-8 h-8 rounded-full object-cover border border-foreground/10 cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary transition"
+                        title="Click to view full photo"
                       />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-secondary/15 text-secondary flex items-center justify-center font-bold text-xs">

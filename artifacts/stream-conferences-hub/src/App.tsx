@@ -16,11 +16,14 @@ import { BlogsTab } from '@/components/tabs/blogs-tab';
 import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { UserWebsiteTab } from '@/components/tabs/user-website-tab';
 
+import { ImagePreviewModal } from '@/components/image-preview-modal';
+
 export default function App() {
   return (
     <AppStoreProvider>
       <Root />
       <GlobalModal />
+      <ImagePreviewModal />
     </AppStoreProvider>
   );
 }

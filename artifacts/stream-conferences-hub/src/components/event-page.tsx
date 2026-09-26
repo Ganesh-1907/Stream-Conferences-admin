@@ -339,7 +339,7 @@ export function EventPage() {
 
         {/* Right Side: Status Badges, Share, Actions Button */}
         <div className="flex flex-row lg:flex-col items-end justify-between lg:justify-center gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-foreground/10">
-          {/* Top Row: Status and Type Pills */}
+          {/* Top Row: Status and View Public Site */}
           <div className="flex items-center gap-2">
             {/* Event Status */}
             {isActive ? (
@@ -354,11 +354,19 @@ export function EventPage() {
               </span>
             )}
 
-            {/* Event Type */}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 capitalize">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              {eventPageType}
-            </span>
+            {/* View Public Site */}
+            {subdomainUrl && (
+              <a
+                href={subdomainUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition cursor-pointer"
+                title="Open public website in new tab"
+              >
+                <ExternalLink size={12} />
+                <span>View Public Site</span>
+              </a>
+            )}
           </div>
 
           {/* Bottom Row: Edit Button + Actions Dropdown */}
@@ -400,7 +408,7 @@ export function EventPage() {
               </button>
 
               {actionsOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-56 bg-card border border-foreground/15 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-card border border-foreground/15 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   <button
                     type="button"
                     onClick={() => {
@@ -433,42 +441,6 @@ export function EventPage() {
                         type="button"
                         onClick={() => {
                           setActionsOpen(false);
-                          store.openEventTab('dashboard');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                      >
-                        <LayoutDashboard size={14} className="text-muted-foreground" />
-                        <span>Dashboard</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActionsOpen(false);
-                          store.openEventTab('participants');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                      >
-                        <Users size={14} className="text-muted-foreground" />
-                        <span>Participants</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActionsOpen(false);
-                          store.openEventTab('payments');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                      >
-                        <Receipt size={14} className="text-muted-foreground" />
-                        <span>Payments</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActionsOpen(false);
                           store.openEventTab('cohorts');
                         }}
                         className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
@@ -476,40 +448,7 @@ export function EventPage() {
                         <GraduationCap size={14} className="text-muted-foreground" />
                         <span>Cohorts</span>
                       </button>
-                    </>
-                  )}
 
-                  {(subdomainUrl || registerUrl) && <div className="border-t border-foreground/10 my-1" />}
-
-                  {subdomainUrl && (
-                    <a
-                      href={subdomainUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => setActionsOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left"
-                    >
-                      <ExternalLink size={14} className="text-muted-foreground" />
-                      <span>View Public Site</span>
-                    </a>
-                  )}
-
-                  {registerUrl && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActionsOpen(false);
-                        copyToClipboard(registerUrl, 'Registration link copied!');
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                    >
-                      <LinkIcon size={14} className="text-muted-foreground" />
-                      <span>Copy Registration Link</span>
-                    </button>
-                  )}
-
-                  {store.user?.role === 'admin' && (
-                    <>
                       <div className="border-t border-foreground/10 my-1" />
 
                       <button
@@ -610,51 +549,176 @@ export function EventPage() {
   );
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AUD: 'A$',
+  CAD: 'C$',
+  SGD: 'S$',
+};
+
+function formatCurrencyAmount(amount: number, currency: string) {
+  const symbol = CURRENCY_SYMBOLS[currency.toUpperCase()] || currency.toUpperCase() + ' ';
+  return `${symbol}${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function OverviewTab() {
   const { eventDashboard, eventDetailLoading, eventDetailError, eventPage, eventPageType } = useAppStore();
   if (!eventPage || !eventPageType) return null;
 
+  const stats = eventDashboard?.stats;
+  const currencyList = (stats?.byCurrency || [
+    { currency: 'USD', totalCount: 0, paidCount: 0, pendingCount: 0, failedCount: 0, totalAmount: 0, paidAmount: 0, pendingAmount: 0, failedAmount: 0 },
+    { currency: 'EUR', totalCount: 0, paidCount: 0, pendingCount: 0, failedCount: 0, totalAmount: 0, paidAmount: 0, pendingAmount: 0, failedAmount: 0 },
+    { currency: 'GBP', totalCount: 0, paidCount: 0, pendingCount: 0, failedCount: 0, totalAmount: 0, paidAmount: 0, pendingAmount: 0, failedAmount: 0 },
+  ]).filter(c => c.currency !== 'INR');
+
   return (
     <div className="space-y-6">
-      {eventDetailLoading && <div className="p-8 text-center text-sm text-muted-foreground">Loading event dashboard...</div>}
+      {eventDetailLoading && <div className="p-8 text-center text-sm text-muted-foreground">Loading event stats...</div>}
       {eventDetailError && <div className="p-6 text-center text-sm text-red-500">{eventDetailError}</div>}
-      {eventDashboard && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard value={String(eventDashboard.stats.totalParticipants)} label="Participants" />
-          <StatCard value={String(eventDashboard.stats.totalPayments)} label="Payments" />
-          <StatCard value={String(eventDashboard.stats.paidCount)} label="Paid" className="text-green-500" />
-          <StatCard value={`₹${eventDashboard.stats.revenue}`} label="Revenue" />
-        </div>
-      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-muted/20 border border-foreground/5 rounded-xl p-5">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Date & Schedule</h4>
-          <p className="text-sm font-medium">{eventPage.month} {eventPage.day}</p>
-          {eventPage.eventDate && <p className="text-xs text-muted-foreground mt-0.5">{new Date(eventPage.eventDate).toLocaleDateString(undefined, { dateStyle: 'full' })}</p>}
-          <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${eventPage.date === 'upcoming' ? 'bg-green-500/10 text-green-500' : 'bg-foreground/10 text-muted-foreground'}`}>{eventPage.date}</span>
-        </div>
-        <div className="bg-muted/20 border border-foreground/5 rounded-xl p-5">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Location Details</h4>
-          <p className="text-sm font-medium">{eventPage.location}</p>
-        </div>
-      </div>
+      {stats && (
+        <>
+          {/* Key Metrics Stats Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Total Participants
+              </span>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-3xl font-extrabold text-foreground tracking-tight font-['Space_Grotesk']">
+                  {stats.totalParticipants}
+                </span>
+                <span className="text-xs font-semibold text-muted-foreground">Registered</span>
+              </div>
+            </div>
 
-      {eventPage.description && (
-        <div className="bg-muted/10 border border-foreground/5 rounded-xl p-5">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Description / Summary</h4>
-          <div
-            className="prose dark:prose-invert max-w-none text-sm text-foreground/90 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: eventPage.description }}
-          />
-        </div>
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Total Orders / Payments
+              </span>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-3xl font-extrabold text-foreground tracking-tight font-['Space_Grotesk']">
+                  {stats.totalPayments}
+                </span>
+                <span className="text-xs font-semibold text-muted-foreground">Attempts</span>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400">
+                Paid / Completed
+              </span>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-3xl font-extrabold text-green-600 dark:text-green-400 tracking-tight font-['Space_Grotesk']">
+                  {stats.paidCount}
+                </span>
+                <span className="text-xs font-semibold text-green-600/80 dark:text-green-400/80">Successful</span>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Pending / Failed
+              </span>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-3xl font-extrabold text-foreground tracking-tight font-['Space_Grotesk']">
+                  {stats.pendingCount + stats.failedCount}
+                </span>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {stats.pendingCount} pend · {stats.failedCount} fail
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Currency Breakdown Table */}
+          <div className="bg-card border border-border rounded-2xl shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-foreground">
+                  Revenue & Payments by Currency
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Detailed breakdown of total revenue received and transaction counts across supported currencies.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-[11px] font-bold uppercase tracking-wider bg-muted/40 text-muted-foreground border-b border-border">
+                  <tr>
+                    <th scope="col" className="px-6 py-3.5">Currency</th>
+                    <th scope="col" className="px-6 py-3.5 text-center">Paid Orders</th>
+                    <th scope="col" className="px-6 py-3.5 text-center">Pending Orders</th>
+                    <th scope="col" className="px-6 py-3.5 text-center">Failed Orders</th>
+                    <th scope="col" className="px-6 py-3.5 text-center">Total Orders</th>
+                    <th scope="col" className="px-6 py-3.5 text-right font-bold text-foreground">Paid Revenue</th>
+                    <th scope="col" className="px-6 py-3.5 text-right text-muted-foreground">Total Volume</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {currencyList.map((c) => {
+                    const symbol = CURRENCY_SYMBOLS[c.currency] || c.currency;
+                    return (
+                      <tr key={c.currency} className="hover:bg-muted/20 transition-colors">
+                        <td className="px-6 py-4 font-bold text-foreground">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-8 h-8 rounded-lg bg-muted/60 border border-border flex items-center justify-center text-xs font-black text-foreground">
+                              {symbol}
+                            </span>
+                            <div>
+                              <div className="font-bold text-sm text-foreground">{c.currency}</div>
+                              <div className="text-[11px] text-muted-foreground font-medium">
+                                {c.currency === 'USD' ? 'US Dollar' : c.currency === 'EUR' ? 'Euro' : c.currency === 'GBP' ? 'British Pound' : c.currency}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${c.paidCount > 0 ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-muted/50 text-muted-foreground'}`}>
+                            {c.paidCount}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.pendingCount > 0 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+                            {c.pendingCount}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.failedCount > 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                            {c.failedCount}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center font-semibold text-foreground">
+                          {c.totalCount}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-base font-extrabold text-green-600 dark:text-green-400 font-['Space_Grotesk']">
+                            {formatCurrencyAmount(c.paidAmount, c.currency)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right text-muted-foreground font-medium">
+                          {formatCurrencyAmount(c.totalAmount, c.currency)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
 function DetailsTab() {
-  const { eventPage, eventPageType, eventPageMode, updateEventFields, user } = useAppStore();
+  const { eventPage, eventPageType, eventPageMode, updateEventFields, user, openImagePreview } = useAppStore();
   const [formData, setFormData] = useState({
     title: eventPage?.title || '',
     theme: eventPage?.theme || '',
@@ -781,7 +845,16 @@ function DetailsTab() {
           <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Logo</h4>
             {(eventPage as any).logoUrl ? (
-              <img src={mediaUrl((eventPage as any).logoUrl)} alt="Logo" className="h-16 w-16 rounded-xl object-contain border border-foreground/10" />
+              <div
+                onClick={() => openImagePreview((eventPage as any).logoUrl, `${eventPage.title} - Logo`)}
+                className="group relative inline-block cursor-pointer overflow-hidden rounded-xl"
+                title="Click to view full image"
+              >
+                <img src={mediaUrl((eventPage as any).logoUrl)} alt="Logo" className="h-16 w-16 rounded-xl object-contain border border-foreground/10 group-hover:scale-105 transition-transform" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">View</span>
+                </div>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">No logo uploaded.</p>
             )}
@@ -789,8 +862,8 @@ function DetailsTab() {
           <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Brochure</h4>
             {(eventPage as any).brochureUrl ? (
-              <a href={`${API_BASE}${(eventPage as any).brochureUrl}`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-semibold">
+              <a href={mediaUrl((eventPage as any).brochureUrl)} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-semibold cursor-pointer">
                 <Download size={14} /> View Brochure
               </a>
             ) : (
@@ -800,7 +873,16 @@ function DetailsTab() {
           <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Subject Image</h4>
             {(eventPage as any).subjectImageUrl ? (
-              <img src={mediaUrl((eventPage as any).subjectImageUrl)} alt="Subject Image" className="h-16 w-16 rounded-xl object-cover border border-foreground/10" />
+              <div
+                onClick={() => openImagePreview((eventPage as any).subjectImageUrl, `${eventPage.title} - Subject Image`)}
+                className="group relative inline-block cursor-pointer overflow-hidden rounded-xl"
+                title="Click to view full image"
+              >
+                <img src={mediaUrl((eventPage as any).subjectImageUrl)} alt="Subject Image" className="h-16 w-16 rounded-xl object-cover border border-foreground/10 group-hover:scale-105 transition-transform" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">View</span>
+                </div>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">No subject image uploaded.</p>
             )}
@@ -1043,32 +1125,209 @@ function ScientificProgramTab() {
   );
 }
 
+const COLOR_PRESETS = {
+  dark: [
+    { label: 'Conference Blue', color: '#0f4c81' },
+    { label: 'Royal Navy', color: '#1e3a8a' },
+    { label: 'Ocean Teal', color: '#0e7490' },
+    { label: 'Emerald', color: '#047857' },
+    { label: 'Ruby Red', color: '#991b1b' },
+    { label: 'Deep Violet', color: '#581c87' },
+    { label: 'Charcoal', color: '#334155' },
+  ],
+  light: [
+    { label: 'Pure White', color: '#ffffff' },
+    { label: 'Yellow', color: '#facc15' },
+    { label: 'Sky Blue', color: '#38bdf8' },
+    { label: 'Soft Teal', color: '#2dd4bf' },
+    { label: 'Mint Green', color: '#34d399' },
+    { label: 'Lavender', color: '#a78bfa' },
+    { label: 'Rose Pink', color: '#fb7185' },
+    { label: 'Peach', color: '#fb923c' },
+    { label: 'Warm Grey', color: '#94a3b8' },
+  ],
+  pastel: [
+    { label: 'Baby Blue', color: '#7dd3fc' },
+    { label: 'Soft Mint', color: '#6ee7b7' },
+    { label: 'Lilac', color: '#c4b5fd' },
+    { label: 'Blush', color: '#fda4af' },
+    { label: 'Amber', color: '#fcd34d' },
+    { label: 'Coral', color: '#fca5a5' },
+    { label: 'Stone', color: '#d6d3d1' },
+  ],
+};
+
+function ColorPickerCard({
+  title,
+  subtitle,
+  color,
+  onChange,
+  defaultPlaceholder = '#0f4c81',
+}: {
+  title: string;
+  subtitle: string;
+  color: string;
+  onChange: (hex: string) => void;
+  defaultPlaceholder?: string;
+}) {
+  return (
+    <div className="bg-muted/30 border border-foreground/10 rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-bold tracking-tight text-foreground">{title}</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        </div>
+
+        {/* Dark shades */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Dark Shades</p>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {COLOR_PRESETS.dark.map((preset) => (
+              <button
+                key={preset.color}
+                type="button"
+                onClick={() => onChange(preset.color)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                  color?.toLowerCase() === preset.color.toLowerCase()
+                    ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
+                    : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
+                }`}
+              >
+                <span className="w-3.5 h-3.5 rounded-full border border-foreground/10 shrink-0" style={{ backgroundColor: preset.color }} />
+                <span>{preset.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Light shades */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Light Shades</p>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {COLOR_PRESETS.light.map((preset) => (
+              <button
+                key={preset.color}
+                type="button"
+                onClick={() => onChange(preset.color)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                  color?.toLowerCase() === preset.color.toLowerCase()
+                    ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
+                    : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
+                }`}
+              >
+                <span className="w-3.5 h-3.5 rounded-full border border-foreground/10 shrink-0" style={{ backgroundColor: preset.color }} />
+                <span>{preset.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Pastel shades */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Pastel / Soft</p>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {COLOR_PRESETS.pastel.map((preset) => (
+              <button
+                key={preset.color}
+                type="button"
+                onClick={() => onChange(preset.color)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                  color?.toLowerCase() === preset.color.toLowerCase()
+                    ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
+                    : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
+                }`}
+              >
+                <span className="w-3.5 h-3.5 rounded-full border border-foreground/10 shrink-0" style={{ backgroundColor: preset.color }} />
+                <span>{preset.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom color */}
+        <div className="flex items-center gap-3 pt-2 border-t border-foreground/10">
+          <input
+            type="color"
+            value={color.startsWith('#') && color.length === 7 ? color : '#0f4c81'}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-10 h-10 p-0.5 rounded-xl border border-foreground/10 cursor-pointer bg-background"
+          />
+          <input
+            type="text"
+            placeholder={defaultPlaceholder}
+            value={color}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-32 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-mono font-semibold"
+          />
+          <span className="text-xs text-muted-foreground">Custom HEX</span>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div className="flex items-center gap-3 p-4 bg-background border border-foreground/10 rounded-xl mt-4">
+        <span className="w-10 h-10 rounded-xl shadow-sm shrink-0 border border-foreground/15" style={{ backgroundColor: color }} />
+        <div>
+          <p className="text-xs text-muted-foreground">Preview</p>
+          <p className="font-mono text-sm font-bold text-foreground">{color}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ColorThemeTab() {
-  const { eventPage, updateEventField, eventPageMode } = useAppStore();
+  const { eventPage, updateEventFields, eventPageMode } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const [localColor, setLocalColor] = useState((eventPage as any)?.themeColor || '#0f4c81');
+  const [localHeroColor, setLocalHeroColor] = useState((eventPage as any)?.heroThemeColor || (eventPage as any)?.themeColor || '#0e7490');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setLocalColor((eventPage as any)?.themeColor || '#0f4c81');
+    setLocalHeroColor((eventPage as any)?.heroThemeColor || (eventPage as any)?.themeColor || '#0e7490');
   }, [eventPage]);
 
   const handleSave = async () => {
     setSaving(true);
-    updateEventField('themeColor', localColor);
-    setTimeout(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); }, 300);
+    await updateEventFields({
+      themeColor: localColor,
+      heroThemeColor: localHeroColor,
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   if (!isEditMode) {
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-bold tracking-tight">Website Color Theme</h3>
-        <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-xl border border-foreground/15 shadow-xs shrink-0" style={{ backgroundColor: (eventPage as any)?.themeColor || '#0f4c81' }} />
-            <span className="font-mono text-sm font-bold text-foreground">{(eventPage as any)?.themeColor || '#0f4c81'}</span>
-            <span className="text-xs text-muted-foreground">(Applied to user website buttons, navigation, and accents)</span>
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">Color Themes</h3>
+          <p className="text-sm text-muted-foreground mt-1">Color themes configured for the website and hero banner.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6 space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Website Color Theme</h4>
+            <div className="flex items-center gap-3 pt-2">
+              <span className="w-8 h-8 rounded-xl border border-foreground/15 shadow-xs shrink-0" style={{ backgroundColor: (eventPage as any)?.themeColor || '#0f4c81' }} />
+              <div>
+                <span className="font-mono text-sm font-bold text-foreground">{(eventPage as any)?.themeColor || '#0f4c81'}</span>
+                <p className="text-xs text-muted-foreground">(Applied to user website buttons, navigation, and accents)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6 space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Theme Text Color</h4>
+            <div className="flex items-center gap-3 pt-2">
+              <span className="w-8 h-8 rounded-xl border border-foreground/15 shadow-xs shrink-0" style={{ backgroundColor: (eventPage as any)?.heroThemeColor || (eventPage as any)?.themeColor || '#a78bfa' }} />
+              <div>
+                <span className="font-mono text-sm font-bold text-foreground">{(eventPage as any)?.heroThemeColor || (eventPage as any)?.themeColor || '#a78bfa'}</span>
+                <p className="text-xs text-muted-foreground">(Applied to the conference theme text on the hero section)</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1078,143 +1337,40 @@ function ColorThemeTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-bold tracking-tight">Website Color Theme</h3>
-        <p className="text-sm text-muted-foreground mt-1">Choose a color theme for the user-facing website.</p>
+        <h3 className="text-lg font-bold tracking-tight">Website Color Themes</h3>
+        <p className="text-sm text-muted-foreground mt-1">Choose color themes for the user-facing website and conference theme text.</p>
       </div>
 
-      <div className="max-w-2xl space-y-4">
-        <div className="bg-muted/30 border border-foreground/10 rounded-2xl p-6 space-y-5">
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Theme Color</label>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+        {/* Left Side: Website Color Theme */}
+        <ColorPickerCard
+          title="Website Color Theme"
+          subtitle="Choose the main color theme for the website (hero banner, navigation, buttons, accents)."
+          color={localColor}
+          onChange={setLocalColor}
+          defaultPlaceholder="#0f4c81"
+        />
 
-          {/* Dark shades */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Dark Shades</p>
-            <div className="flex flex-wrap items-center gap-2">
-              {[
-                { label: 'Conference Blue', color: '#0f4c81' },
-                { label: 'Royal Navy', color: '#1e3a8a' },
-                { label: 'Ocean Teal', color: '#0e7490' },
-                { label: 'Emerald', color: '#047857' },
-                { label: 'Ruby Red', color: '#991b1b' },
-                { label: 'Deep Violet', color: '#581c87' },
-                { label: 'Charcoal', color: '#334155' },
-              ].map((preset) => (
-                <button
-                  key={preset.color}
-                  type="button"
-                  onClick={() => setLocalColor(preset.color)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
-                    localColor?.toLowerCase() === preset.color.toLowerCase()
-                      ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
-                      : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
-                  }`}
-                >
-                  <span className="w-3.5 h-3.5 rounded-full border border-foreground/10" style={{ backgroundColor: preset.color }} />
-                  <span>{preset.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Right Side: Theme Text Color */}
+        <ColorPickerCard
+          title="Theme Text Color"
+          subtitle="Choose a color specifically for the conference theme text (e.g. Theme: Innovation · Collaboration · Impact)."
+          color={localHeroColor}
+          onChange={setLocalHeroColor}
+          defaultPlaceholder="#a78bfa"
+        />
+      </div>
 
-          {/* Light shades */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Light Shades</p>
-            <div className="flex flex-wrap items-center gap-2">
-              {[
-                { label: 'Sky Blue', color: '#38bdf8' },
-                { label: 'Soft Teal', color: '#2dd4bf' },
-                { label: 'Mint Green', color: '#34d399' },
-                { label: 'Lavender', color: '#a78bfa' },
-                { label: 'Rose Pink', color: '#fb7185' },
-                { label: 'Peach', color: '#fb923c' },
-                { label: 'Warm Grey', color: '#94a3b8' },
-              ].map((preset) => (
-                <button
-                  key={preset.color}
-                  type="button"
-                  onClick={() => setLocalColor(preset.color)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
-                    localColor?.toLowerCase() === preset.color.toLowerCase()
-                      ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
-                      : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
-                  }`}
-                >
-                  <span className="w-3.5 h-3.5 rounded-full border border-foreground/10" style={{ backgroundColor: preset.color }} />
-                  <span>{preset.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Pastel shades */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Pastel / Soft</p>
-            <div className="flex flex-wrap items-center gap-2">
-              {[
-                { label: 'Baby Blue', color: '#7dd3fc' },
-                { label: 'Soft Mint', color: '#6ee7b7' },
-                { label: 'Lilac', color: '#c4b5fd' },
-                { label: 'Blush', color: '#fda4af' },
-                { label: 'Amber', color: '#fcd34d' },
-                { label: 'Coral', color: '#fca5a5' },
-                { label: 'Stone', color: '#d6d3d1' },
-              ].map((preset) => (
-                <button
-                  key={preset.color}
-                  type="button"
-                  onClick={() => setLocalColor(preset.color)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
-                    localColor?.toLowerCase() === preset.color.toLowerCase()
-                      ? 'border-primary ring-2 ring-primary/30 bg-primary/10 font-bold text-foreground'
-                      : 'border-foreground/10 hover:border-foreground/30 bg-card text-muted-foreground'
-                  }`}
-                >
-                  <span className="w-3.5 h-3.5 rounded-full border border-foreground/10" style={{ backgroundColor: preset.color }} />
-                  <span>{preset.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Custom color */}
-          <div className="flex items-center gap-3 pt-2 border-t border-foreground/10">
-            <input
-              type="color"
-              value={localColor}
-              onChange={(e) => setLocalColor(e.target.value)}
-              className="w-10 h-10 p-0.5 rounded-xl border border-foreground/10 cursor-pointer bg-background"
-            />
-            <input
-              type="text"
-              placeholder="#0f4c81"
-              value={localColor}
-              onChange={(e) => setLocalColor(e.target.value)}
-              className="w-32 px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-mono font-semibold"
-            />
-            <span className="text-xs text-muted-foreground">Custom HEX</span>
-          </div>
-
-          {/* Preview */}
-          <div className="flex items-center gap-3 p-4 bg-background border border-foreground/10 rounded-xl">
-            <span className="w-10 h-10 rounded-xl shadow-sm shrink-0" style={{ backgroundColor: localColor }} />
-            <div>
-              <p className="text-xs text-muted-foreground">Preview</p>
-              <p className="font-mono text-sm font-bold text-foreground">{localColor}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50 cursor-pointer"
-          >
-            {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save Theme'}
-          </button>
-          {saved && <span className="text-xs text-green-600 font-medium">Theme color saved successfully</span>}
-        </div>
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50 cursor-pointer shadow-xs hover:opacity-90 transition"
+        >
+          {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save Theme'}
+        </button>
+        {saved && <span className="text-xs text-green-600 font-medium">Theme colors saved successfully</span>}
       </div>
     </div>
   );
@@ -1521,7 +1677,7 @@ function StatCard({ value, label, className = '' }: { value: string; label: stri
 
 // ============ SPEAKERS TAB ============
 function SpeakersTab() {
-  const { eventPage, updateEventField, user, eventPageMode } = useAppStore();
+  const { eventPage, updateEventField, user, eventPageMode, openImagePreview } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const speakers: Speaker[] = (eventPage as any)?.speakers || [];
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -1728,9 +1884,12 @@ function SpeakersTab() {
                 {speakers.map((speaker, index) => (
                   <tr key={index} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                     <td className="p-4">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-muted border border-border flex items-center justify-center shrink-0">
+                      <div className={`w-10 h-10 rounded-full overflow-hidden bg-muted border border-border flex items-center justify-center shrink-0 ${speaker.avatar ? 'cursor-pointer hover:ring-2 hover:ring-primary transition' : ''}`}
+                        onClick={() => speaker.avatar && openImagePreview(speaker.avatar, `${speaker.name} - Photo`)}
+                        title={speaker.avatar ? "Click to view full photo" : undefined}
+                      >
                         {speaker.avatar ? (
-                          <img src={mediaUrl(speaker.avatar)} alt={speaker.name} className="w-full h-full object-cover" />
+                          <img src={mediaUrl(speaker.avatar)} alt={speaker.name} className="w-full h-full object-cover hover:scale-105 transition-transform" />
                         ) : (
                           <span className="font-bold text-xs text-muted-foreground">
                             {(speaker.name || 'S').charAt(0).toUpperCase()}
@@ -1790,7 +1949,7 @@ function SpeakersTab() {
 
 // ============ PROGRAM TAB ============
 function ProgramTab() {
-  const { eventPage, updateEventField, eventPageMode } = useAppStore();
+  const { eventPage, updateEventField, eventPageMode, confirmModal } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const program: ProgramDay[] = (eventPage as any)?.program || [];
   const [editingDayIndex, setEditingDayIndex] = useState<number | null>(null);
@@ -1838,7 +1997,7 @@ function ProgramTab() {
   };
 
   const handleDeleteDay = async (index: number) => {
-    const ok = await store.confirmModal({
+    const ok = await confirmModal({
       title: 'Delete Program Day',
       message: 'Are you sure you want to delete this day and all its sessions?',
       type: 'danger',
@@ -2221,7 +2380,7 @@ function PartnersTab() {
 
 // ============ SPONSORS TAB ============
 function SponsorsTab() {
-  const { eventPage, updateEventField, eventPageMode, user } = useAppStore();
+  const { eventPage, updateEventField, eventPageMode, user, openImagePreview } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const sponsors: { name: string; logo: string }[] = (eventPage as any)?.sponsors || [];
   const [showForm, setShowForm] = useState(false);
@@ -2288,7 +2447,15 @@ function SponsorsTab() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {sponsors.map((s, i) => (
               <div key={i} className="bg-muted/10 border border-foreground/10 rounded-2xl p-4 flex flex-col items-center gap-2">
-                {s.logo && <img src={mediaUrl(s.logo)} alt={s.name} className="h-12 w-12 object-contain" />}
+                {s.logo && (
+                  <img
+                    src={mediaUrl(s.logo)}
+                    alt={s.name}
+                    onClick={() => openImagePreview(s.logo, `${s.name} - Logo`)}
+                    className="h-12 w-12 object-contain cursor-pointer hover:scale-105 transition-transform"
+                    title="Click to view full image"
+                  />
+                )}
                 <p className="text-sm font-bold text-foreground text-center">{s.name}</p>
               </div>
             ))}
@@ -2346,7 +2513,17 @@ function SponsorsTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sponsors.map((s, i) => (
               <div key={i} className="bg-background border border-foreground/10 rounded-xl p-5 flex items-start gap-4">
-                {s.logo ? <img src={mediaUrl(s.logo)} alt={s.name} className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0" /> : <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Handshake size={20} /></div>}
+                {s.logo ? (
+                  <img
+                    src={mediaUrl(s.logo)}
+                    alt={s.name}
+                    onClick={() => openImagePreview(s.logo, `${s.name} - Logo`)}
+                    className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                    title="Click to view full image"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Handshake size={20} /></div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold">{s.name}</div>
                 </div>
@@ -2368,7 +2545,7 @@ function SponsorsTab() {
 
 // ============ MEDIA PARTNERS TAB ============
 function MediaPartnersTab() {
-  const { eventPage, updateEventField, eventPageMode, user } = useAppStore();
+  const { eventPage, updateEventField, eventPageMode, user, openImagePreview } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const mediaPartners: { name: string; logo: string }[] = (eventPage as any)?.mediaPartners || [];
   const [showForm, setShowForm] = useState(false);
@@ -2435,7 +2612,15 @@ function MediaPartnersTab() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {mediaPartners.map((p, i) => (
               <div key={i} className="bg-muted/10 border border-foreground/10 rounded-2xl p-4 flex flex-col items-center gap-2">
-                {p.logo && <img src={mediaUrl(p.logo)} alt={p.name} className="h-12 w-12 object-contain" />}
+                {p.logo && (
+                  <img
+                    src={mediaUrl(p.logo)}
+                    alt={p.name}
+                    onClick={() => openImagePreview(p.logo, `${p.name} - Logo`)}
+                    className="h-12 w-12 object-contain cursor-pointer hover:scale-105 transition-transform"
+                    title="Click to view full image"
+                  />
+                )}
                 <p className="text-sm font-bold text-foreground text-center">{p.name}</p>
               </div>
             ))}
@@ -2493,7 +2678,17 @@ function MediaPartnersTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {mediaPartners.map((p, i) => (
               <div key={i} className="bg-background border border-foreground/10 rounded-xl p-5 flex items-start gap-4">
-                {p.logo ? <img src={mediaUrl(p.logo)} alt={p.name} className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0" /> : <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Handshake size={20} /></div>}
+                {p.logo ? (
+                  <img
+                    src={mediaUrl(p.logo)}
+                    alt={p.name}
+                    onClick={() => openImagePreview(p.logo, `${p.name} - Logo`)}
+                    className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                    title="Click to view full image"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Handshake size={20} /></div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold">{p.name}</div>
                 </div>
@@ -2797,7 +2992,7 @@ function SeoConfigTab() {
 
 // ============ BANNERS TAB ============
 function BannersTab() {
-  const { eventPage, eventPageType, uploadHeaderBannerForEvent, removeHeaderBannerForEvent, eventPageMode } = useAppStore();
+  const { eventPage, eventPageType, uploadHeaderBannerForEvent, removeHeaderBannerForEvent, eventPageMode, openImagePreview } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const [uploading, setUploading] = useState(false);
   const banners: string[] = (eventPage as any)?.headerBanners || [];
@@ -2841,8 +3036,12 @@ function BannersTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {banners.map((url, i) => (
             <div key={i} className="p-4 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-4">
-              <div className="w-36 sm:w-44 h-24 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs">
-                <img src={mediaUrl(url)} alt={`Banner ${i + 1}`} className="w-full h-full object-cover rounded-lg" />
+              <div
+                className="w-36 sm:w-44 h-24 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs cursor-pointer group"
+                onClick={() => openImagePreview(url, `Header Banner ${i + 1}`)}
+                title="Click to view full banner"
+              >
+                <img src={mediaUrl(url)} alt={`Banner ${i + 1}`} className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform" />
               </div>
               <div className="flex-1 min-w-0 space-y-2">
                 <div>
@@ -4058,7 +4257,7 @@ function LiveChatTabComponent() {
 
 // ============ ORGANIZING COMMITTEE TAB ============
 function OrganizingCommitteeTab() {
-  const { eventPage, updateEventField, user, eventPageMode } = useAppStore();
+  const { eventPage, updateEventField, user, eventPageMode, openImagePreview } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const committee: any[] = (eventPage as any)?.organizingCommittee || [];
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -4227,7 +4426,13 @@ function OrganizingCommitteeTab() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     {member.image ? (
-                      <img src={mediaUrl(member.image)} alt={member.name} className="w-12 h-12 rounded-full object-cover" />
+                      <img
+                        src={mediaUrl(member.image)}
+                        alt={member.name}
+                        onClick={() => openImagePreview(member.image, `${member.name} - Photo`)}
+                        className="w-12 h-12 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-primary hover:scale-105 transition"
+                        title="Click to view full photo"
+                      />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-sm font-bold">{member.name?.charAt(0)}</div>
                     )}
@@ -4261,7 +4466,7 @@ function OrganizingCommitteeTab() {
 
 // ============ SCHEDULE & VENUE TAB ============
 function VenueDetailsTab() {
-  const { eventPage, updateEventFields, eventPageMode, venues, ensureMentorsAndVenues, user } = useAppStore();
+  const { eventPage, updateEventFields, eventPageMode, venues, ensureMentorsAndVenues, user, isAddMode, openImagePreview } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
 
   useEffect(() => {
@@ -4510,6 +4715,7 @@ function VenueDetailsTab() {
 
       await updateEventFields({
         venueDetails: venuePayload,
+        location: formData.name || formData.address || '',
         startDate: formData.startDate || null,
         endDate: formData.endDate || null,
         startTime: formData.startTime || '',
@@ -4625,11 +4831,15 @@ function VenueDetailsTab() {
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Main Image</span>
             {formData.mainImage ? (
               <div className="p-4 sm:p-5 rounded-2xl border border-foreground/10 bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                <div className="w-full sm:w-72 md:w-80 h-44 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-background flex items-center justify-center p-2 shadow-xs">
+                <div
+                  className="w-full sm:w-72 md:w-80 h-44 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-background flex items-center justify-center p-2 shadow-xs cursor-pointer group"
+                  onClick={() => openImagePreview(formData.mainImage, 'Main Venue Showcase')}
+                  title="Click to view full image"
+                >
                   <img
                     src={mediaUrl(formData.mainImage)}
                     alt="Main Venue"
-                    className="max-w-full max-h-full object-contain rounded-lg"
+                    className="max-w-full max-h-full object-contain rounded-lg group-hover:scale-105 transition-transform"
                   />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -4656,11 +4866,17 @@ function VenueDetailsTab() {
                   <div key={idx} className="bg-muted/20 rounded-2xl p-2.5 border border-foreground/5">
                     <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Sub Image {idx + 1}</span>
                     {url ? (
-                      <img
-                        src={mediaUrl(url)}
-                        alt={`Venue Sub Image ${idx + 1}`}
-                        className="w-full h-40 object-cover rounded-xl border border-foreground/10 shadow-xs"
-                      />
+                      <div
+                        className="w-full h-40 overflow-hidden rounded-xl border border-foreground/10 shadow-xs cursor-pointer group"
+                        onClick={() => openImagePreview(url, `Venue Sub Image ${idx + 1}`)}
+                        title="Click to view full image"
+                      >
+                        <img
+                          src={mediaUrl(url)}
+                          alt={`Venue Sub Image ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      </div>
                     ) : (
                       <div className="w-full h-40 flex items-center justify-center bg-muted/30 rounded-xl text-xs text-muted-foreground border border-dashed border-foreground/10">
                         Empty slot
@@ -4674,20 +4890,26 @@ function VenueDetailsTab() {
             )}
           </div>
 
-          {/* City Highlights */}
+          {/* City Attractions */}
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">City Highlights</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">City Attractions</span>
             {formData.cityHighlights?.some(Boolean) ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {formData.cityHighlights.map((url, idx) => (
                   <div key={idx} className="bg-muted/20 rounded-2xl p-2.5 border border-foreground/5">
-                    <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">City Highlight {idx + 1}</span>
+                    <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">City Attraction {idx + 1}</span>
                     {url ? (
-                      <img
-                        src={mediaUrl(url)}
-                        alt={`City Highlight ${idx + 1}`}
-                        className="w-full h-40 object-cover rounded-xl border border-foreground/10 shadow-xs"
-                      />
+                      <div
+                        className="w-full h-40 overflow-hidden rounded-xl border border-foreground/10 shadow-xs cursor-pointer group"
+                        onClick={() => openImagePreview(url, `City Attraction ${idx + 1}`)}
+                        title="Click to view full image"
+                      >
+                        <img
+                          src={mediaUrl(url)}
+                          alt={`City Attraction ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      </div>
                     ) : (
                       <div className="w-full h-40 flex items-center justify-center bg-muted/30 rounded-xl text-xs text-muted-foreground border border-dashed border-foreground/10">
                         Empty slot
@@ -4697,7 +4919,7 @@ function VenueDetailsTab() {
                 ))}
               </div>
             ) : (
-              <div className="text-xs text-muted-foreground italic">No city highlights uploaded.</div>
+              <div className="text-xs text-muted-foreground italic">No city attractions uploaded.</div>
             )}
           </div>
 
@@ -4979,7 +5201,7 @@ function VenueDetailsTab() {
               <option value="">— Select a venue —</option>
               {venues
                 .filter((v: any) => {
-                  if (store.isAddMode) {
+                  if (isAddMode) {
                     return v.isActive !== false;
                   }
                   return v.isActive !== false || v._id === formData.venueId || (formData.name && v.name?.trim().toLowerCase() === formData.name?.trim().toLowerCase());
@@ -5084,11 +5306,15 @@ function VenueDetailsTab() {
           {formData.mainImage ? (
             <div className="p-4 sm:p-5 rounded-2xl border border-foreground/15 bg-background shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-5">
               {/* One Side: Image Preview */}
-              <div className="w-full sm:w-72 md:w-80 h-44 shrink-0 rounded-xl overflow-hidden border border-foreground/15 bg-muted/10 flex items-center justify-center p-2 relative shadow-xs">
+              <div
+                className="w-full sm:w-72 md:w-80 h-44 shrink-0 rounded-xl overflow-hidden border border-foreground/15 bg-muted/10 flex items-center justify-center p-2 relative shadow-xs cursor-pointer group"
+                onClick={() => openImagePreview(formData.mainImage, 'Main Venue Image')}
+                title="Click to view full image"
+              >
                 <img
                   src={mediaUrl(formData.mainImage)}
                   alt="Main Venue"
-                  className="max-w-full max-h-full object-contain rounded-lg"
+                  className="max-w-full max-h-full object-contain rounded-lg group-hover:scale-105 transition-transform"
                 />
                 <span className="absolute bottom-2 left-2 text-[10px] font-bold text-white bg-black/70 backdrop-blur-xs px-2 py-0.5 rounded-md">
                   Main Image
@@ -5184,11 +5410,15 @@ function VenueDetailsTab() {
                   {url ? (
                     <div className="p-3.5 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-3.5 min-h-[120px]">
                       {/* One Side: Image */}
-                      <div className="w-28 h-22 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs">
+                      <div
+                        className="w-28 h-22 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs cursor-pointer group"
+                        onClick={() => openImagePreview(url, `Venue Sub Image ${idx + 1}`)}
+                        title="Click to view full image"
+                      >
                         <img
                           src={mediaUrl(url)}
                           alt={`Sub ${idx + 1}`}
-                          className="max-w-full max-h-full object-contain rounded-lg"
+                          className="max-w-full max-h-full object-contain rounded-lg group-hover:scale-105 transition-transform"
                         />
                         <span className="absolute bottom-1 left-1 text-[8px] font-bold text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded">
                           Slot {idx + 1}
@@ -5256,11 +5486,11 @@ function VenueDetailsTab() {
           </div>
         </div>
 
-        {/* Three City Highlights */}
+        {/* Three City Attractions */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-              City Highlights
+              City Attractions
             </label>
             <span className="text-[11px] text-muted-foreground">3 photo slots</span>
           </div>
@@ -5273,16 +5503,20 @@ function VenueDetailsTab() {
               return (
                 <div key={idx} className="space-y-1.5">
                   <span className="text-[11px] font-bold text-muted-foreground block">
-                    City Highlight {idx + 1}
+                    City Attraction {idx + 1}
                   </span>
                   {url ? (
                     <div className="p-3.5 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-3.5 min-h-[120px]">
                       {/* One Side: Image */}
-                      <div className="w-28 h-22 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs">
+                      <div
+                        className="w-28 h-22 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs cursor-pointer group"
+                        onClick={() => openImagePreview(url, `City Attraction ${idx + 1}`)}
+                        title="Click to view full image"
+                      >
                         <img
                           src={mediaUrl(url)}
-                          alt={`City Highlight ${idx + 1}`}
-                          className="max-w-full max-h-full object-contain rounded-lg"
+                          alt={`City Attraction ${idx + 1}`}
+                          className="max-w-full max-h-full object-contain rounded-lg group-hover:scale-105 transition-transform"
                         />
                         <span className="absolute bottom-1 left-1 text-[8px] font-bold text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded">
                           Slot {idx + 1}
@@ -5293,7 +5527,7 @@ function VenueDetailsTab() {
                       <div className="flex-1 min-w-0 space-y-2">
                         <div>
                           <span className="text-xs font-bold text-foreground block truncate">
-                            City Highlight {idx + 1}
+                            City Attraction {idx + 1}
                           </span>
                           <span className="text-[10px] text-muted-foreground block">City attraction photo</span>
                         </div>
@@ -5371,7 +5605,7 @@ function VenueDetailsTab() {
 }
 
 function CohortsTab() {
-  const { eventPage, eventPageType, eventCohorts, eventCohortsLoading, createCohort, setCurrentCohort, deleteCohort, assignCohortMentor, mentors, user, openCohortTab, openCohortTabEdit, eventPageMode, navigateToAddEvent } = useAppStore();
+  const { eventPage, eventPageType, eventCohorts, eventCohortsLoading, createCohort, setCurrentCohort, deleteCohort, assignCohortMentor, mentors, user, openCohortTab, openCohortTabEdit, eventPageMode, navigateToAddEvent, alertModal, confirmModal } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const canAssignMentor = !user || user.role === 'admin' || (user.role as string) === 'superadmin';
   const [showAdd, setShowAdd] = useState(false);
@@ -5393,11 +5627,11 @@ function CohortsTab() {
     try { 
       await setCurrentCohort(id); 
     } catch (err: any) { 
-      store.alertModal({ title: 'Error', message: err.message || 'Failed to set current cohort', type: 'danger' }); 
+      alertModal({ title: 'Error', message: err.message || 'Failed to set current cohort', type: 'danger' }); 
     }
   };
   const handleDelete = async (id: string) => {
-    const ok = await store.confirmModal({
+    const ok = await confirmModal({
       title: 'Delete Cohort',
       message: 'Are you sure you want to delete this cohort?',
       type: 'danger',
@@ -5408,7 +5642,7 @@ function CohortsTab() {
     try { 
       await deleteCohort(id); 
     } catch (err: any) { 
-      store.alertModal({ title: 'Error', message: err.message || 'Failed to delete cohort', type: 'danger' }); 
+      alertModal({ title: 'Error', message: err.message || 'Failed to delete cohort', type: 'danger' }); 
     }
   };
   const submitAssign = async () => {
@@ -5417,7 +5651,7 @@ function CohortsTab() {
       await assignCohortMentor(assignCohort._id, assignUsername || null); 
       setAssignCohort(null); 
     } catch (err: any) { 
-      store.alertModal({ title: 'Error', message: err.message || 'Failed to assign mentor', type: 'danger' }); 
+      alertModal({ title: 'Error', message: err.message || 'Failed to assign mentor', type: 'danger' }); 
     }
   };
 

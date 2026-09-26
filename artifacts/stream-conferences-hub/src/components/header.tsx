@@ -95,12 +95,12 @@ export function Header() {
           <img
             src="/logo-dark.png"
             alt="Stream Conferences"
-            className="h-9 w-auto object-contain block dark:hidden"
+            className="h-10 sm:h-11 md:h-12 w-auto object-contain block dark:hidden"
           />
           <img
             src="/logo.png"
             alt="Stream Conferences"
-            className="h-9 w-auto object-contain hidden dark:block"
+            className="h-10 sm:h-11 md:h-12 w-auto object-contain hidden dark:block"
           />
         </div>
 

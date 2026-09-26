@@ -386,6 +386,11 @@ interface AppStoreValue {
   confirmModal: (options: ModalOptions) => Promise<boolean>;
   alertModal: (options: ModalOptions | string) => Promise<void>;
   closeModal: (result: boolean) => void;
+
+  // Image Preview Lightbox
+  imagePreviewState: { isOpen: boolean; url: string; title?: string };
+  openImagePreview: (url: string, title?: string) => void;
+  closeImagePreview: () => void;
 }
 
 const AppStoreContext = createContext<AppStoreValue | null>(null);
@@ -438,13 +443,52 @@ const EMPTY_PROFILE: MentorProfile & { avatarPreview?: string } = {
   certifications: [],
 };
 
+const ADMIN_USER_KEY = 'stream-admin-user';
+const ADMIN_SESSION_EXPIRES_KEY = 'stream-admin-session-expires';
+const SESSION_WINDOW_MS = 4 * 60 * 60 * 1000;
+const SESSION_TOUCH_INTERVAL_MS = 60 * 1000;
+const SESSION_CHECK_INTERVAL_MS = 30 * 1000;
+const SESSION_ACTIVITY_EVENTS: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'];
+
+function readSessionExpiry(): number | null {
+  const raw = localStorage.getItem(ADMIN_SESSION_EXPIRES_KEY);
+  if (!raw) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+function extendSession(now = Date.now()): number {
+  const expiry = now + SESSION_WINDOW_MS;
+  localStorage.setItem(ADMIN_SESSION_EXPIRES_KEY, String(expiry));
+  return expiry;
+}
+
+function isSessionActive(now = Date.now()): boolean {
+  const expiry = readSessionExpiry();
+  return expiry !== null && now < expiry;
+}
+
+function clearSession() {
+  localStorage.removeItem(ADMIN_USER_KEY);
+  localStorage.removeItem(ADMIN_SESSION_EXPIRES_KEY);
+}
+
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
 
   // Session
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('stream-admin-user');
-    return saved ? JSON.parse(saved) : null;
+    const saved = localStorage.getItem(ADMIN_USER_KEY);
+    if (!saved || !isSessionActive()) {
+      clearSession();
+      return null;
+    }
+    try {
+      return JSON.parse(saved);
+    } catch {
+      clearSession();
+      return null;
+    }
   });
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -540,6 +584,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
       return { ...prev, isOpen: false, resolve: undefined };
     });
+  }, []);
+
+  // Image Preview Lightbox State
+  const [imagePreviewState, setImagePreviewState] = useState<{ isOpen: boolean; url: string; title?: string }>({
+    isOpen: false,
+    url: '',
+    title: '',
+  });
+
+  const openImagePreview = useCallback((url: string, title?: string) => {
+    if (!url) return;
+    const fullUrl = mediaUrl(url);
+    setImagePreviewState({
+      isOpen: true,
+      url: fullUrl,
+      title: title || 'Image Preview',
+    });
+  }, []);
+
+  const closeImagePreview = useCallback(() => {
+    setImagePreviewState({ isOpen: false, url: '', title: '' });
   }, []);
 
   // Modal / form state
@@ -1631,7 +1696,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const data = await res.json();
       if (data.success && data.user) {
-        localStorage.setItem('stream-admin-user', JSON.stringify(data.user));
+        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(data.user));
+        extendSession();
         setUser(data.user);
         setUsernameInput('');
         setPasswordInput('');
@@ -1644,9 +1710,40 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('stream-admin-user');
+    clearSession();
     setUser(null);
   };
+
+  // Sliding 4-hour admin session: any interaction extends the window, idle expiry logs out.
+  useEffect(() => {
+    if (!user) return;
+    if (!isSessionActive()) {
+      clearSession();
+      setUser(null);
+      return;
+    }
+
+    let lastTouch = Date.now();
+    const touch = () => {
+      const now = Date.now();
+      if (now - lastTouch < SESSION_TOUCH_INTERVAL_MS) return;
+      lastTouch = now;
+      extendSession(now);
+    };
+    SESSION_ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, touch, { passive: true }));
+    extendSession(lastTouch);
+
+    const timer = window.setInterval(() => {
+      if (isSessionActive()) return;
+      clearSession();
+      setUser(null);
+    }, SESSION_CHECK_INTERVAL_MS);
+
+    return () => {
+      SESSION_ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, touch));
+      window.clearInterval(timer);
+    };
+  }, [user]);
 
   const openAddForm = (type: EditableType) => {
     setEditingItemType(type);
@@ -2932,7 +3029,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       
       const updated = { ...user, isTempPassword: false };
       setUser(updated);
-      localStorage.setItem('stream-admin-user', JSON.stringify(updated));
+      localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(updated));
     } catch (err: any) {
       alertModal({ title: 'Error', message: err.message || 'Failed to change password', type: 'danger' });
       throw err;
@@ -3257,6 +3354,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     confirmModal,
     alertModal,
     closeModal,
+    imagePreviewState,
+    openImagePreview,
+    closeImagePreview,
   };
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

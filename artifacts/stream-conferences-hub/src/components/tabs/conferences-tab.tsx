@@ -55,7 +55,7 @@ export function ConferencesTab() {
                 >
                   {conf.title}
                 </td>
-                <td className="p-4 text-xs text-muted-foreground">{conf.location}</td>
+                <td className="p-4 text-xs text-muted-foreground">{conf.venue || conf.venueDetails?.name || conf.location || '—'}</td>
                 <td className="p-4 text-xs font-semibold text-accent">{conf.mentorName || conf.assignedMentor || '—'}</td>
                 <td className="p-4 capitalize">
                   {(() => {

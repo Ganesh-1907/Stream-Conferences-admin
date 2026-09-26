@@ -4,7 +4,7 @@ import { useAppStore } from '@/store/app-store';
 import { mediaUrl } from '@/lib/utils';
 
 export function ExhibitorsTab() {
-  const { exhibitors, exhibitorForm, setExhibitorForm, openExhibitorForm, saveExhibitor, deleteExhibitor, handleLogoUpload } = useAppStore();
+  const { exhibitors, exhibitorForm, setExhibitorForm, openExhibitorForm, saveExhibitor, deleteExhibitor, handleLogoUpload, openImagePreview } = useAppStore();
 
   return (
     <div className="space-y-6">
@@ -48,7 +48,17 @@ export function ExhibitorsTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {exhibitors.map((e) => (
             <div key={e._id} className="bg-background border border-foreground/10 rounded-xl p-5 flex items-start gap-4">
-              {e.logo ? <img src={mediaUrl(e.logo)} alt={e.name} className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0" /> : <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Store size={20} /></div>}
+              {e.logo ? (
+                <img
+                  src={mediaUrl(e.logo)}
+                  alt={e.name}
+                  onClick={() => openImagePreview(e.logo, `${e.name} - Logo`)}
+                  className="w-14 h-14 rounded-lg object-contain border border-foreground/10 bg-muted/20 shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                  title="Click to view full image"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground shrink-0"><Store size={20} /></div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="font-semibold">{e.name}</div>
                 {e.description && <p className="text-xs text-muted-foreground mt-1">{e.description}</p>}

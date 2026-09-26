@@ -40,15 +40,17 @@ export function ForceChangePasswordPanel() {
         <div className="absolute top-0 left-0 w-full h-[6px] bg-secondary"></div>
 
         <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-3 mb-2.5">
+          <div className="flex items-center justify-center mb-2">
             <img
-              src="/logo.jpg"
+              src="/logo-dark.png"
               alt="Stream Conferences"
-              className="h-12 w-12 rounded-xl object-contain bg-white p-1 border border-foreground/10 shadow-md"
+              className="h-12 sm:h-14 w-auto object-contain block dark:hidden drop-shadow-sm"
             />
-            <span className="font-['Space_Grotesk'] font-black tracking-tight text-2xl text-foreground">
-              Stream Conferences
-            </span>
+            <img
+              src="/logo.png"
+              alt="Stream Conferences"
+              className="h-12 sm:h-14 w-auto object-contain hidden dark:block drop-shadow-sm"
+            />
           </div>
           <h2 className="text-lg font-bold text-foreground mb-1 mt-4">Update Temporary Password</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">

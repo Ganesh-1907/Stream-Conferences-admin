@@ -290,6 +290,7 @@ export interface Conference {
   fees?: any;
   exhibitors?: any[];
   themeColor?: string;
+  heroThemeColor?: string;
   scientificProgramUrl?: string;
   about?: string;
   terms?: string;
@@ -477,6 +478,18 @@ export interface EventDetail {
   payments: Order[];
 }
 
+export interface CurrencyPaymentStat {
+  currency: string;
+  totalCount: number;
+  paidCount: number;
+  pendingCount: number;
+  failedCount: number;
+  totalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  failedAmount: number;
+}
+
 export interface EventDashboard {
   eventId: string;
   title?: string;
@@ -488,6 +501,7 @@ export interface EventDashboard {
     failedCount: number;
     revenuePaise: number;
     revenue: string;
+    byCurrency?: CurrencyPaymentStat[];
   };
 }
 

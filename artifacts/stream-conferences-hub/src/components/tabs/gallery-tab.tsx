@@ -6,7 +6,7 @@ import { compressImage, mediaUrl } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
 
 export function GalleryTab() {
-  const { user, galleryItems, addGalleryItem, deleteGalleryItem, confirmModal, alertModal } = useAppStore();
+  const { user, galleryItems, addGalleryItem, deleteGalleryItem, confirmModal, alertModal, openImagePreview } = useAppStore();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -160,7 +160,11 @@ export function GalleryTab() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {galleryItems.map((item) => (
           <div key={item._id} className="bg-background border border-foreground/10 rounded-xl overflow-hidden shadow-xs flex flex-col justify-between group">
-            <div className="relative aspect-video bg-muted/20 overflow-hidden">
+            <div
+              className={`relative aspect-video bg-muted/20 overflow-hidden ${item.image ? 'cursor-pointer' : ''}`}
+              onClick={() => item.image && openImagePreview(item.image, item.title)}
+              title={item.image ? "Click to view full image" : undefined}
+            >
               {item.image ? (
                 <img src={mediaUrl(item.image)} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               ) : (

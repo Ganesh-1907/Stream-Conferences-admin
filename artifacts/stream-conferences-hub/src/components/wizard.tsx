@@ -155,12 +155,17 @@ export function Wizard() {
             {((store.wizardMedia().headerBannersPreviews && store.wizardMedia().headerBannersPreviews.length > 0) || (store.wizardMedia().headerBanners && store.wizardMedia().headerBanners.length > 0)) ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-3">
                 {(store.wizardMedia().headerBannersPreviews?.length ? store.wizardMedia().headerBannersPreviews : store.wizardMedia().headerBanners || []).map((previewUrl, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-foreground/10 bg-muted/20 aspect-[16/7] flex items-center justify-center">
-                    <img src={previewUrl} alt={`Header Banner ${idx + 1}`} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                  <div
+                    key={idx}
+                    className="relative group rounded-xl overflow-hidden border border-foreground/10 bg-muted/20 aspect-[16/7] flex items-center justify-center cursor-pointer"
+                    onClick={() => store.openImagePreview(previewUrl, `Header Banner ${idx + 1}`)}
+                    title="Click to view full banner"
+                  >
+                    <img src={previewUrl} alt={`Header Banner ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        onClick={() => store.removeHeaderBanner(idx)}
+                        onClick={(e) => { e.stopPropagation(); store.removeHeaderBanner(idx); }}
                         className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                         title="Delete banner"
                       >
