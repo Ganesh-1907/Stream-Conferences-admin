@@ -122,22 +122,22 @@ export function Breadcrumbs() {
 
   return (
     <div className="w-full bg-card/60 border-b border-foreground/10 px-6 py-2">
-      <nav aria-label="Breadcrumbs" className="flex items-center text-xs">
-        <ol className="flex items-center flex-wrap gap-1">
+      <nav aria-label="Breadcrumbs" className="flex items-center text-xs sm:text-sm">
+        <ol className="flex items-center flex-wrap gap-1.5">
           {items.map((item, idx) => {
             const isLast = idx === items.length - 1;
             return (
               <li key={idx} className="inline-flex items-center">
                 {idx > 0 && (
-                  <span className="text-muted-foreground/50 mx-1.5 select-none font-normal">/</span>
+                  <span className="text-muted-foreground/50 mx-2 select-none font-normal text-xs sm:text-sm">/</span>
                 )}
                 {isLast ? (
-                  <span className="font-semibold text-foreground text-xs">{item.label}</span>
+                  <span className="font-bold text-foreground text-xs sm:text-sm">{item.label}</span>
                 ) : (
                   <button
                     type="button"
                     onClick={item.onClick}
-                    className="text-primary hover:underline font-medium text-xs cursor-pointer transition-colors"
+                    className="text-primary hover:underline font-semibold text-xs sm:text-sm cursor-pointer transition-colors"
                   >
                     {item.label}
                   </button>

@@ -27,37 +27,37 @@ export function ConferencesTab() {
         )}
       </div>
 
-      <div className="border border-foreground/10 rounded-xl">
+      <div className="border border-foreground/10 rounded-xl overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-              <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10">
-              <th className="p-4 rounded-tl-xl">ID</th>
-              <th className="p-4">Schedule</th>
-              <th className="p-4">Title</th>
-              <th className="p-4">Location</th>
-              <th className="p-4">Mentor</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-right rounded-tr-xl">Actions</th>
+            <tr className="bg-[#f0f2fe] text-[#2c3e50] dark:bg-indigo-950/30 dark:text-indigo-200 font-semibold border-b border-foreground/10 text-sm">
+              <th className="p-3.5 rounded-tl-xl font-semibold">ID</th>
+              <th className="p-3.5 font-semibold">Schedule</th>
+              <th className="p-3.5 font-semibold">Title</th>
+              <th className="p-3.5 font-semibold">Location</th>
+              <th className="p-3.5 font-semibold">Mentor</th>
+              <th className="p-3.5 font-semibold">Status</th>
+              <th className="p-3.5 text-right rounded-tr-xl font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginatedItems.map((conf) => (
-              <tr key={conf._id} className="border-b border-foreground/5 bg-card hover:bg-foreground/[0.015] last:border-0 transition-colors">
-                <td className="p-4 font-mono text-xs font-bold text-accent">{conf.eventId || '—'}</td>
-                <td className="p-4 font-mono font-medium">
+              <tr key={conf._id} className="border-b border-foreground/5 bg-card hover:bg-foreground/[0.015] last:border-0 transition-colors text-sm">
+                <td className="p-3.5 font-mono text-xs font-bold text-accent">{conf.eventId || '—'}</td>
+                <td className="p-3.5 font-mono font-medium text-sm">
                   {conf.month} {conf.day}
-                  {conf.eventDate && <div className="text-[10px] text-muted-foreground mt-1">{new Date(conf.eventDate).toLocaleDateString()}</div>}
+                  {conf.eventDate && <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(conf.eventDate).toLocaleDateString()}</div>}
                 </td>
                 <td
-                  className="p-4 font-semibold text-foreground hover:text-primary cursor-pointer transition"
+                  className="p-3.5 font-semibold text-foreground hover:text-primary cursor-pointer transition text-sm"
                   onClick={() => openEventPage(conf, 'conference', 'details', 'view')}
                   title="Click to view conference details"
                 >
                   {conf.title}
                 </td>
-                <td className="p-4 text-xs text-muted-foreground">{conf.venue || conf.venueDetails?.name || conf.location || '—'}</td>
-                <td className="p-4 text-xs font-semibold text-accent">{conf.mentorName || conf.assignedMentor || '—'}</td>
-                <td className="p-4 capitalize">
+                <td className="p-3.5 text-xs text-muted-foreground">{conf.venue || conf.venueDetails?.name || conf.location || '—'}</td>
+                <td className="p-3.5 text-xs font-semibold text-accent">{conf.mentorName || conf.assignedMentor || '—'}</td>
+                <td className="p-3.5 capitalize">
                   {(() => {
                     const status = conf.date || (conf.eventDate && new Date(conf.eventDate).getTime() < Date.now() ? 'past' : 'upcoming');
                     return (
@@ -67,7 +67,7 @@ export function ConferencesTab() {
                     );
                   })()}
                 </td>
-                <td className="p-4 text-right relative">
+                <td className="p-3.5 text-right relative">
                   <div className="flex items-center justify-end gap-1">
                     {subdomainUrlFor(conf) && (
                       <a
@@ -106,7 +106,7 @@ export function ConferencesTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-muted-foreground">No conferences managed yet.</td>
+                <td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No conferences managed yet.</td>
               </tr>
             )}
           </tbody>

@@ -71,8 +71,28 @@ interface OrganizerContact {
 }
 
 interface DashboardStats {
-  counts: { conferences: number; blogs: number; registrations: number; abstracts: number; confUpcoming: number; confPast: number };
-  revenue: { total: number; paidOrders: number; totalOrders: number };
+  counts: {
+    conferences: number;
+    blogs: number;
+    registrations: number;
+    abstracts: number;
+    confUpcoming: number;
+    confPast: number;
+    venues?: number;
+    mentors?: number;
+  };
+  revenue: {
+    total: number;
+    paidOrders: number;
+    totalOrders: number;
+    currencies?: {
+      currency: string;
+      symbol: string;
+      label: string;
+      amount: number;
+      count: number;
+    }[];
+  };
   registrations: { paid: number; unpaid: number; pending: number };
   monthly: { conferences: { _id: number; count: number }[] };
   yearly: { conferences: { _id: number; count: number }[] };

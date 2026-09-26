@@ -1,7 +1,21 @@
 import { useAppStore } from '@/store/app-store';
-import { CalendarDays, Users, TrendingUp, FileText, CheckCircle2, Clock, XCircle, BarChart3 } from 'lucide-react';
+import {
+  CalendarDays,
+  FileText,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  GraduationCap,
+  Coins,
+} from 'lucide-react';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const CURRENCY_CONFIG = [
+  { currency: 'USD', symbol: '$', label: 'US Dollar', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' },
+  { currency: 'EUR', symbol: '€', label: 'Euro', color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20' },
+  { currency: 'GBP', symbol: '£', label: 'British Pound', color: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20' },
+];
 
 function BarChart({ data, maxVal }: { data: { label: string; conf: number }[]; maxVal: number }) {
   const scale = maxVal > 0 ? 100 / maxVal : 0;
@@ -56,9 +70,9 @@ function YearChart({ data }: { data: { year: number; conf: number }[] }) {
 
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string | number; sub?: string; color: string }) {
   return (
-    <div className="bg-background border border-foreground/10 rounded-xl p-5 flex items-start gap-4">
-      <div className={`p-2.5 rounded-lg ${color} shrink-0`}>
-        <Icon size={20} />
+    <div className="bg-background border border-foreground/10 rounded-xl p-4 sm:p-5 flex items-start gap-3.5 shadow-xs">
+      <div className={`p-2.5 rounded-xl ${color} shrink-0`}>
+        <Icon size={18} />
       </div>
       <div className="min-w-0">
         <div className="text-2xl font-bold tracking-tight">{value}</div>
@@ -70,21 +84,33 @@ function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: 
 }
 
 export function OverviewTab() {
-  const { user, dashboardStats } = useAppStore();
+  const { user, dashboardStats, venues, mentors } = useAppStore();
   const c = dashboardStats?.counts;
-  const r = dashboardStats?.recent;
   const rev = dashboardStats?.revenue;
-  const reg = dashboardStats?.registrations;
   const monthly = dashboardStats?.monthly;
   const yearly = dashboardStats?.yearly;
 
   if (!dashboardStats) {
-    return <div className="p-8 text-muted-foreground">Loading dashboard...</div>;
+    return <div className="p-8 text-sm text-muted-foreground">Loading dashboard...</div>;
   }
 
-  const totalEvents = (c?.conferences ?? 0);
-  const totalUpcoming = (c?.confUpcoming ?? 0);
-  const totalCompleted = (c?.confPast ?? 0);
+  const totalEvents = c?.conferences ?? 0;
+  const totalUpcoming = c?.confUpcoming ?? 0;
+  const totalCompleted = c?.confPast ?? 0;
+  const totalBlogs = c?.blogs ?? 0;
+  const totalVenues = c?.venues !== undefined ? c.venues : (venues?.length ?? 0);
+  const totalMentors = c?.mentors !== undefined ? c.mentors : (mentors?.length ?? 0);
+
+  const currenciesData = CURRENCY_CONFIG.map((cConfig) => {
+    const found = (rev?.currencies || []).find((curr: any) => curr.currency === cConfig.currency);
+    return {
+      ...cConfig,
+      amount: found?.amount ?? 0,
+      count: found?.count ?? 0,
+    };
+  });
+
+  const totalPaidOrders = currenciesData.reduce((sum, item) => sum + item.count, 0);
 
   // Build monthly chart data
   const currentYear = new Date().getFullYear();
@@ -112,147 +138,156 @@ export function OverviewTab() {
         </h1>
         <p className="text-sm text-muted-foreground">
           {user?.role === 'admin'
-            ? 'Here is your platform-wide analytics and activity overview.'
+            ? 'Here is your platform-wide analytics and conferences overview.'
             : 'Here is the summary of your conferences and blogs.'}
         </p>
       </div>
 
-      {/* Key Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Key Counts Stats: Conferences, Upcoming, Completed, Blogs, Venues, Mentors */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard
           icon={CalendarDays}
-          label="Total Conferences"
-          value={c?.conferences ?? 0}
-          sub={`${c?.confUpcoming ?? 0} upcoming · ${c?.confPast ?? 0} past`}
+          label="Conferences"
+          value={totalEvents}
           color="bg-primary/10 text-primary"
         />
         <StatCard
-          icon={Users}
-          label="Registrations"
-          value={c?.registrations ?? 0}
-          sub={`${reg?.paid ?? 0} paid · ${reg?.unpaid ?? 0} unpaid`}
-          color="bg-emerald-500/10 text-emerald-500"
+          icon={Clock}
+          label="Upcoming"
+          value={totalUpcoming}
+          color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
         />
         <StatCard
-          icon={TrendingUp}
-          label="Revenue"
-          value={`₹${(rev?.total ?? 0).toLocaleString('en-IN')}`}
-          sub={`${rev?.paidOrders ?? 0} paid orders`}
-          color="bg-amber-500/10 text-amber-500"
+          icon={CheckCircle2}
+          label="Completed"
+          value={totalCompleted}
+          color="bg-blue-500/10 text-blue-600 dark:text-blue-400"
         />
         <StatCard
           icon={FileText}
-          label="Content"
-          value={(c?.blogs ?? 0) + (c?.abstracts ?? 0)}
-          sub={`${c?.blogs ?? 0} blogs · ${c?.abstracts ?? 0} abstracts`}
+          label="Blogs"
+          value={totalBlogs}
           color="bg-violet-500/10 text-violet-500"
+        />
+        <StatCard
+          icon={MapPin}
+          label="Venues"
+          value={totalVenues}
+          color="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        />
+        <StatCard
+          icon={GraduationCap}
+          label="Mentors"
+          value={totalMentors}
+          color="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
         />
       </div>
 
-      {/* Upcoming / Completed / Registration Status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-background border border-foreground/10 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 size={16} className="text-green-500" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status Breakdown</span>
+      {/* Revenue Breakdown by Currency (USD, EUR, GBP) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Coins size={16} className="text-primary" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Revenue Breakdown by Currency
+            </h2>
           </div>
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Upcoming Events</span>
-              <span className="text-sm font-bold text-green-500">{totalUpcoming}</span>
-            </div>
-            <div className="w-full bg-foreground/5 rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${totalEvents > 0 ? (totalUpcoming / totalEvents) * 100 : 0}%` }} />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Completed Events</span>
-              <span className="text-sm font-bold text-muted-foreground">{totalCompleted}</span>
-            </div>
-            <div className="w-full bg-foreground/5 rounded-full h-2">
-              <div className="bg-muted-foreground h-2 rounded-full transition-all" style={{ width: `${totalEvents > 0 ? (totalCompleted / totalEvents) * 100 : 0}%` }} />
-            </div>
-          </div>
+          <span className="text-xs font-semibold text-muted-foreground">
+            {totalPaidOrders} total paid orders
+          </span>
         </div>
 
-        <div className="bg-background border border-foreground/10 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <BarChart3 size={16} className="text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Registration Status</span>
-          </div>
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-sm text-muted-foreground">Paid</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {currenciesData.map((curr) => (
+            <div
+              key={curr.currency}
+              className="bg-background border border-foreground/10 rounded-xl p-5 flex items-center justify-between shadow-xs hover:border-foreground/20 transition"
+            >
+              <div className="space-y-1">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  {curr.currency} ({curr.label})
+                </div>
+                <div className="text-2xl font-black tracking-tight text-foreground">
+                  {curr.symbol}
+                  {curr.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[11px] font-medium text-muted-foreground">
+                  {curr.count} paid order{curr.count !== 1 ? 's' : ''}
+                </div>
               </div>
-              <span className="text-sm font-bold">{reg?.paid ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-sm text-muted-foreground">Pending</span>
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 ${curr.color}`}>
+                {curr.symbol}
               </div>
-              <span className="text-sm font-bold">{reg?.pending ?? 0}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500" />
-                <span className="text-sm text-muted-foreground">Unpaid</span>
-              </div>
-              <span className="text-sm font-bold">{reg?.unpaid ?? 0}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-background border border-foreground/10 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp size={16} className="text-amber-500" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Financial Summary</span>
-          </div>
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total Revenue</span>
-              <span className="text-sm font-bold text-green-500">₹{(rev?.total ?? 0).toLocaleString('en-IN')}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Paid Orders</span>
-              <span className="text-sm font-bold">{rev?.paidOrders ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total Orders</span>
-              <span className="text-sm font-bold">{rev?.totalOrders ?? 0}</span>
-            </div>
-            <div className="w-full bg-foreground/5 rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(rev?.totalOrders ?? 0) > 0 ? ((rev?.paidOrders ?? 0) / (rev?.totalOrders ?? 1)) * 100 : 0}%` }} />
-            </div>
-            <div className="text-[10px] text-muted-foreground text-right">
-              {((rev?.totalOrders ?? 0) > 0 ? ((rev?.paidOrders ?? 0) / (rev?.totalOrders ?? 1)) * 100 : 0).toFixed(0)}% conversion rate
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Status Breakdown & Growth Charts Full View */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Status Breakdown */}
+        <div className="bg-background border border-foreground/10 rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-500" />
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conference Status</span>
+          </div>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground font-medium">Upcoming Events</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{totalUpcoming}</span>
+              </div>
+              <div className="w-full bg-foreground/5 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-full rounded-full transition-all"
+                  style={{ width: `${totalEvents > 0 ? (totalUpcoming / totalEvents) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground font-medium">Completed Events</span>
+                <span className="font-bold text-muted-foreground">{totalCompleted}</span>
+              </div>
+              <div className="w-full bg-foreground/5 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-muted-foreground/60 h-full rounded-full transition-all"
+                  style={{ width: `${totalEvents > 0 ? (totalCompleted / totalEvents) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-foreground/5 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Total Tracked</span>
+              <span className="font-bold text-foreground">{totalEvents} Events</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Events Chart */}
         <div className="bg-background border border-foreground/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Monthly Events — {currentYear}
             </span>
-            <div className="flex items-center gap-3 text-[10px]">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-primary/80" />Conferences</span>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <span className="w-2 h-2 rounded-sm bg-primary/80" />
+              <span>Conferences</span>
             </div>
           </div>
           <BarChart data={monthlyData} maxVal={maxMonthly} />
         </div>
 
+        {/* Year-wise Growth Chart */}
         <div className="bg-background border border-foreground/10 rounded-xl p-5">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Year-wise Growth
             </span>
-            <div className="flex items-center gap-3 text-[10px]">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-primary/80" />Conferences</span>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <span className="w-2 h-2 rounded-sm bg-primary/80" />
+              <span>Conferences</span>
             </div>
           </div>
           {yearData.length > 0 ? (
@@ -262,51 +297,6 @@ export function OverviewTab() {
           )}
         </div>
       </div>
-
-      {/* Recent Activity */}
-      {user?.role === 'admin' && r && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-background border border-foreground/10 rounded-xl p-5">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent Registrations</span>
-              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">{c?.registrations ?? 0} total</span>
-            </div>
-            <div className="space-y-0">
-              {r.registrations.length === 0 && <p className="text-xs text-muted-foreground py-4 text-center">No registrations yet.</p>}
-              {r.registrations.map((reg: any) => (
-                <div key={reg._id} className="flex justify-between items-center py-2.5 border-b border-foreground/5 last:border-0">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{reg.name}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{reg.email}</div>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0 ml-3">{reg.country}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-background border border-foreground/10 rounded-xl p-5">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent Abstracts</span>
-              <span className="text-[10px] bg-violet-500/10 text-violet-500 px-2 py-0.5 rounded-full font-bold">{c?.abstracts ?? 0} total</span>
-            </div>
-            <div className="space-y-0">
-              {r.abstracts.length === 0 && <p className="text-xs text-muted-foreground py-4 text-center">No abstracts submitted yet.</p>}
-              {r.abstracts.map((abs: any) => (
-                <div key={abs._id} className="flex justify-between items-center py-2.5 border-b border-foreground/5 last:border-0">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{abs.name}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{abs.email} · {abs.track}</div>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0 ml-3">
-                    {new Date(abs.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

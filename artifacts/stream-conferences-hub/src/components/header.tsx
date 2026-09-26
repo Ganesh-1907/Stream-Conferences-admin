@@ -95,25 +95,25 @@ export function Header() {
           <img
             src="/logo-dark.png"
             alt="Stream Conferences"
-            className="h-10 sm:h-11 md:h-12 w-auto object-contain block dark:hidden"
+            className="h-10 sm:h-11 w-auto object-contain block dark:hidden"
           />
           <img
             src="/logo.png"
             alt="Stream Conferences"
-            className="h-10 sm:h-11 md:h-12 w-auto object-contain hidden dark:block"
+            className="h-10 sm:h-11 w-auto object-contain hidden dark:block"
           />
         </div>
 
         {/* Top Navigation Links with Underline Indicator */}
-        <nav className="flex items-center h-full gap-1 sm:gap-2">
+        <nav className="flex items-center h-full gap-1 sm:gap-3">
           {/* Overview */}
           <button
             type="button"
             onClick={() => handleNavClick('overview')}
-            className={`relative h-16 flex items-center px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
+            className={`relative h-16 flex items-center px-3.5 text-sm sm:text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
               isOverviewActive
                 ? 'text-primary font-bold'
-                : 'text-muted-foreground hover:text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground font-semibold'
             }`}
           >
             <span>Overview</span>
@@ -126,10 +126,10 @@ export function Header() {
           <button
             type="button"
             onClick={() => handleNavClick('conferences')}
-            className={`relative h-16 flex items-center px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
+            className={`relative h-16 flex items-center px-3.5 text-sm sm:text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
               isConferencesActive
                 ? 'text-primary font-bold'
-                : 'text-muted-foreground hover:text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground font-semibold'
             }`}
           >
             <span>Conferences</span>
@@ -142,10 +142,10 @@ export function Header() {
           <button
             type="button"
             onClick={() => handleNavClick('blogs')}
-            className={`relative h-16 flex items-center px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
+            className={`relative h-16 flex items-center px-3.5 text-sm sm:text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
               isBlogsActive
                 ? 'text-primary font-bold'
-                : 'text-muted-foreground hover:text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground font-semibold'
             }`}
           >
             <span>Blogs</span>
@@ -159,13 +159,13 @@ export function Header() {
             <button
               type="button"
               onClick={() => handleNavClick('liveChat')}
-            className={`relative h-16 flex items-center px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
-              isLiveChatActive
-                ? 'text-primary font-bold'
-                : 'text-muted-foreground hover:text-foreground font-medium'
-            }`}
-          >
-            <span>Live Chat</span>
+              className={`relative h-16 flex items-center px-3.5 text-sm sm:text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
+                isLiveChatActive
+                  ? 'text-primary font-bold'
+                  : 'text-muted-foreground hover:text-foreground font-semibold'
+              }`}
+            >
+              <span>Live Chat</span>
               {isLiveChatActive && (
                 <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-primary rounded-t-sm" />
               )}
@@ -177,10 +177,10 @@ export function Header() {
             <button
               type="button"
               onClick={() => handleNavClick('userWebsite')}
-              className={`relative h-16 flex items-center px-3.5 text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
+              className={`relative h-16 flex items-center px-3.5 text-sm sm:text-[15px] transition-colors whitespace-nowrap cursor-pointer ${
                 isUserWebsiteActive
                   ? 'text-primary font-bold'
-                  : 'text-muted-foreground hover:text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground font-semibold'
               }`}
             >
               <span>User Website</span>
@@ -192,9 +192,9 @@ export function Header() {
         </nav>
 
         {/* User Actions: Role Badge, Dark/Light Mode Switcher & User Profile Dropdown */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           {/* User Role Badge */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-foreground/5 border border-foreground/10 select-none">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-foreground/5 border border-foreground/10 select-none">
             <span
               className={`w-2 h-2 rounded-full ${
                 user?.role === 'admin' ? 'bg-primary' : 'bg-emerald-500'
@@ -250,7 +250,7 @@ export function Header() {
                       setUserMenuOpen(false);
                       handleLogout();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg transition cursor-pointer"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg transition cursor-pointer"
                   >
                     <LogOut size={15} />
                     <span>Sign Out / Log Out</span>

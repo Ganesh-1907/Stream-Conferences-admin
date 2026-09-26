@@ -2,9 +2,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-/* Default font for the admin panel */
-body {
-  font-family: 'Times New Roman', Times, serif;
+/* Global typography and scale for the entire admin panel */
+*, *::before, *::after {
+  font-family: 'Times New Roman', Times, serif !important;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
 }
 @plugin "@tailwindcss/typography";
 
@@ -33,23 +38,23 @@ body {
   --radius-xl: 1.35rem;
 }
 :root {
-  --background: 210 40% 98%;
+  --background: 40 33% 98%;
   --foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  --border: 38 20% 89%;
+  --input: 38 20% 89%;
   --ring: 226 70% 50%;
-  --card: 0 0% 100%;
+  --card: 40 33% 98%;
   --card-foreground: 222 47% 11%;
   --primary: 226 70% 50%;
   --primary-foreground: 0 0% 100%;
   --secondary: 226 70% 50%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 210 40% 96.1%;
+  --muted: 40 25% 94%;
   --muted-foreground: 215.4 16.3% 46.9%;
   --accent: 28 96% 56%;
   --accent-foreground: 222 47% 11%;
   --destructive: 0 84.2% 60.2%;
-  --app-font-sans: 'DM Sans', ui-sans-serif, sans-serif;
+  --app-font-sans: 'Times New Roman', Times, serif;
   --app-font-mono: 'Space Grotesk', ui-monospace, monospace;
   --radius: 0.75rem;
 }
@@ -75,9 +80,9 @@ body {
 
 @layer base {
   * { @apply border-border; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; font-size: 16px; }
   body { @apply font-sans antialiased bg-background text-foreground; margin: 0; }
-  button, a, input, select { font: inherit; }
+  button, a, input, select, textarea { font: inherit; }
   button { cursor: pointer; }
 }
 

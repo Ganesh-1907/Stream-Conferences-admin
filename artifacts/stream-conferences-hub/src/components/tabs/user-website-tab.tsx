@@ -1,15 +1,13 @@
-import { Share2, Handshake, Building2, UserPlus, Globe, Image as ImageIcon, FileText, FileCheck } from 'lucide-react';
+import { Building2, UserPlus, Globe, Image as ImageIcon, FileText, FileCheck } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { Tab } from '@/lib/types';
-import { MediaPartnersTab } from './media-partners-tab';
-import { CollaboratorsTab } from './collaborators-tab';
 import { VenuesTab } from './venues-tab';
 import { MentorsTab } from './mentors-tab';
 import { GalleryTab } from './gallery-tab';
 import { BrochureTab } from './brochure-tab';
 import { AbstractTemplateTab } from './abstract-template-tab';
 
-type SubTabId = 'mediaPartners' | 'collaborators' | 'venues' | 'mentors' | 'gallery' | 'brochure' | 'abstractTemplate';
+type SubTabId = 'gallery' | 'brochure' | 'abstractTemplate' | 'venues' | 'mentors';
 
 interface SubNavItem {
   id: SubTabId;
@@ -19,16 +17,6 @@ interface SubNavItem {
 }
 
 const SUB_NAV_ITEMS: SubNavItem[] = [
-  {
-    id: 'mediaPartners',
-    label: 'Media Partners',
-    icon: Share2,
-  },
-  {
-    id: 'collaborators',
-    label: 'Collaborators',
-    icon: Handshake,
-  },
   {
     id: 'gallery',
     label: 'Gallery',
@@ -65,9 +53,9 @@ export function UserWebsiteTab() {
 
   // Determine current active sub-tab
   const currentSubTab: SubTabId =
-    activeTab === 'collaborators' || activeTab === 'venues' || activeTab === 'mentors' || activeTab === 'gallery' || activeTab === 'brochure' || activeTab === 'abstractTemplate'
-      ? activeTab
-      : 'mediaPartners';
+    activeTab === 'venues' || activeTab === 'mentors' || activeTab === 'brochure' || activeTab === 'abstractTemplate'
+      ? (activeTab as SubTabId)
+      : 'gallery';
 
   const handleSelectTab = (id: SubTabId) => {
     goToTab(id as Tab);
@@ -114,8 +102,6 @@ export function UserWebsiteTab() {
 
         {/* Right Active Sub-Tab View Content */}
         <div className="bg-background border border-foreground/10 rounded-xl p-6 shadow-xs min-h-[500px]">
-          {currentSubTab === 'mediaPartners' && <MediaPartnersTab />}
-          {currentSubTab === 'collaborators' && <CollaboratorsTab />}
           {currentSubTab === 'gallery' && <GalleryTab />}
           {currentSubTab === 'brochure' && <BrochureTab />}
           {currentSubTab === 'abstractTemplate' && <AbstractTemplateTab />}
