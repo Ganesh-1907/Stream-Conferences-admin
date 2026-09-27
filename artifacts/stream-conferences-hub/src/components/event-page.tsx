@@ -3,7 +3,7 @@ import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { useAppStore } from '@/store/app-store';
 import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage, formatTime12h } from '@/lib/utils';
 import { API_BASE } from '@/lib/constants';
-import { EventPageTab, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem } from '@/lib/types';
+import { EventPageTab, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem, AccommodationFeeItem } from '@/lib/types';
 import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
 import { FileUploadCard } from '@/components/file-upload-card';
@@ -1411,7 +1411,14 @@ function ParticipantsTab() {
                     {p.phone && <div className="text-muted-foreground">{p.phone}</div>}
                   </td>
                   <td className="p-4 text-xs">{p.country}</td>
-                  <td className="p-4 text-xs font-bold text-accent">{p.category}</td>
+                  <td className="p-4 text-xs">
+                    <div className="font-bold text-accent">{p.category}</div>
+                    {p.accommodation && (
+                      <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
+                        🏨 {p.accommodation}
+                      </div>
+                    )}
+                  </td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${(p.paymentStatus || 'unpaid') === 'paid' ? 'bg-green-500/10 text-green-500' : (p.paymentStatus || 'unpaid') === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-foreground/10 text-muted-foreground'}`}>
                       {p.paymentStatus || 'unpaid'}
@@ -1467,8 +1474,18 @@ function PaymentsTab() {
                 <tr key={o._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                   <td className="p-4 font-mono text-xs text-muted-foreground">{o.orderId}</td>
                   <td className="p-4 font-semibold">{o.title ? `${o.title} ${o.fullName || o.name}` : (o.fullName || o.name)}</td>
-                  <td className="p-4 text-xs font-bold text-accent">{o.category}</td>
-                  <td className="p-4 font-mono font-semibold">₹{(o.amount / 100).toFixed(2)}</td>
+                  <td className="p-4 text-xs">
+                    <div className="font-bold text-accent">{o.category}</div>
+                    {(o as any).accommodation && (
+                      <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
+                        🏨 {(o as any).accommodation}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-4 font-mono font-semibold">
+                    {o.currency === 'USD' ? '$' : o.currency === 'EUR' ? '€' : o.currency === 'GBP' ? '£' : (o.currency || '₹')}
+                    {(o.amount / 100).toFixed(2)}
+                  </td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       o.status === 'paid' ? 'bg-green-500/10 text-green-500' :
@@ -3443,15 +3460,35 @@ function FeesTab() {
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Accommodation Fee State (Global box independent of deadlines)
+  const rawAccFees = (eventPage as any)?.accommodationFees;
+  const initialAccFees = useMemo<AccommodationFeeItem[]>(() => {
+    if (!rawAccFees || !Array.isArray(rawAccFees)) return [];
+    return rawAccFees.map((item: any, idx: number) => ({
+      id: item.id || `acc_${idx}_${Date.now()}`,
+      title: item.title || item.name || '',
+      usd: Number(item.usd ?? item.USD ?? 0),
+      gbp: Number(item.gbp ?? item.GBP ?? 0),
+      eur: Number(item.eur ?? item.EUR ?? 0),
+    }));
+  }, [rawAccFees]);
+
+  const [accFees, setAccFees] = useState<AccommodationFeeItem[]>(initialAccFees);
+
   useEffect(() => {
     setDeadlines(initialDeadlines);
   }, [initialDeadlines]);
+
+  useEffect(() => {
+    setAccFees(initialAccFees);
+  }, [initialAccFees]);
 
   const handleSaveFees = async () => {
     setSaving(true);
     setSavedSuccess(false);
     try {
       await updateEventField('fees', deadlines);
+      await updateEventField('accommodationFees', accFees);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err) {
@@ -3459,6 +3496,39 @@ function FeesTab() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addAccommodationFeeRow = () => {
+    setAccFees(prev => [
+      ...prev,
+      {
+        id: `acc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: '',
+        usd: 0,
+        gbp: 0,
+        eur: 0
+      }
+    ]);
+  };
+
+  const deleteAccommodationFeeRow = (index: number) => {
+    setAccFees(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateAccFeeTitle = (index: number, val: string) => {
+    setAccFees(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], title: val };
+      return next;
+    });
+  };
+
+  const updateAccFeePrice = (index: number, curr: 'usd' | 'gbp' | 'eur', val: number) => {
+    setAccFees(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [curr]: val };
+      return next;
+    });
   };
 
   const addDeadlineBlock = () => {
@@ -3968,6 +4038,116 @@ function FeesTab() {
           </table>
         </div>
       )}
+
+      {/* ============ ACCOMMODATION FEE SECTION ============ */}
+      <div className="bg-card border border-foreground/10 rounded-2xl shadow-xs overflow-hidden mt-8">
+        <div className="bg-slate-900 text-slate-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
+                Global Add-On
+              </span>
+              <h4 className="text-base font-bold text-white tracking-tight">Accommodation Fee</h4>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Independent global accommodation options (e.g. Single Occupancy, 2 Sharing, 3 Sharing). Deadline: Valid until registration closes (day before conference start date).
+            </p>
+          </div>
+
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={addAccommodationFeeRow}
+              className="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-center"
+            >
+              <Plus size={14} /> Add Accommodation Level
+            </button>
+          )}
+        </div>
+
+        <div className="p-5 bg-card">
+          {accFees.length === 0 ? (
+            <div className="border border-dashed border-foreground/15 rounded-xl p-8 text-center text-xs text-muted-foreground bg-muted/10 space-y-2">
+              <p className="font-semibold text-foreground/80">No accommodation fee levels added yet.</p>
+              <p>Add accommodation tiers such as "Single Occupancy", "2 Sharing", "3 Sharing" with USD, GBP, and EUR pricing.</p>
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={addAccommodationFeeRow}
+                  className="mt-2 px-3.5 py-1.5 bg-primary text-primary-foreground rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-xs hover:bg-primary/90 transition cursor-pointer"
+                >
+                  <Plus size={14} /> Add First Accommodation Level
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto border border-foreground/10 rounded-xl bg-background">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-muted/40 text-muted-foreground font-semibold border-b border-foreground/10 text-xs">
+                    <th className="p-3.5 pl-4 font-bold uppercase tracking-wider">Accommodation Level / Title</th>
+                    <th className="p-3.5 text-center font-bold uppercase tracking-wider w-[18%]">USD ($)</th>
+                    <th className="p-3.5 text-center font-bold uppercase tracking-wider w-[18%]">GBP (£)</th>
+                    <th className="p-3.5 text-center font-bold uppercase tracking-wider w-[18%]">EUR (€)</th>
+                    {isEditMode && <th className="p-3.5 text-center font-bold uppercase tracking-wider w-[12%]">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {accFees.map((row, idx) => (
+                    <tr key={row.id || idx} className="border-b border-foreground/5 last:border-0 hover:bg-foreground/[0.015] transition">
+                      <td className="p-2.5 pl-4">
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={row.title}
+                            onChange={e => updateAccFeeTitle(idx, e.target.value)}
+                            placeholder="e.g. 2 Sharing (Double Room) or Single Occupancy"
+                            className="w-full px-3 py-1.5 bg-background border border-foreground/15 rounded-lg text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        ) : (
+                          <div className="text-xs font-bold text-foreground">{row.title || 'Untitled Level'}</div>
+                        )}
+                      </td>
+
+                      {(['usd', 'gbp', 'eur'] as const).map(curr => (
+                        <td key={curr} className="p-2.5 text-center">
+                          {isEditMode ? (
+                            <input
+                              type="number"
+                              min={0}
+                              value={row[curr] === 0 && !row.title ? '' : (row[curr] || '')}
+                              onChange={e => updateAccFeePrice(idx, curr, parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full px-3 py-1.5 bg-background border border-foreground/15 rounded-lg text-xs text-center font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                          ) : (
+                            <span className="text-xs font-mono font-semibold text-foreground">
+                              {curr === 'usd' ? '$' : curr === 'gbp' ? '£' : '€'}{row[curr] ?? 0}
+                            </span>
+                          )}
+                        </td>
+                      ))}
+
+                      {isEditMode && (
+                        <td className="p-2.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => deleteAccommodationFeeRow(idx)}
+                            title="Delete Accommodation Level"
+                            className="w-7 h-7 rounded-lg text-red-500 hover:bg-red-500/10 inline-flex items-center justify-center transition cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -40,19 +40,51 @@ export function ParticipantModal() {
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Country</dt><dd className="font-semibold text-right">{viewingParticipant.country || '—'}</dd></div>
               {viewingParticipant.address && <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Address</dt><dd className="font-semibold text-right max-w-[200px] break-words">{viewingParticipant.address}</dd></div>}
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Category</dt><dd className="font-semibold text-right text-accent">{viewingParticipant.category}</dd></div>
+              {viewingParticipant.accommodation && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Accommodation</dt>
+                  <dd className="font-semibold text-right text-amber-600 dark:text-amber-400">
+                    {viewingParticipant.accommodation}
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
           <div className="bg-muted/20 border border-foreground/5 rounded-xl p-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Status</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Payment & Fee Details</h4>
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Payment</dt>
+                <dt className="text-muted-foreground">Payment Status</dt>
                 <dd>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${(viewingParticipant.paymentStatus || 'unpaid') === 'paid' ? 'bg-green-500/10 text-green-500' : (viewingParticipant.paymentStatus || 'unpaid') === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-foreground/10 text-muted-foreground'}`}>
                     {viewingParticipant.paymentStatus || 'unpaid'}
                   </span>
                 </dd>
               </div>
+              {viewingParticipant.registrationFee !== undefined && viewingParticipant.registrationFee > 0 && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Registration Fee</dt>
+                  <dd className="font-semibold text-right">
+                    {viewingParticipant.currency === 'EUR' ? '€' : viewingParticipant.currency === 'GBP' ? '£' : '$'}{viewingParticipant.registrationFee}
+                  </dd>
+                </div>
+              )}
+              {viewingParticipant.accommodationFee !== undefined && viewingParticipant.accommodationFee > 0 && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Accommodation Fee</dt>
+                  <dd className="font-semibold text-right text-amber-600 dark:text-amber-400">
+                    {viewingParticipant.currency === 'EUR' ? '€' : viewingParticipant.currency === 'GBP' ? '£' : '$'}{viewingParticipant.accommodationFee}
+                  </dd>
+                </div>
+              )}
+              {viewingParticipant.totalAmount !== undefined && viewingParticipant.totalAmount > 0 && (
+                <div className="flex justify-between gap-2 border-t border-foreground/10 pt-1.5">
+                  <dt className="text-muted-foreground font-bold">Total Amount</dt>
+                  <dd className="font-black text-right text-primary">
+                    {viewingParticipant.currency === 'EUR' ? '€' : viewingParticipant.currency === 'GBP' ? '£' : '$'}{viewingParticipant.totalAmount}
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Presenting Abstract</dt><dd className="font-semibold text-right">{viewingParticipant.presentingAbstract || 'No'}</dd></div>
               <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Registered On</dt><dd className="font-semibold text-right">{new Date(viewingParticipant.createdAt).toLocaleDateString()}</dd></div>
             </dl>

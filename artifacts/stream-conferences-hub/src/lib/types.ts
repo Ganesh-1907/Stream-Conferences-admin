@@ -220,6 +220,14 @@ export interface FeeEntry {
   eur: number;
 }
 
+export interface AccommodationFeeItem {
+  id?: string;
+  title: string;
+  usd: number;
+  gbp: number;
+  eur: number;
+}
+
 export type FeeGroup = {
   type: string;
   rows: FeeEntry[];
@@ -288,6 +296,7 @@ export interface Conference {
   currentCohort?: CourseCohort | null;
   cohorts?: CourseCohort[];
   fees?: any;
+  accommodationFees?: AccommodationFeeItem[];
   exhibitors?: any[];
   themeColor?: string;
   heroThemeColor?: string;
@@ -323,6 +332,11 @@ export interface Registration {
   address?: string;
   country: string;
   category: string;
+  accommodation?: string;
+  accommodationFee?: number;
+  registrationFee?: number;
+  totalAmount?: number;
+  currency?: string;
   presentingAbstract: string;
   paymentStatus?: 'unpaid' | 'paid' | 'pending';
   eventId?: string;
