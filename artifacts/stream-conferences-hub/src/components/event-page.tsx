@@ -4174,6 +4174,7 @@ function OrganizerContactTab() {
   });
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const mentorTouchedRef = useRef(false);
 
   useEffect(() => {
     const c = (eventPage as any)?.organizerContact || {};
@@ -4191,10 +4192,12 @@ function OrganizerContactTab() {
       youtube: (eventPage as any)?.socialLinks?.youtube || '',
     });
     setSelectedMentor(c.name || '');
+    mentorTouchedRef.current = false;
   }, [eventPage]);
 
   const handleMentorSelect = (mentorName: string) => {
     setSelectedMentor(mentorName);
+    mentorTouchedRef.current = true;
     const mentor = mentors.find((m: any) => m.fullName === mentorName || m.username === mentorName);
     if (mentor) {
       setForm((p) => ({
@@ -4208,11 +4211,16 @@ function OrganizerContactTab() {
 
   const handleSave = async () => {
     setSaving(true);
+    const mentorMatch = mentorTouchedRef.current
+      ? mentors.find((m: any) => m.fullName === selectedMentor || m.username === selectedMentor)
+      : null;
     await updateEventFields({
       organizerContact: form,
       socialLinks: socials,
       country: form.country,
+      ...(mentorMatch?.username ? { assignedMentor: mentorMatch.username } : {}),
     });
+    mentorTouchedRef.current = false;
     setSaving(false);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
