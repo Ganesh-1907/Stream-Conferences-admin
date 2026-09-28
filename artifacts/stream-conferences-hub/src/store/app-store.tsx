@@ -129,6 +129,7 @@ interface AppStoreValue {
   closeEventPage: () => void;
   updateEventField: (field: string, value: any) => void;
   updateEventFields: (fields: Record<string, any>) => Promise<boolean>;
+  eventSaveError: string;
   eventCohortId: string | null;
   activeCohort: CourseCohort | null;
   openCohortTab: (cohort: CourseCohort, tab: EventPageTab) => void;
@@ -715,6 +716,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [eventBrochureLeads, setEventBrochureLeads] = useState<BrochureLead[]>([]);
   const [eventBrochureLeadsLoading, setEventBrochureLeadsLoading] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Conference | null>(null);
+  const [eventSaveError, setEventSaveError] = useState('');
   const [currentEventLoading, setCurrentEventLoading] = useState(false);
   const [abstractActionLoading, setAbstractActionLoading] = useState<string | null>(null);
   const [eventCohorts, setEventCohorts] = useState<CourseCohort[]>([]);
@@ -997,11 +999,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const updateEventFields = async (fields: Record<string, any>): Promise<boolean> => {
     if (!eventPage || !eventPageType) return false;
+    setEventSaveError('');
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'x-user-role': user?.role || '',
       'x-user-name': user?.username || '',
+    };
+
+    const failWith = async (res: Response): Promise<false> => {
+      try {
+        const data = await res.json();
+        setEventSaveError(data?.error || data?.message || `Save failed (HTTP ${res.status})`);
+      } catch {
+        setEventSaveError(`Save failed (HTTP ${res.status})`);
+      }
+      return false;
     };
 
     if (activeCohort) {
@@ -1016,8 +1029,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           await loadCohorts();
           return true;
         }
+        return failWith(res);
       } catch (error) {
         console.error('Failed to update cohort fields:', error);
+        setEventSaveError('Network error — please try again.');
       }
       return false;
     }
@@ -1038,9 +1053,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           navigate(`/${eventPageType}/${parentId}/cohorts`);
           return true;
         }
-        return false;
+        return failWith(res);
       } catch (err) {
         console.error('Failed to create cohort under parent:', err);
+        setEventSaveError('Network error — please try again.');
         return false;
       }
     }
@@ -1065,9 +1081,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }
         return true;
       }
-      return false;
+      return failWith(res);
     } catch (error) {
       console.error('Failed to update event fields:', error);
+      setEventSaveError('Network error — please try again.');
       return false;
     }
   };
@@ -3123,6 +3140,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     closeEventPage,
     updateEventField,
     updateEventFields,
+    eventSaveError,
     eventCohortId,
     activeCohort,
     openCohortTab,

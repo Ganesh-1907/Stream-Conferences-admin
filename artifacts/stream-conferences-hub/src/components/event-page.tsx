@@ -20,7 +20,7 @@ import {
   FileCheck, MessageSquare, Download, GraduationCap,
   Mic, Layers, CalendarDays, Clock, Image as ImageIcon,
   HelpCircle, Handshake, ShieldAlert, Phone, Users2, MapPin, Building2, Search,
-  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Save, UploadCloud, Edit
+  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Save, UploadCloud, Edit, AlertCircle
 } from 'lucide-react';
 
 interface SubtabItem {
@@ -719,7 +719,7 @@ function OverviewTab() {
 }
 
 function DetailsTab() {
-  const { eventPage, eventPageType, eventPageMode, updateEventFields, user, openImagePreview } = useAppStore();
+  const { eventPage, eventPageType, eventPageMode, updateEventFields, user, openImagePreview, eventSaveError } = useAppStore();
   const [formData, setFormData] = useState({
     title: eventPage?.title || '',
     theme: eventPage?.theme || '',
@@ -765,8 +765,6 @@ function DetailsTab() {
     if (ok) {
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
-    } else {
-      alert('Failed to save. Please try again.');
     }
   };
 
@@ -917,6 +915,11 @@ function DetailsTab() {
           <p className="text-xs text-muted-foreground mt-0.5">Update core event information and about section.</p>
         </div>
         <div className="flex items-center gap-3">
+          {eventSaveError && (
+            <span className="max-w-[420px] text-xs text-red-500 font-semibold flex items-center gap-1 bg-red-500/10 px-3 py-1.5 rounded-xl border border-red-500/20">
+              <AlertCircle size={14} className="shrink-0" /> {eventSaveError}
+            </span>
+          )}
           {savedSuccess && (
             <span className="text-xs text-green-500 font-semibold flex items-center gap-1">
               <Check size={14} /> Saved!
@@ -4661,7 +4664,7 @@ function OrganizingCommitteeTab() {
 
 // ============ SCHEDULE & VENUE TAB ============
 function VenueDetailsTab() {
-  const { eventPage, updateEventFields, eventPageMode, venues, ensureMentorsAndVenues, user, isAddMode, openImagePreview } = useAppStore();
+  const { eventPage, updateEventFields, eventPageMode, venues, ensureMentorsAndVenues, user, isAddMode, openImagePreview, eventSaveError } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
   const isMentor = user?.role === 'mentor';
 
@@ -4707,6 +4710,7 @@ function VenueDetailsTab() {
 
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [uploadingMain, setUploadingMain] = useState(false);
   const [uploadingSubIndex, setUploadingSubIndex] = useState<number | null>(null);
   const [uploadingCityHighlightIndex, setUploadingCityHighlightIndex] = useState<number | null>(null);
@@ -4890,8 +4894,13 @@ function VenueDetailsTab() {
 
   // Save changes
   const handleSave = async () => {
-    setSaving(true);
+    setSaveError('');
     setSavedSuccess(false);
+    if (isAddMode && !eventPage?._id) {
+      setSaveError('Event title is required first. Fill the Details tab and save it to create the event before saving the venue.');
+      return;
+    }
+    setSaving(true);
     try {
       const venuePayload: VenueDetails = {
         venueId: formData.venueId || undefined,
@@ -4909,7 +4918,7 @@ function VenueDetailsTab() {
         images: [formData.mainImage, ...formData.subImages].filter(Boolean),
       };
 
-      await updateEventFields({
+      const ok = await updateEventFields({
         venueDetails: isMentor
           ? { ...venuePayload, startDate: vd.startDate || undefined, endDate: vd.endDate || undefined }
           : venuePayload,
@@ -4926,11 +4935,15 @@ function VenueDetailsTab() {
               venueMapUrl: formData.locationUrl || '',
             }),
       });
+      if (!ok) {
+        setSaveError('Save failed. Please check the error message and try again.');
+        return;
+      }
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err) {
       console.error('Failed to save schedule and venue:', err);
-      alert('Failed to save schedule and venue. Please try again.');
+      setSaveError('Failed to save schedule and venue. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -5153,6 +5166,11 @@ function VenueDetailsTab() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {(saveError || eventSaveError) && (
+            <span className="max-w-[420px] text-xs text-red-500 font-semibold flex items-center gap-1 bg-red-500/10 px-3 py-1.5 rounded-xl border border-red-500/20">
+              <AlertCircle size={14} className="shrink-0" /> {saveError || eventSaveError}
+            </span>
+          )}
           {savedSuccess && (
             <span className="text-xs text-green-500 font-semibold flex items-center gap-1 bg-green-500/10 px-3 py-1.5 rounded-xl border border-green-500/20">
               <Check size={14} /> Saved successfully!
