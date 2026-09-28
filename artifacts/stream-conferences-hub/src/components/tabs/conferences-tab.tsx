@@ -3,9 +3,16 @@ import { useAppStore } from '@/store/app-store';
 import { subdomainUrlFor } from '@/lib/utils';
 import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 export function ConferencesTab() {
-  const { conferences, activeDropdownId, setActiveDropdownId, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor, navigateToAddEvent } = useAppStore();
+  const { conferences, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor, navigateToAddEvent } = useAppStore();
   const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(conferences);
 
   return (
@@ -91,9 +98,6 @@ export function ConferencesTab() {
                       </button>
                     )}
                     <ActionDropdown
-                      id={conf._id}
-                      activeId={activeDropdownId}
-                      onToggle={setActiveDropdownId}
                       onViewDetails={() => openEventPage(conf, 'conference', 'details', 'view')}
                       onEdit={() => openEventPage(conf, 'conference', 'details', 'edit')}
                       onCohorts={() => openEventPage(conf, 'conference', 'cohorts', 'view')}
@@ -118,18 +122,12 @@ export function ConferencesTab() {
 }
 
 function ActionDropdown({
-  id,
-  activeId,
-  onToggle,
   onViewDetails,
   onEdit,
   onCohorts,
   onDelete,
   isMentor,
 }: {
-  id: string;
-  activeId: string | null;
-  onToggle: (id: string | null) => void;
   onViewDetails: () => void;
   onEdit: () => void;
   onCohorts: () => void;
@@ -137,54 +135,44 @@ function ActionDropdown({
   isMentor?: boolean;
 }) {
   return (
-    <div className="inline-block text-left">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle(activeId === id ? null : id);
-        }}
-        className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 active:scale-90 cursor-pointer"
-      >
-        <MoreVertical size={16} />
-      </button>
-
-      {activeId === id && (
-        <>
-          <div
-            className="fixed inset-0 z-30 cursor-default"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle(null);
-            }}
-          />
-          <div className="absolute right-0 mt-1.5 w-48 bg-card border border-foreground/10 rounded-xl shadow-xl z-40 py-1.5 focus:outline-none text-left animate-fade-in">
-            <MenuItem label="View Details" onClick={onViewDetails} />
-            <MenuItem label="Edit" onClick={onEdit} />
-            {!isMentor && <MenuItem label="Cohorts" onClick={onCohorts} />}
-            <div className="border-t border-foreground/5 my-1" />
-            <button
-              type="button"
-              onClick={onDelete}
-              className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-red-500/10 text-red-500 hover:text-red-600 transition duration-150 font-bold cursor-pointer"
-            >
-              Delete
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer"
-    >
-      {label}
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 active:scale-90 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+        >
+          <MoreVertical size={16} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={6} className="w-48 bg-card border border-foreground/10 rounded-xl shadow-xl py-1.5 z-50">
+        <DropdownMenuItem
+          onClick={onViewDetails}
+          className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg"
+        >
+          View Details
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={onEdit}
+          className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg"
+        >
+          Edit
+        </DropdownMenuItem>
+        {!isMentor && (
+          <DropdownMenuItem
+            onClick={onCohorts}
+            className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg"
+          >
+            Cohorts
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator className="border-t border-foreground/5 my-1" />
+        <DropdownMenuItem
+          onClick={onDelete}
+          className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-red-500/10 text-red-500 hover:text-red-600 transition duration-150 font-bold cursor-pointer rounded-lg focus:text-red-600 focus:bg-red-500/10"
+        >
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

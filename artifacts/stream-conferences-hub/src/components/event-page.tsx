@@ -11,6 +11,7 @@ import { RichTextEditor } from '@/components/rich-text-editor';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useState, FormEvent, useEffect, Fragment, useRef, useMemo } from 'react';
 import {
   Plus, Trash2, GripVertical, Upload, X, ChevronDown, ChevronUp,
@@ -5915,28 +5916,33 @@ function CohortsTab() {
                             <UserPlus size={15} />
                           </button>
                         )}
-                        <div className="relative inline-block text-left">
-                          <button type="button" onClick={() => setOpenMenuId(openMenuId === c._id ? null : c._id)} className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 active:scale-90 cursor-pointer">
-                            <MoreVertical size={16} />
-                          </button>
-                          {openMenuId === c._id && (
-                            <>
-                              <div className="fixed inset-0 z-30 cursor-default" onClick={() => setOpenMenuId(null)} />
-                              <div className={`absolute right-0 w-48 bg-card border border-foreground/15 rounded-xl shadow-2xl z-50 py-1.5 focus:outline-none text-left animate-fade-in ${
-                                isLastRow ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-                              }`}>
-                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTab(c, 'details'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">View Details</button>
-                                <button type="button" onClick={() => { setOpenMenuId(null); openCohortTabEdit(c, 'details'); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Edit</button>
-                                {canAssignMentor && (
-                                  <button type="button" onClick={() => { setOpenMenuId(null); setAssignCohort(c); setAssignUsername(c.assignedMentor || ''); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">Assign Mentor</button>
-                                )}
-                                <button type="button" onClick={() => { setOpenMenuId(null); handleSetCurrent(c._id); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer">{c.isCurrent ? 'Unset Current' : 'Set Current'}</button>
-                                <div className="border-t border-foreground/10 my-1" />
-                                <button type="button" onClick={() => { setOpenMenuId(null); handleDelete(c._id); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-red-500/10 text-red-500 hover:text-red-600 transition duration-150 font-bold cursor-pointer">Delete</button>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button type="button" className="p-2 hover:bg-foreground/5 text-muted-foreground hover:text-foreground rounded-full transition duration-150 active:scale-90 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/20">
+                              <MoreVertical size={16} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" sideOffset={6} className="w-48 bg-card border border-foreground/10 rounded-xl shadow-xl py-1.5 z-50">
+                            <DropdownMenuItem onClick={() => openCohortTab(c, 'details')} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg">
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openCohortTabEdit(c, 'details')} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg">
+                              Edit
+                            </DropdownMenuItem>
+                            {canAssignMentor && (
+                              <DropdownMenuItem onClick={() => { setAssignCohort(c); setAssignUsername(c.assignedMentor || ''); }} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg">
+                                Assign Mentor
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => handleSetCurrent(c._id)} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg">
+                              {c.isCurrent ? 'Unset Current' : 'Set Current'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="border-t border-foreground/5 my-1" />
+                            <DropdownMenuItem onClick={() => handleDelete(c._id)} className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-red-500/10 text-red-500 hover:text-red-600 transition duration-150 font-bold cursor-pointer rounded-lg focus:text-red-600 focus:bg-red-500/10">
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </td>
                   </tr>
