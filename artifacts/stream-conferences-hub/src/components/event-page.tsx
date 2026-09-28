@@ -734,6 +734,7 @@ function DetailsTab() {
   const logoUrl = (eventPage as any)?.logoUrl || '';
   const brochureUrl = (eventPage as any)?.brochureUrl || '';
   const subjectImageUrl = (eventPage as any)?.subjectImageUrl || '';
+  const isMentor = user?.role === 'mentor';
 
   useEffect(() => {
     if (eventPage) {
@@ -749,15 +750,16 @@ function DetailsTab() {
   if (!eventPage || !eventPageType) return null;
 
   const handleSave = async () => {
-    if (!formData.title.trim()) { alert('Title is required'); return; }
-    if (!formData.subdomain.trim()) { alert('Subdomain is required'); return; }
+    if (!isMentor) {
+      if (!formData.title.trim()) { alert('Title is required'); return; }
+      if (!formData.subdomain.trim()) { alert('Subdomain is required'); return; }
+    }
     setSaving(true);
     setSavedSuccess(false);
     const ok = await updateEventFields({
-      title: formData.title,
+      ...(isMentor ? {} : { title: formData.title, subdomain: formData.subdomain }),
       theme: formData.theme,
       description: formData.description,
-      subdomain: formData.subdomain,
     });
     setSaving(false);
     if (ok) {
@@ -935,8 +937,10 @@ function DetailsTab() {
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Title *</label>
           <input
-            className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-semibold"
+            className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
             value={formData.title}
+            disabled={isMentor}
+            title={isMentor ? 'Only admins can edit the title' : undefined}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           />
         </div>
@@ -957,9 +961,11 @@ function DetailsTab() {
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Subdomain</label>
           <input
-            className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm"
+            className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             placeholder="e.g. ai-conference"
             value={formData.subdomain}
+            disabled={isMentor}
+            title={isMentor ? 'Only admins can edit the subdomain' : undefined}
             onChange={(e) => setFormData({ ...formData, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
           />
           <p className="text-xs text-muted-foreground mt-1">
@@ -4657,6 +4663,7 @@ function OrganizingCommitteeTab() {
 function VenueDetailsTab() {
   const { eventPage, updateEventFields, eventPageMode, venues, ensureMentorsAndVenues, user, isAddMode, openImagePreview } = useAppStore();
   const isEditMode = eventPageMode === 'edit';
+  const isMentor = user?.role === 'mentor';
 
   useEffect(() => {
     ensureMentorsAndVenues(true);
@@ -4903,15 +4910,21 @@ function VenueDetailsTab() {
       };
 
       await updateEventFields({
-        venueDetails: venuePayload,
-        location: formData.name || formData.address || '',
-        startDate: formData.startDate || null,
-        endDate: formData.endDate || null,
+        venueDetails: isMentor
+          ? { ...venuePayload, startDate: vd.startDate || undefined, endDate: vd.endDate || undefined }
+          : venuePayload,
         startTime: formData.startTime || '',
         endTime: formData.endTime || '',
-        venue: formData.name || '',
-        venueAddress: formData.address || '',
-        venueMapUrl: formData.locationUrl || '',
+        ...(isMentor
+          ? {}
+          : {
+              location: formData.name || formData.address || '',
+              startDate: formData.startDate || null,
+              endDate: formData.endDate || null,
+              venue: formData.name || '',
+              venueAddress: formData.address || '',
+              venueMapUrl: formData.locationUrl || '',
+            }),
       });
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
@@ -5176,11 +5189,13 @@ function VenueDetailsTab() {
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
               Start Date
             </label>
-            <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+            <Popover open={!isMentor && startDateOpen} onOpenChange={(o) => !isMentor && setStartDateOpen(o)}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="h-12 w-full px-3.5 rounded-xl border border-foreground/15 bg-background hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition flex items-center justify-between text-left shadow-xs cursor-pointer group"
+                  disabled={isMentor}
+                  title={isMentor ? 'Only admins can edit the start date' : undefined}
+                  className="h-12 w-full px-3.5 rounded-xl border border-foreground/15 bg-background hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition flex items-center justify-between text-left shadow-xs cursor-pointer group disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-background"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <CalendarDays size={16} className="text-primary/70 group-hover:text-primary transition shrink-0" />
@@ -5193,6 +5208,7 @@ function VenueDetailsTab() {
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
+                        if (isMentor) return;
                         e.stopPropagation();
                         setFormData(prev => ({ ...prev, startDate: '' }));
                       }}
@@ -5254,11 +5270,13 @@ function VenueDetailsTab() {
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
               End Date
             </label>
-            <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+            <Popover open={!isMentor && endDateOpen} onOpenChange={(o) => !isMentor && setEndDateOpen(o)}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="h-12 w-full px-3.5 rounded-xl border border-foreground/15 bg-background hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition flex items-center justify-between text-left shadow-xs cursor-pointer group"
+                  disabled={isMentor}
+                  title={isMentor ? 'Only admins can edit the end date' : undefined}
+                  className="h-12 w-full px-3.5 rounded-xl border border-foreground/15 bg-background hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition flex items-center justify-between text-left shadow-xs cursor-pointer group disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-background"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <CalendarDays size={16} className="text-primary/70 group-hover:text-primary transition shrink-0" />
@@ -5271,6 +5289,7 @@ function VenueDetailsTab() {
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
+                        if (isMentor) return;
                         e.stopPropagation();
                         setFormData(prev => ({ ...prev, endDate: '' }));
                       }}
@@ -5384,8 +5403,10 @@ function VenueDetailsTab() {
             <MapPin size={16} className="text-primary/70 shrink-0 mr-2.5" />
             <select
               value={selectedVenueId}
+              disabled={isMentor}
+              title={isMentor ? 'Only admins can change the venue' : undefined}
               onChange={(e) => handleVenueSelect(e.target.value)}
-              className="w-full bg-transparent text-sm font-semibold text-foreground focus:outline-none cursor-pointer pr-8"
+              className="w-full bg-transparent text-sm font-semibold text-foreground focus:outline-none cursor-pointer pr-8 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">— Select a venue —</option>
               {venues
