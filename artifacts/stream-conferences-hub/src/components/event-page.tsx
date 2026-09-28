@@ -372,7 +372,7 @@ export function EventPage() {
 
           {/* Bottom Row: Edit Button + Actions Dropdown */}
           <div className="flex items-center gap-2">
-            {store.user?.role === 'admin' && (
+            {(store.user?.role === 'admin' || store.user?.role === 'mentor') && (
               store.eventPageMode === 'view' ? (
                 <button
                   type="button"
@@ -423,21 +423,23 @@ export function EventPage() {
                     <span>View Details</span>
                   </button>
 
+                  {(store.user?.role === 'admin' || store.user?.role === 'mentor') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionsOpen(false);
+                        store.setEventPageMode('edit');
+                        store.openEventTab('details');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
+                    >
+                      <Pencil size={14} className="text-muted-foreground" />
+                      <span>Edit</span>
+                    </button>
+                  )}
+
                   {store.user?.role === 'admin' && (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActionsOpen(false);
-                          store.setEventPageMode('edit');
-                          store.openEventTab('details');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-foreground hover:bg-foreground/5 transition text-left cursor-pointer"
-                      >
-                        <Pencil size={14} className="text-muted-foreground" />
-                        <span>Edit</span>
-                      </button>
-
                       <button
                         type="button"
                         onClick={() => {
