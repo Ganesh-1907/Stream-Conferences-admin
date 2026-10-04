@@ -35,7 +35,8 @@ export type Tab =
   | 'userWebsite'
   | 'gallery'
   | 'brochure'
-  | 'abstractTemplate';
+  | 'abstractTemplate'
+  | 'websiteEnquiries';
 
 export interface MainBrochureItem {
   _id?: string;
@@ -169,6 +170,13 @@ export interface CourseCohort {
   updatedAt?: string;
 }
 
+export interface CityAttractionItem {
+  id?: string;
+  name?: string;
+  image?: string;
+  link?: string;
+}
+
 export interface VenueDetails {
   venueId?: string;      // reference to Venue model
   name?: string;
@@ -181,6 +189,7 @@ export interface VenueDetails {
   mainImage?: string;
   subImages?: string[];
   cityHighlights?: string[];
+  cityAttractions?: CityAttractionItem[];
   description?: string;
   images?: string[];
   moreInfo?: string;
@@ -238,6 +247,8 @@ export interface Conference {
   _id: string;
   eventId?: string;
   title: string;
+  shortTitle?: string;
+  visibility?: 'public' | 'private';
   slug?: string;
   description: string;
   theme?: string;
@@ -380,7 +391,11 @@ export interface Contact {
   country?: string;
   subject?: string;
   conference?: string;
+  eventId?: string | null;
+  eventTitle?: string | null;
   message: string;
+  status?: 'open' | 'closed';
+  closedAt?: string | null;
   createdAt: string;
 }
 

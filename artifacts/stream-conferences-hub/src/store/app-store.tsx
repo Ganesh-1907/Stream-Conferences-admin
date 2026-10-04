@@ -154,6 +154,7 @@ interface AppStoreValue {
   mentors: MentorProfile[];
   refreshData: () => Promise<void>;
   loadTabData: (tab: Tab) => Promise<void>;
+  setContactStatus: (id: string, status: 'open' | 'closed') => Promise<boolean>;
   loadGalleryItems: () => Promise<void>;
   addGalleryItem: (title: string, description: string, image: string) => Promise<boolean>;
   deleteGalleryItem: (id: string) => Promise<boolean>;
@@ -519,7 +520,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Navigation — read initial tab from URL hash so refresh restores it
   const VALID_TABS: Tab[] = [
     'overview','conferences','blogs','mediaPartners','collaborators','venues',
-    'mentors','liveChat','userWebsite','gallery','brochure','abstractTemplate'
+    'mentors','liveChat','userWebsite','gallery','brochure','abstractTemplate','websiteEnquiries'
   ];
   const getTabFromHash = (): Tab => {
     const hash = window.location.hash.replace('#', '');
@@ -1204,6 +1205,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         case 'liveChat':
           await loadChatSessions();
           break;
+        case 'websiteEnquiries':
+          await fetchInto(`${API_BASE}/contacts?scope=global`, setContacts);
+          break;
         default:
           break;
       }
@@ -1235,6 +1239,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         });
         if (res.ok) setCurrentEvent(await res.json());
       } catch { /* ignore */ }
+    }
+  };
+
+  // Close / reopen an enquiry (global contacts + per-event enquiries)
+  const setContactStatus = async (id: string, status: 'open' | 'closed'): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const res = await fetch(`${API_BASE}/contacts/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-user-role': user.role, 'x-user-name': user.username },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) return false;
+      const updated: Contact = await res.json();
+      setContacts((prev) => prev.map((c) => (c._id === id ? { ...c, ...updated } : c)));
+      setEventEnquiries((prev) => prev.map((c) => (c._id === id ? { ...c, ...updated } : c)));
+      return true;
+    } catch (err) {
+      console.error('Update enquiry status error:', err);
+      return false;
     }
   };
 
@@ -3163,6 +3187,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     mentors,
     ensureMentorsAndVenues,
     refreshData,
+    setContactStatus,
     loadTabData,
     loadGalleryItems,
     addGalleryItem,

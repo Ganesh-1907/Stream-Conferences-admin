@@ -1,4 +1,4 @@
-import { Building2, UserPlus, Globe, Image as ImageIcon, FileText, FileCheck } from 'lucide-react';
+import { Building2, UserPlus, Globe, Image as ImageIcon, FileText, FileCheck, Inbox } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { Tab } from '@/lib/types';
 import { VenuesTab } from './venues-tab';
@@ -6,8 +6,9 @@ import { MentorsTab } from './mentors-tab';
 import { GalleryTab } from './gallery-tab';
 import { BrochureTab } from './brochure-tab';
 import { AbstractTemplateTab } from './abstract-template-tab';
+import { GlobalEnquiriesTab } from './global-enquiries-tab';
 
-type SubTabId = 'gallery' | 'brochure' | 'abstractTemplate' | 'venues' | 'mentors';
+type SubTabId = 'gallery' | 'brochure' | 'abstractTemplate' | 'venues' | 'mentors' | 'websiteEnquiries';
 
 interface SubNavItem {
   id: SubTabId;
@@ -44,6 +45,12 @@ const SUB_NAV_ITEMS: SubNavItem[] = [
     icon: UserPlus,
     adminOnly: true,
   },
+  {
+    id: 'websiteEnquiries',
+    label: 'Enquiries',
+    icon: Inbox,
+    adminOnly: true,
+  },
 ];
 
 export function UserWebsiteTab() {
@@ -53,7 +60,7 @@ export function UserWebsiteTab() {
 
   // Determine current active sub-tab
   const currentSubTab: SubTabId =
-    activeTab === 'venues' || activeTab === 'mentors' || activeTab === 'brochure' || activeTab === 'abstractTemplate'
+    activeTab === 'venues' || activeTab === 'mentors' || activeTab === 'brochure' || activeTab === 'abstractTemplate' || activeTab === 'websiteEnquiries'
       ? (activeTab as SubTabId)
       : 'gallery';
 
@@ -107,6 +114,7 @@ export function UserWebsiteTab() {
           {currentSubTab === 'abstractTemplate' && <AbstractTemplateTab />}
           {currentSubTab === 'venues' && (user?.role === 'admin' ? <VenuesTab /> : null)}
           {currentSubTab === 'mentors' && (user?.role === 'admin' ? <MentorsTab /> : null)}
+          {currentSubTab === 'websiteEnquiries' && (user?.role === 'admin' ? <GlobalEnquiriesTab /> : null)}
         </div>
       </div>
     </div>

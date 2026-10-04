@@ -432,7 +432,7 @@ export function Wizard() {
               </div>
 
               <FileUploadCard
-                title="Track Image"
+                title="Track Banner Image (1500 × 500 px • 3:1 Ratio)"
                 preview={track.imagePreview || ''}
                 loading={store.trackImageLoading[ti] || false}
                 onSelect={(f) => store.handleTrackImageUpload(ti, f)}

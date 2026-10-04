@@ -1,10 +1,9 @@
 import { AbstractTemplateTab } from '@/components/tabs/abstract-template-tab';
 import { LiveChatTab } from '@/components/tabs/live-chat-tab';
 import { useAppStore } from '@/store/app-store';
-import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage, formatTime12h } from '@/lib/utils';
+import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToDate, dateToString, compressImage, formatTime12h, formatConferenceSchedule } from '@/lib/utils';
+import { EventPageTab, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CityAttractionItem, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem, AccommodationFeeItem, Contact } from '@/lib/types';
 import { API_BASE } from '@/lib/constants';
-import { EventPageTab, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem, AccommodationFeeItem } from '@/lib/types';
-import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
 import { FileUploadCard } from '@/components/file-upload-card';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -20,7 +19,7 @@ import {
   FileCheck, MessageSquare, Download, GraduationCap,
   Mic, Layers, CalendarDays, Clock, Image as ImageIcon,
   HelpCircle, Handshake, ShieldAlert, Phone, Users2, MapPin, Building2, Search,
-  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Save, UploadCloud, Edit, AlertCircle
+  MoreVertical, UserPlus, Pencil, Eye, Check, Copy, Save, UploadCloud, Edit, AlertCircle, CheckCircle2, RotateCcw
 } from 'lucide-react';
 
 interface SubtabItem {
@@ -120,22 +119,9 @@ export function EventPage() {
 
   const dateDisplay = useMemo(() => {
     if (!eventPage) return '—';
-    if (eventPage.startDate && eventPage.endDate) {
-      const start = new Date(eventPage.startDate).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
-      const end = new Date(eventPage.endDate).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-      const time = eventPage.startTime ? ` ${formatTime12h(eventPage.startTime)}` : '';
-      return `${start} to ${end}${time}`;
-    }
-    if (eventPage.eventDate) return eventPage.eventDate;
-    if (eventPage.day && eventPage.month) return `${eventPage.day} ${eventPage.month}`;
-    return '—';
+    const scheduleStr = formatConferenceSchedule(eventPage as any);
+    const time = eventPage.startTime ? ` ${formatTime12h(eventPage.startTime)}` : '';
+    return `${scheduleStr}${time}`;
   }, [eventPage]);
 
   const attendeesCount = eventParticipants?.length ?? 0;
@@ -724,6 +710,7 @@ function DetailsTab() {
   const { eventPage, eventPageType, eventPageMode, updateEventFields, user, openImagePreview, eventSaveError } = useAppStore();
   const [formData, setFormData] = useState({
     title: eventPage?.title || '',
+    shortTitle: eventPage?.shortTitle || '',
     theme: eventPage?.theme || '',
     description: eventPage?.description || '',
     subdomain: eventPage?.subdomain || '',
@@ -742,6 +729,7 @@ function DetailsTab() {
     if (eventPage) {
       setFormData({
         title: eventPage.title || '',
+        shortTitle: eventPage.shortTitle || '',
         theme: eventPage.theme || '',
         description: eventPage.description || '',
         subdomain: eventPage.subdomain || '',
@@ -754,12 +742,13 @@ function DetailsTab() {
   const handleSave = async () => {
     if (!isMentor) {
       if (!formData.title.trim()) { alert('Title is required'); return; }
+      if (!formData.shortTitle.trim()) { alert('Short Title is required'); return; }
       if (!formData.subdomain.trim()) { alert('Subdomain is required'); return; }
     }
     setSaving(true);
     setSavedSuccess(false);
     const ok = await updateEventFields({
-      ...(isMentor ? {} : { title: formData.title, subdomain: formData.subdomain }),
+      ...(isMentor ? {} : { title: formData.title, shortTitle: formData.shortTitle, subdomain: formData.subdomain }),
       theme: formData.theme,
       description: formData.description,
     });
@@ -827,6 +816,11 @@ function DetailsTab() {
         <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Title</h4>
           <p className="text-base font-bold text-foreground">{eventPage.title || '—'}</p>
+        </div>
+
+        <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Short Title</h4>
+          <p className="text-base font-bold text-foreground">{eventPage.shortTitle || '—'}</p>
         </div>
 
         <div className="bg-muted/10 border border-foreground/10 rounded-2xl p-6">
@@ -951,6 +945,21 @@ function DetailsTab() {
         </div>
 
         <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Short Title *</label>
+          <input
+            className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+            placeholder="e.g. Short form of the event title"
+            value={formData.shortTitle}
+            disabled={isMentor}
+            title={isMentor ? 'Only admins can edit the short title' : undefined}
+            onChange={(e) => setFormData({ ...formData, shortTitle: e.target.value })}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Compact title used where the full title does not fit.
+          </p>
+        </div>
+
+        <div>
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Theme</label>
           <input
             className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm font-medium"
@@ -964,7 +973,7 @@ function DetailsTab() {
         </div>
 
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Subdomain</label>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Subdomain *</label>
           <input
             className="w-full px-3 py-2 bg-background border border-foreground/10 rounded-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             placeholder="e.g. ai-conference"
@@ -1475,7 +1484,7 @@ function PaymentsTab() {
             <thead>
               <tr className="bg-muted text-muted-foreground font-semibold border-b border-foreground/10">
                 <th className="p-4">Order / Payment</th>
-                <th className="p-4">Delegate</th>
+                <th className="p-4">Participant</th>
                 <th className="p-4">Category</th>
                 <th className="p-4">Amount</th>
                 <th className="p-4">Status</th>
@@ -1608,15 +1617,53 @@ function AbstractsTab() {
   );
 }
 
+function EnquiryStatusBadge({ contact }: { contact: Contact }) {
+  const isClosed = contact.status === 'closed';
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase px-2 py-1 rounded-full ${isClosed ? 'bg-muted text-muted-foreground' : 'bg-emerald-500/15 text-emerald-600'}`}>
+      {isClosed ? <CheckCircle2 size={12} /> : <MessageSquare size={12} />}
+      {isClosed ? 'Closed' : 'Open'}
+    </span>
+  );
+}
+
 function EnquiriesTab() {
-  const { eventEnquiries, eventEnquiriesLoading, eventPageType } = useAppStore();
+  const { eventEnquiries, eventEnquiriesLoading, eventPageType, setContactStatus } = useAppStore();
+  const [filter, setFilter] = useState<'open' | 'closed' | 'all'>('open');
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const filtered = eventEnquiries.filter((c) => filter === 'all' || (c.status === 'closed' ? 'closed' : 'open') === filter);
+  const openCount = eventEnquiries.filter((c) => c.status !== 'closed').length;
+  const closedCount = eventEnquiries.length - openCount;
+  const counts = { open: openCount, closed: closedCount, all: eventEnquiries.length };
+
+  const toggle = async (c: Contact) => {
+    setSavingId(c._id);
+    await setContactStatus(c._id, c.status === 'closed' ? 'open' : 'closed');
+    setSavingId(null);
+  };
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-bold tracking-tight">
-        Enquiries
-        <span className="text-sm text-muted-foreground font-normal ml-2">({eventEnquiries.length})</span>
-      </h3>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h3 className="text-lg font-bold tracking-tight">
+          Enquiries
+          <span className="text-sm text-muted-foreground font-normal ml-2">({eventEnquiries.length})</span>
+        </h3>
+        <div className="flex rounded-lg border border-foreground/15 overflow-hidden">
+          {(['open', 'closed', 'all'] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 text-xs font-bold capitalize transition ${filter === f ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-foreground/5'}`}
+              data-testid={`filter-event-enquiries-${f}`}
+            >
+              {f} ({counts[f]})
+            </button>
+          ))}
+        </div>
+      </div>
       {eventEnquiriesLoading && <div className="p-8 text-center text-sm text-muted-foreground">Loading enquiries...</div>}
       <div className="border border-foreground/10 rounded-xl overflow-hidden">
         <table className="w-full text-left text-sm">
@@ -1627,23 +1674,45 @@ function EnquiriesTab() {
               <th className="p-4">Inquiry Type</th>
               <th className="p-4">Message</th>
               <th className="p-4">Date</th>
+              <th className="p-4">Status</th>
+              <th className="p-4">Action</th>
             </tr>
           </thead>
           <tbody>
-            {eventEnquiries.map((c) => (
-              <tr key={c._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
-                <td className="p-4 font-semibold">{c.name}</td>
-                <td className="p-4 text-xs">
-                  <div>{c.email}</div>
-                  {c.phone && <div className="text-muted-foreground">{c.phone}</div>}
-                </td>
-                <td className="p-4 text-xs font-bold text-accent">{c.subject || 'General'}</td>
-                <td className="p-4 text-xs text-muted-foreground max-w-md whitespace-pre-wrap">{c.message}</td>
-                <td className="p-4 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
-            {!eventEnquiriesLoading && eventEnquiries.length === 0 && (
-              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No enquiries for this {eventPageType} yet.</td></tr>
+            {filtered.map((c) => {
+              const isClosed = c.status === 'closed';
+              return (
+                <tr key={c._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
+                  <td className="p-4 font-semibold">{c.name}</td>
+                  <td className="p-4 text-xs">
+                    <div>{c.email}</div>
+                    {c.phone && <div className="text-muted-foreground">{c.phone}</div>}
+                  </td>
+                  <td className="p-4 text-xs font-bold text-accent">{c.subject || 'General'}</td>
+                  <td className="p-4 text-xs text-muted-foreground max-w-md whitespace-pre-wrap">{c.message}</td>
+                  <td className="p-4 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</td>
+                  <td className="p-4"><EnquiryStatusBadge contact={c} /></td>
+                  <td className="p-4">
+                    <button
+                      type="button"
+                      onClick={() => toggle(c)}
+                      disabled={savingId === c._id}
+                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer disabled:opacity-50 ${
+                        isClosed
+                          ? 'border-foreground/20 text-foreground hover:bg-foreground/5'
+                          : 'border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10'
+                      }`}
+                      data-testid={isClosed ? 'button-reopen-event-enquiry' : 'button-close-event-enquiry'}
+                    >
+                      {isClosed ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
+                      {isClosed ? 'Reopen' : 'Close'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {!eventEnquiriesLoading && filtered.length === 0 && (
+              <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No {filter !== 'all' ? filter : ''} enquiries for this {eventPageType} yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -3009,7 +3078,7 @@ function SeoConfigTab() {
             rows={3}
             value={metaDescription}
             onChange={(e) => setMetaDescription(e.target.value)}
-            placeholder="e.g. Join leading global researchers and delegates..."
+            placeholder="e.g. Join leading global researchers and participants..."
             className="w-full px-3.5 py-2 bg-background border border-foreground/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y"
             readOnly={!isEditMode}
           />
@@ -3231,7 +3300,7 @@ function TracksTab() {
             </div>
             <div>
               <FileUploadCard
-                title="Track Image"
+                title="Track Banner Image (1500 × 500 px • 3:1 Ratio)"
                 accept="image/*"
                 preview={formData.image ? mediaUrl(formData.image) : ''}
                 onSelect={handleImageSelect}
@@ -4684,6 +4753,31 @@ function VenueDetailsTab() {
     }
   };
 
+  const parseInitialCityAttractions = (sourceVd: any): CityAttractionItem[] => {
+    if (Array.isArray(sourceVd?.cityAttractions) && sourceVd.cityAttractions.length > 0) {
+      return sourceVd.cityAttractions.map((item: any) => ({
+        name: typeof item === 'object' && item?.name !== undefined ? item.name : '',
+        image: typeof item === 'object' && item ? (item.image || item.url || '') : (typeof item === 'string' ? item : ''),
+        link: typeof item === 'object' && item ? (item.link || item.url || '') : '',
+      }));
+    }
+    if (Array.isArray(sourceVd?.cityHighlights) && sourceVd.cityHighlights.some(Boolean)) {
+      return sourceVd.cityHighlights
+        .filter(Boolean)
+        .map((item: any) => {
+          if (typeof item === 'string') {
+            return { name: '', image: item, link: '' };
+          }
+          return {
+            name: item.name || '',
+            image: item.image || item.url || '',
+            link: item.link || '',
+          };
+        });
+    }
+    return [];
+  };
+
   const vd: VenueDetails = (eventPage as any)?.venueDetails || {};
   const ep = (eventPage as any) || {};
 
@@ -4707,6 +4801,7 @@ function VenueDetailsTab() {
       (vd.cityHighlights && vd.cityHighlights[1]) || '',
       (vd.cityHighlights && vd.cityHighlights[2]) || '',
     ],
+    cityAttractions: parseInitialCityAttractions(vd),
     description: vd.description || '',
   });
 
@@ -4749,6 +4844,7 @@ function VenueDetailsTab() {
         (curVd.cityHighlights && curVd.cityHighlights[1]) || '',
         (curVd.cityHighlights && curVd.cityHighlights[2]) || '',
       ],
+      cityAttractions: parseInitialCityAttractions(curVd),
       description: curVd.description || '',
     });
   }, [eventPage]);
@@ -4874,6 +4970,59 @@ function VenueDetailsTab() {
     e.target.value = '';
   };
 
+  const handleAddCityAttraction = () => {
+    setFormData(prev => ({
+      ...prev,
+      cityAttractions: [
+        ...prev.cityAttractions,
+        { name: '', image: '', link: '' }
+      ]
+    }));
+  };
+
+  const handleUpdateCityAttraction = (index: number, field: keyof CityAttractionItem, value: string) => {
+    setFormData(prev => {
+      const next = [...prev.cityAttractions];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, cityAttractions: next };
+    });
+  };
+
+  const handleRemoveCityAttraction = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      cityAttractions: prev.cityAttractions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleCityAttractionUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCityHighlightIndex(index);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/uploads/upload`, {
+        method: 'POST',
+        headers: { 'x-user-role': user?.role || '', 'x-user-name': user?.username || '' },
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setFormData(prev => {
+          const next = [...prev.cityAttractions];
+          next[index] = { ...next[index], image: data.url };
+          return { ...prev, cityAttractions: next };
+        });
+      }
+    } catch (err) {
+      console.error('City attraction upload error:', err);
+    } finally {
+      setUploadingCityHighlightIndex(null);
+    }
+    e.target.value = '';
+  };
+
   const handleRemoveMainImage = () => {
     setFormData(prev => ({ ...prev, mainImage: '' }));
   };
@@ -4902,6 +5051,11 @@ function VenueDetailsTab() {
       setSaveError('Event title is required first. Fill the Details tab and save it to create the event before saving the venue.');
       return;
     }
+    if (!isMentor) {
+      if (!formData.startDate) { setSaveError('Start date is required'); return; }
+      if (!formData.endDate) { setSaveError('End date is required'); return; }
+      if (!String(formData.name || '').trim()) { setSaveError('Venue is required'); return; }
+    }
     setSaving(true);
     try {
       const venuePayload: VenueDetails = {
@@ -4915,7 +5069,8 @@ function VenueDetailsTab() {
         endTime: formData.endTime || '',
         mainImage: formData.mainImage || '',
         subImages: formData.subImages,
-        cityHighlights: formData.cityHighlights,
+        cityHighlights: formData.cityAttractions.map(a => a.image).filter(Boolean) as string[],
+        cityAttractions: formData.cityAttractions,
         description: formData.description || '',
         images: [formData.mainImage, ...formData.subImages].filter(Boolean),
       };
@@ -5109,34 +5264,53 @@ function VenueDetailsTab() {
 
           {/* City Attractions */}
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">City Attractions</span>
-            {formData.cityHighlights?.some(Boolean) ? (
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">City Attractions</span>
+              <span className="text-[11px] text-muted-foreground">{formData.cityAttractions.filter(a => a.image || a.name).length} attractions</span>
+            </div>
+            {formData.cityAttractions.some(a => a.image || a.name) ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {formData.cityHighlights.map((url, idx) => (
-                  <div key={idx} className="bg-muted/20 rounded-2xl p-2.5 border border-foreground/5">
-                    <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">City Attraction {idx + 1}</span>
-                    {url ? (
+                {formData.cityAttractions.map((attraction, idx) => (
+                  <div key={idx} className="bg-muted/20 rounded-2xl p-3 border border-foreground/5 space-y-2">
+                    {attraction.image ? (
                       <div
-                        className="w-full h-40 overflow-hidden rounded-xl border border-foreground/10 shadow-xs cursor-pointer group"
-                        onClick={() => openImagePreview(url, `City Attraction ${idx + 1}`)}
+                        className="w-full h-36 overflow-hidden rounded-xl border border-foreground/10 shadow-xs cursor-pointer group relative bg-muted/10 flex items-center justify-center p-2"
+                        onClick={() => openImagePreview(attraction.image!, attraction.name || 'Attraction')}
                         title="Click to view full image"
                       >
                         <img
-                          src={mediaUrl(url)}
-                          alt={`City Attraction ${idx + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          src={mediaUrl(attraction.image)}
+                          alt={attraction.name || 'Attraction'}
+                          className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
                         />
                       </div>
                     ) : (
-                      <div className="w-full h-40 flex items-center justify-center bg-muted/30 rounded-xl text-xs text-muted-foreground border border-dashed border-foreground/10">
-                        Empty slot
+                      <div className="w-full h-36 flex items-center justify-center bg-muted/30 rounded-xl text-xs text-muted-foreground border border-dashed border-foreground/10">
+                        No image
                       </div>
                     )}
+                    <div>
+                      {attraction.name ? (
+                        <span className="text-xs font-bold text-foreground block truncate">
+                          {attraction.name}
+                        </span>
+                      ) : null}
+                      {attraction.link && (
+                        <a
+                          href={attraction.link.startsWith('http') ? attraction.link : `https://${attraction.link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-medium mt-0.5"
+                        >
+                          Visit <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-xs text-muted-foreground italic">No city attractions uploaded.</div>
+              <div className="text-xs text-muted-foreground italic">No city attractions added.</div>
             )}
           </div>
 
@@ -5207,7 +5381,7 @@ function VenueDetailsTab() {
           {/* Start Date Popover */}
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-              Start Date
+              Start Date *
             </label>
             <Popover open={!isMentor && startDateOpen} onOpenChange={(o) => !isMentor && setStartDateOpen(o)}>
               <PopoverTrigger asChild>
@@ -5288,7 +5462,7 @@ function VenueDetailsTab() {
           {/* End Date Popover */}
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-              End Date
+              End Date *
             </label>
             <Popover open={!isMentor && endDateOpen} onOpenChange={(o) => !isMentor && setEndDateOpen(o)}>
               <PopoverTrigger asChild>
@@ -5417,7 +5591,7 @@ function VenueDetailsTab() {
         {/* Dropdown */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-            Select Venue
+            Select Venue *
           </label>
           <div className="relative h-12 rounded-xl border border-foreground/15 bg-background shadow-xs flex items-center px-3.5 focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition">
             <MapPin size={16} className="text-primary/70 shrink-0 mr-2.5" />
@@ -5716,102 +5890,167 @@ function VenueDetailsTab() {
           </div>
         </div>
 
-        {/* Three City Attractions */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-              City Attractions
-            </label>
-            <span className="text-[11px] text-muted-foreground">3 photo slots</span>
+        {/* Dynamic City Attractions Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                City Attractions
+              </label>
+              <span className="text-[11px] text-muted-foreground">
+                Add attractions, tourist spots, or nearby places with photo, name & website link.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddCityAttraction}
+              className="px-3.5 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Add City Attraction</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[0, 1, 2].map((idx) => {
-              const url = formData.cityHighlights?.[idx];
-              const isUploadingThis = uploadingCityHighlightIndex === idx;
+          {formData.cityAttractions.length === 0 ? (
+            <div className="p-6 border-2 border-dashed border-foreground/15 rounded-2xl text-center bg-muted/10 space-y-2">
+              <p className="text-xs text-muted-foreground">No city attractions added yet for this venue.</p>
+              <button
+                type="button"
+                onClick={handleAddCityAttraction}
+                className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Add Your First Attraction</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {formData.cityAttractions.map((attraction, idx) => {
+                const isUploadingThis = uploadingCityHighlightIndex === idx;
 
-              return (
-                <div key={idx} className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-muted-foreground block">
-                    City Attraction {idx + 1}
-                  </span>
-                  {url ? (
-                    <div className="p-3.5 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs flex flex-row items-center gap-3.5 min-h-[120px]">
-                      {/* One Side: Image */}
-                      <div
-                        className="w-28 h-22 shrink-0 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center p-1 relative shadow-xs cursor-pointer group"
-                        onClick={() => openImagePreview(url, `City Attraction ${idx + 1}`)}
-                        title="Click to view full image"
-                      >
-                        <img
-                          src={mediaUrl(url)}
-                          alt={`City Attraction ${idx + 1}`}
-                          className="max-w-full max-h-full object-contain rounded-lg group-hover:scale-105 transition-transform"
-                        />
-                        <span className="absolute bottom-1 left-1 text-[8px] font-bold text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded">
-                          Slot {idx + 1}
+                return (
+                  <div key={idx} className="p-4 rounded-2xl border border-foreground/15 bg-card/60 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between gap-2 border-b border-foreground/10 pb-2">
+                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-extrabold flex items-center justify-center">
+                          {idx + 1}
                         </span>
-                      </div>
+                        <span>{attraction.name ? attraction.name : `Attraction #${idx + 1}`}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCityAttraction(idx)}
+                        className="px-2.5 py-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                        title="Remove attraction"
+                      >
+                        <Trash2 size={13} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
 
-                      {/* Beside: Info & Replace / Remove */}
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div>
-                          <span className="text-xs font-bold text-foreground block truncate">
-                            City Attraction {idx + 1}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground block">City attraction photo</span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <label className="px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs flex items-center gap-1">
-                            <Upload size={12} />
-                            <span>{isUploadingThis ? '...' : 'Replace'}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                      {/* Left: Image Upload & Preview */}
+                      <div className="md:col-span-4">
+                        {attraction.image ? (
+                          <div className="relative w-full h-28 rounded-xl overflow-hidden border border-foreground/10 bg-muted/10 flex items-center justify-center group shadow-xs">
+                            <img
+                              src={mediaUrl(attraction.image)}
+                              alt={attraction.name || `Attraction ${idx + 1}`}
+                              className="max-w-full max-h-full object-contain cursor-pointer"
+                              onClick={() => openImagePreview(attraction.image!, attraction.name || `Attraction ${idx + 1}`)}
+                            />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                              <label className="px-2 py-1 bg-white text-black rounded-lg text-xs font-bold cursor-pointer hover:bg-white/90 shadow-xs flex items-center gap-1">
+                                <Upload size={12} />
+                                <span>{isUploadingThis ? '...' : 'Replace'}</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleCityAttractionUpload(e, idx)}
+                                  disabled={isUploadingThis}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCityAttraction(idx, 'image', '')}
+                                className="p-1 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 shadow-xs"
+                                title="Remove photo"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="h-28 border-2 border-dashed border-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-xl flex flex-col items-center justify-center cursor-pointer transition p-3 text-center group">
+                            {isUploadingThis ? (
+                              <span className="text-xs text-muted-foreground font-medium">Uploading...</span>
+                            ) : (
+                              <>
+                                <div className="w-7 h-7 rounded-lg bg-muted/40 group-hover:bg-primary/10 text-muted-foreground group-hover:text-primary flex items-center justify-center mb-1 transition">
+                                  <Plus size={14} />
+                                </div>
+                                <span className="text-xs font-bold text-foreground">Upload Photo</span>
+                                <span className="text-[10px] text-muted-foreground">Click to select</span>
+                              </>
+                            )}
                             <input
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              onChange={(e) => handleCityHighlightUpload(e, idx)}
+                              onChange={(e) => handleCityAttractionUpload(e, idx)}
                               disabled={isUploadingThis}
                             />
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveCityHighlight(idx)}
-                            className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-1"
-                            title="Remove image"
-                          >
-                            <Trash2 size={12} />
-                            <span>Remove</span>
-                          </button>
+                        )}
+                      </div>
+
+                      {/* Right: Name & Link Inputs */}
+                      <div className="md:col-span-8 space-y-2.5">
+                        <div>
+                          <label className="text-[11px] font-bold text-muted-foreground block mb-1">
+                            Attraction Name
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full h-9 px-3 text-xs rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-1 focus:ring-primary outline-hidden"
+                            placeholder="e.g. Louvre Museum, Burj Khalifa"
+                            value={attraction.name || ''}
+                            onChange={(e) => handleUpdateCityAttraction(idx, 'name', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-muted-foreground block mb-1">
+                            Reference / Website Link (Optional)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="url"
+                              className="w-full h-9 pl-3 pr-8 text-xs rounded-xl border border-input bg-background text-foreground shadow-xs focus:ring-1 focus:ring-primary outline-hidden"
+                              placeholder="e.g. https://www.louvre.fr/en"
+                              value={attraction.link || ''}
+                              onChange={(e) => handleUpdateCityAttraction(idx, 'link', e.target.value)}
+                            />
+                            {attraction.link && (
+                              <a
+                                href={attraction.link.startsWith('http') ? attraction.link : `https://${attraction.link}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-primary transition"
+                                title="Open link in new tab"
+                              >
+                                <ExternalLink size={14} />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <label className="min-h-[120px] border-2 border-dashed border-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition p-4 text-center group">
-                      {isUploadingThis ? (
-                        <span className="text-xs text-muted-foreground font-medium">Uploading...</span>
-                      ) : (
-                        <>
-                          <div className="w-8 h-8 rounded-xl bg-muted/40 group-hover:bg-primary/10 text-muted-foreground group-hover:text-primary flex items-center justify-center mb-1 transition">
-                            <Plus size={16} />
-                          </div>
-                          <span className="text-xs font-bold text-foreground">Upload Slot {idx + 1}</span>
-                          <span className="text-[10px] text-muted-foreground">Click to choose photo</span>
-                        </>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleCityHighlightUpload(e, idx)}
-                        disabled={isUploadingThis}
-                      />
-                    </label>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* TipTap Rich Text Editor for Description */}

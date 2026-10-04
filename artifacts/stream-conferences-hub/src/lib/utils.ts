@@ -236,3 +236,82 @@ export function formatTime12h(timeStr?: string): string {
   return `${formattedHours}:${minutes} ${period}`;
 }
 
+export function formatConferenceSchedule(conf: {
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
+  eventDate?: string | Date | null;
+  month?: string | null;
+  day?: string | null;
+}): string {
+  if (!conf) return '—';
+
+  const monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  const monthMap: Record<string, number> = {
+    JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+    JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
+  };
+
+  const toDate = (val: any): Date | null => {
+    if (!val) return null;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const sDate = toDate(conf.startDate);
+  const eDate = toDate(conf.endDate);
+  const evDate = toDate(conf.eventDate);
+
+  // Case 1: Both startDate and endDate are present
+  if (sDate && eDate) {
+    if (sDate.getTime() === eDate.getTime()) {
+      return `${sDate.getDate()} ${monthNames[sDate.getMonth()]} ${sDate.getFullYear()}`;
+    }
+    if (sDate.getFullYear() === eDate.getFullYear()) {
+      return `${sDate.getDate()} ${monthNames[sDate.getMonth()]} – ${eDate.getDate()} ${monthNames[eDate.getMonth()]} ${sDate.getFullYear()}`;
+    }
+    return `${sDate.getDate()} ${monthNames[sDate.getMonth()]} ${sDate.getFullYear()} – ${eDate.getDate()} ${monthNames[eDate.getMonth()]} ${eDate.getFullYear()}`;
+  }
+
+  // Case 2: Only one date exists with day range string (e.g., day: "12–14")
+  const baseDate = sDate || evDate;
+  if (baseDate && conf.day && /[-–—]/.test(conf.day)) {
+    const parts = conf.day.split(/[-–—]/).map((p) => parseInt(p.trim(), 10)).filter((n) => !isNaN(n));
+    if (parts.length === 2) {
+      const startD = new Date(baseDate.getFullYear(), baseDate.getMonth(), parts[0]);
+      const endD = new Date(baseDate.getFullYear(), baseDate.getMonth(), parts[1]);
+      return `${startD.getDate()} ${monthNames[startD.getMonth()]} – ${endD.getDate()} ${monthNames[endD.getMonth()]} ${startD.getFullYear()}`;
+    }
+  }
+
+  // Case 3: Only baseDate exists (e.g. recently added event with single date)
+  if (baseDate) {
+    return `${baseDate.getDate()} ${monthNames[baseDate.getMonth()]} ${baseDate.getFullYear()}`;
+  }
+
+  // Case 4: Legacy month and day strings (e.g., month: "JUN 27", day: "15–17")
+  if (conf.month && conf.day) {
+    const monthTokens = conf.month.trim().toUpperCase().split(/\s+/);
+    if (monthTokens.length >= 2) {
+      const mIdx = monthMap[monthTokens[0]];
+      const rawYear = parseInt(monthTokens[1], 10);
+      const fullYear = isNaN(rawYear) ? new Date().getFullYear() : rawYear < 100 ? 2000 + rawYear : rawYear;
+      if (mIdx !== undefined) {
+        if (/[-–—]/.test(conf.day)) {
+          const parts = conf.day.split(/[-–—]/).map((p) => parseInt(p.trim(), 10)).filter((n) => !isNaN(n));
+          if (parts.length === 2) {
+            return `${parts[0]} ${monthNames[mIdx]} – ${parts[1]} ${monthNames[mIdx]} ${fullYear}`;
+          }
+        }
+        return `${conf.day} ${monthNames[mIdx]} ${fullYear}`;
+      }
+    }
+    return `${conf.month} ${conf.day}`;
+  }
+
+  return '—';
+}
+

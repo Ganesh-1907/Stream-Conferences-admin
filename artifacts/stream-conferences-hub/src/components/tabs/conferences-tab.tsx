@@ -1,19 +1,63 @@
-import { Plus, MoreVertical, ExternalLink, UserPlus } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, MoreVertical, ExternalLink, UserPlus, Check } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
-import { subdomainUrlFor } from '@/lib/utils';
+import { subdomainUrlFor, formatConferenceSchedule } from '@/lib/utils';
+import { API_BASE } from '@/lib/constants';
 import { usePagination } from '@/hooks/use-pagination';
 import { PaginationBar } from '@/components/ui/pagination-bar';
+import type { Conference } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 
 export function ConferencesTab() {
-  const { conferences, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor, navigateToAddEvent } = useAppStore();
-  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(conferences);
+  const { conferences, openEventPage, openEditForm, handleDeleteItem, openAddForm, user, openAssignMentor, navigateToAddEvent, refreshData } = useAppStore();
+
+  const sortedConferences = useMemo(() => {
+    return [...conferences].sort((a: any, b: any) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (aTime && bTime && aTime !== bTime) return bTime - aTime;
+      if (a._id && b._id) return String(b._id).localeCompare(String(a._id));
+      return 0;
+    });
+  }, [conferences]);
+
+  const { page, totalPages, totalItems, paginatedItems, setPage } = usePagination(sortedConferences);
+  const [savingVisibility, setSavingVisibility] = useState<string | null>(null);
+
+  const handleSetVisibility = async (conf: Conference, visibility: 'public' | 'private') => {
+    if ((conf.visibility || 'public') === visibility) return;
+    setSavingVisibility(conf._id);
+    try {
+      const res = await fetch(`${API_BASE}/conferences/${conf._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': user?.role || '',
+          'x-user-name': user?.username || '',
+        },
+        body: JSON.stringify({ visibility }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}) as any);
+        alert(data?.error || 'Failed to update visibility. Please try again.');
+        return;
+      }
+      await refreshData();
+    } catch {
+      alert('Failed to update visibility. Please try again.');
+    } finally {
+      setSavingVisibility(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -44,16 +88,29 @@ export function ConferencesTab() {
               <th className="p-3.5 font-semibold">Location</th>
               <th className="p-3.5 font-semibold">Mentor</th>
               <th className="p-3.5 font-semibold">Status</th>
+              <th className="p-3.5 font-semibold">Visibility</th>
               <th className="p-3.5 text-right rounded-tr-xl font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginatedItems.map((conf) => (
               <tr key={conf._id} className="border-b border-foreground/5 bg-card hover:bg-foreground/[0.015] last:border-0 transition-colors text-sm">
-                <td className="p-3.5 font-mono text-xs font-bold text-accent">{conf.eventId || '—'}</td>
-                <td className="p-3.5 font-mono font-medium text-sm">
-                  {conf.month} {conf.day}
-                  {conf.eventDate && <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(conf.eventDate).toLocaleDateString()}</div>}
+                <td className="p-3.5 font-mono text-xs font-bold">
+                  {conf.eventId ? (
+                    <button
+                      type="button"
+                      onClick={() => openEventPage(conf, 'conference', 'details', 'view')}
+                      className="text-primary hover:text-primary/80 hover:underline cursor-pointer transition font-bold"
+                      title="Click to view conference details"
+                    >
+                      {conf.eventId}
+                    </button>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="p-3.5 font-medium text-xs sm:text-sm text-foreground whitespace-nowrap">
+                  {formatConferenceSchedule(conf)}
                 </td>
                 <td
                   className="p-3.5 font-semibold text-foreground hover:text-primary cursor-pointer transition text-sm"
@@ -73,6 +130,11 @@ export function ConferencesTab() {
                       </span>
                     );
                   })()}
+                </td>
+                <td className="p-3.5 capitalize">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(conf.visibility || 'public') === 'private' ? 'bg-foreground/10 text-muted-foreground' : 'bg-green-500/10 text-green-500'}`}>
+                    {(conf.visibility || 'public') === 'private' ? 'Private' : 'Public'}
+                  </span>
                 </td>
                 <td className="p-3.5 text-right relative">
                   <div className="flex items-center justify-end gap-1">
@@ -103,6 +165,9 @@ export function ConferencesTab() {
                       onCohorts={() => openEventPage(conf, 'conference', 'cohorts', 'view')}
                       onDelete={() => handleDeleteItem(conf._id, 'conferences')}
                       isMentor={user?.role === 'mentor'}
+                      visibility={(conf.visibility || 'public') as 'public' | 'private'}
+                      savingVisibility={savingVisibility === conf._id}
+                      onSetVisibility={(v) => handleSetVisibility(conf, v)}
                     />
                   </div>
                 </td>
@@ -110,7 +175,7 @@ export function ConferencesTab() {
             ))}
             {totalItems === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No conferences managed yet.</td>
+                <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">No conferences managed yet.</td>
               </tr>
             )}
           </tbody>
@@ -127,12 +192,18 @@ function ActionDropdown({
   onCohorts,
   onDelete,
   isMentor,
+  visibility,
+  onSetVisibility,
+  savingVisibility,
 }: {
   onViewDetails: () => void;
   onEdit: () => void;
   onCohorts: () => void;
   onDelete: () => void;
   isMentor?: boolean;
+  visibility?: 'public' | 'private';
+  onSetVisibility?: (v: 'public' | 'private') => void;
+  savingVisibility?: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -164,6 +235,36 @@ function ActionDropdown({
           >
             Cohorts
           </DropdownMenuItem>
+        )}
+        {!isMentor && onSetVisibility && (
+          <>
+            <DropdownMenuSeparator className="border-t border-foreground/5 my-1" />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger
+                className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg"
+              >
+                Visibility
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="bg-card border border-foreground/10 rounded-xl shadow-xl p-1.5 z-50">
+                <DropdownMenuItem
+                  disabled={savingVisibility}
+                  onClick={() => onSetVisibility('public')}
+                  className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg"
+                >
+                  <Check size={14} className={visibility === 'public' ? 'opacity-100' : 'opacity-0'} />
+                  Public
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={savingVisibility}
+                  onClick={() => onSetVisibility('private')}
+                  className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-foreground/5 transition duration-150 text-foreground font-semibold cursor-pointer rounded-lg"
+                >
+                  <Check size={14} className={visibility === 'private' ? 'opacity-100' : 'opacity-0'} />
+                  Private
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
         )}
         <DropdownMenuSeparator className="border-t border-foreground/5 my-1" />
         <DropdownMenuItem
