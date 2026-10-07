@@ -151,7 +151,7 @@ const HighlightMark = Mark.create({
   renderHTML({ HTMLAttributes }) {
     return ['mark', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
   },
-  addCommands() {
+  addCommands(): any {
     return {
       setHighlight:
         (attributes?: { color?: string }) =>
@@ -178,7 +178,7 @@ const SubscriptMark = Mark.create({
   renderHTML({ HTMLAttributes }) {
     return ['sub', mergeAttributes(HTMLAttributes), 0];
   },
-  addCommands() {
+  addCommands(): any {
     return {
       setSubscript:
         () =>
@@ -205,7 +205,7 @@ const SuperscriptMark = Mark.create({
   renderHTML({ HTMLAttributes }) {
     return ['sup', mergeAttributes(HTMLAttributes), 0];
   },
-  addCommands() {
+  addCommands(): any {
     return {
       setSuperscript:
         () =>
@@ -250,7 +250,7 @@ const TextAlign = Extension.create({
       },
     ];
   },
-  addCommands() {
+  addCommands(): any {
     return {
       setTextAlign:
         (alignment: string) =>

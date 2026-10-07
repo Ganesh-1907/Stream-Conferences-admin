@@ -5,6 +5,7 @@ import { registerLinkFor, subdomainUrlFor, mediaUrl, cohortSiteUrlFor, stringToD
 import { EventPageTab, Speaker, ProgramDay, FAQ, EventPartner, VenueDetails, CityAttractionItem, CourseCohort, Conference, EventType, FeeEntry, FeeGroup, DeadlineTier, FeeCategory, FeeSubItem, AccommodationFeeItem, Contact } from '@/lib/types';
 import { API_BASE } from '@/lib/constants';
 import { PaginationBar } from '@/components/ui/pagination-bar';
+import { usePagination } from '@/hooks/use-pagination';
 import { FileUploadCard } from '@/components/file-upload-card';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -1424,7 +1425,7 @@ function ParticipantsTab() {
               </tr>
             </thead>
             <tbody>
-              {paginatedItems.map((p) => (
+              {paginatedItems.map((p: any) => (
                 <tr key={p._id} className="border-b border-foreground/5 hover:bg-foreground/[0.02] last:border-0">
                   <td className="p-4 font-semibold">{p.title ? `${p.title} ${p.fullName || p.name}` : (p.fullName || p.name)}</td>
                   <td className="p-4 text-xs">
@@ -4795,6 +4796,7 @@ function VenueDetailsTab() {
       (vd.subImages && vd.subImages[0]) || (vd.images && vd.images[1]) || '',
       (vd.subImages && vd.subImages[1]) || (vd.images && vd.images[2]) || '',
       (vd.subImages && vd.subImages[2]) || (vd.images && vd.images[3]) || '',
+      (vd.subImages && vd.subImages[3]) || (vd.images && vd.images[4]) || '',
     ],
     cityHighlights: [
       (vd.cityHighlights && vd.cityHighlights[0]) || '',
@@ -4838,6 +4840,7 @@ function VenueDetailsTab() {
         (curVd.subImages && curVd.subImages[0]) || (curVd.images && curVd.images[1]) || '',
         (curVd.subImages && curVd.subImages[1]) || (curVd.images && curVd.images[2]) || '',
         (curVd.subImages && curVd.subImages[2]) || (curVd.images && curVd.images[3]) || '',
+        (curVd.subImages && curVd.subImages[3]) || (curVd.images && curVd.images[4]) || '',
       ],
       cityHighlights: [
         (curVd.cityHighlights && curVd.cityHighlights[0]) || '',
@@ -5233,7 +5236,7 @@ function VenueDetailsTab() {
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Sub Images</span>
             {formData.subImages.some(Boolean) ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {formData.subImages.map((url, idx) => (
                   <div key={idx} className="bg-muted/20 rounded-2xl p-2.5 border border-foreground/5">
                     <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Sub Image {idx + 1}</span>
@@ -5792,17 +5795,17 @@ function VenueDetailsTab() {
           )}
         </div>
 
-        {/* Three Sub Images */}
+        {/* Four Sub Images */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-              Three Sub Images
+              Four Sub Images
             </label>
-            <span className="text-[11px] text-muted-foreground">3 photo slots</span>
+            <span className="text-[11px] text-muted-foreground">4 photo slots</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[0, 1, 2].map((idx) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {[0, 1, 2, 3].map((idx) => {
               const url = formData.subImages[idx];
               const isUploadingThis = uploadingSubIndex === idx;
 

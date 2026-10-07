@@ -37,6 +37,7 @@ export function Header() {
   const { theme, toggle } = useTheme();
   const { user, handleLogout, activeTab, goToTab, isEventPage, closeEventPage, navigateToAddEvent, openAddForm } = useAppStore();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [guidelinesModalOpen, setGuidelinesModalOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on click outside or escape key
@@ -80,7 +81,8 @@ export function Header() {
       activeTab === 'gallery' ||
       activeTab === 'brochure' ||
       activeTab === 'abstractTemplate' ||
-      activeTab === 'websiteEnquiries');
+      activeTab === 'websiteEnquiries' ||
+      activeTab === 'imageGuidelines');
 
   const initials = (user?.username ? user.username.slice(0, 2) : 'SC').toUpperCase();
   const userEmail = user?.email || (user?.username ? `${user.username}@streamconferences.com` : 'user@streamconferences.com');
@@ -193,7 +195,7 @@ export function Header() {
         </nav>
 
         {/* User Actions: Role Badge, Dark/Light Mode Switcher & User Profile Dropdown */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* User Role Badge */}
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-foreground/5 border border-foreground/10 select-none">
             <span

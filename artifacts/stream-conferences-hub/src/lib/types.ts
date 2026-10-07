@@ -36,7 +36,8 @@ export type Tab =
   | 'gallery'
   | 'brochure'
   | 'abstractTemplate'
-  | 'websiteEnquiries';
+  | 'websiteEnquiries'
+  | 'imageGuidelines';
 
 export interface MainBrochureItem {
   _id?: string;

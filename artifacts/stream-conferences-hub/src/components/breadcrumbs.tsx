@@ -24,6 +24,7 @@ const TAB_LABELS: Record<string, string> = {
   gallery: 'Gallery',
   brochure: 'Website Brochure',
   abstractTemplate: 'Abstract Submission Template',
+  imageGuidelines: 'Image Guidelines',
 };
 
 const EVENT_TAB_LABELS: Record<string, string> = {

@@ -520,7 +520,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Navigation — read initial tab from URL hash so refresh restores it
   const VALID_TABS: Tab[] = [
     'overview','conferences','blogs','mediaPartners','collaborators','venues',
-    'mentors','liveChat','userWebsite','gallery','brochure','abstractTemplate','websiteEnquiries'
+    'mentors','liveChat','userWebsite','gallery','brochure','abstractTemplate','websiteEnquiries',
+    'imageGuidelines'
   ];
   const getTabFromHash = (): Tab => {
     const hash = window.location.hash.replace('#', '');
