@@ -34,7 +34,7 @@ export function ConferencesTab() {
   const [savingVisibility, setSavingVisibility] = useState<string | null>(null);
 
   const handleSetVisibility = async (conf: Conference, visibility: 'public' | 'private') => {
-    if ((conf.visibility || 'public') === visibility) return;
+    if ((conf.visibility || 'private') === visibility) return;
     setSavingVisibility(conf._id);
     try {
       const res = await fetch(`${API_BASE}/conferences/${conf._id}`, {
@@ -132,8 +132,8 @@ export function ConferencesTab() {
                   })()}
                 </td>
                 <td className="p-3.5 capitalize">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(conf.visibility || 'public') === 'private' ? 'bg-foreground/10 text-muted-foreground' : 'bg-green-500/10 text-green-500'}`}>
-                    {(conf.visibility || 'public') === 'private' ? 'Private' : 'Public'}
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(conf.visibility || 'private') === 'private' ? 'bg-foreground/10 text-muted-foreground' : 'bg-green-500/10 text-green-500'}`}>
+                    {(conf.visibility || 'private') === 'private' ? 'Private' : 'Public'}
                   </span>
                 </td>
                 <td className="p-3.5 text-right relative">
@@ -165,7 +165,7 @@ export function ConferencesTab() {
                       onCohorts={() => openEventPage(conf, 'conference', 'cohorts', 'view')}
                       onDelete={() => handleDeleteItem(conf._id, 'conferences')}
                       isMentor={user?.role === 'mentor'}
-                      visibility={(conf.visibility || 'public') as 'public' | 'private'}
+                      visibility={(conf.visibility || 'private') as 'public' | 'private'}
                       savingVisibility={savingVisibility === conf._id}
                       onSetVisibility={(v) => handleSetVisibility(conf, v)}
                     />
